@@ -45,7 +45,7 @@ Please contact [Dr. Hamish Brown](https://github.com/HamishGBrown) with project 
 
 ## License
 
-This project is licensed under the GNU GPLv3.0 - see the [LICENSE.txt](LICENSE.txt) file for details
+This project is licensed under the GNU GPLv3.0 - see the [LICENSE.txt](LICENSE.txt) file for details.
 
 
 ## Acknowledgments

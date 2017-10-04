@@ -6391,7 +6391,7 @@ subroutine qk15 ( f, a, b, result, abserr, resabs, resasc )
   abserr = abs((resk-resg)*hlgth)
 
   if ( resasc /= 0.0E+00.and.abserr /= 0.0E+00 ) then
-    abserr = resasc*min ( 1.0E+00,(2.0E+02*abserr/resasc)**1.5E+00)
+    abserr = resasc*min ( 1.0d+00,(2.0E+02*abserr/resasc)**1.5E+00)
   end if
 
   if ( resabs > tiny ( resabs ) / (5.0E+01* epsilon ( resabs ) ) ) then
@@ -6591,7 +6591,7 @@ subroutine qk15i ( f, boun, inf, a, b, result, abserr, resabs, resasc )
   abserr = abs ( ( resk - resg ) * hlgth )
 
   if ( resasc /= 0.0E+00.and.abserr /= 0.0E+00) then
-    abserr = resasc* min ( 1.0E+00,(2.0E+02*abserr/resasc)**1.5E+00)
+    abserr = resasc* min ( 1.0d+00,(2.0E+02*abserr/resasc)**1.5E+00)
   end if
 
   if ( resabs > tiny ( resabs ) / ( 5.0E+01 * epsilon ( resabs ) ) ) then
@@ -6788,7 +6788,7 @@ subroutine qk15w ( f, w, p1, p2, p3, p4, kp, a, b, result, abserr, resabs, &
   abserr = abs((resk-resg)*hlgth)
 
   if ( resasc /= 0.0E+00.and.abserr /= 0.0E+00) then
-    abserr = resasc*min ( 1.0E+00,(2.0E+02*abserr/resasc)**1.5E+00)
+    abserr = resasc*min ( 1.0d+00,(2.0E+02*abserr/resasc)**1.5E+00)
   end if
 
   if ( resabs > tiny ( resabs ) /(5.0E+01* epsilon ( resabs ) ) ) then
@@ -6973,7 +6973,7 @@ subroutine qk21 ( f, a, b, result, abserr, resabs, resasc )
   abserr = abs((resk-resg)*hlgth)
 
   if ( resasc /= 0.0E+00.and.abserr /= 0.0E+00) then
-    abserr = resasc*min ( 1.0E+00,(2.0E+02*abserr/resasc)**1.5E+00)
+    abserr = resasc*min ( 1.0d+00,(2.0E+02*abserr/resasc)**1.5E+00)
   end if
 
   if ( resabs > tiny ( resabs ) /(5.0E+01* epsilon ( resabs ) )) then
@@ -7162,7 +7162,7 @@ subroutine qk31 ( f, a, b, result, abserr, resabs, resasc )
   abserr = abs((resk-resg)*hlgth)
 
   if ( resasc /= 0.0E+00.and.abserr /= 0.0E+00) &
-    abserr = resasc*min ( 1.0E+00,(2.0E+02*abserr/resasc)**1.5E+00)
+    abserr = resasc*min ( 1.0d+00,(2.0E+02*abserr/resasc)**1.5E+00)
 
   if ( resabs > tiny ( resabs ) /(5.0E+01* epsilon ( resabs ) )) then
     abserr = max (( epsilon ( resabs ) *5.0E+01)*resabs,abserr)
@@ -7358,7 +7358,7 @@ subroutine qk41 ( f, a, b, result, abserr, resabs, resasc )
   abserr = abs((resk-resg)*hlgth)
 
   if ( resasc /= 0.0E+00.and.abserr /= 0.0E+00) &
-    abserr = resasc*min ( 1.0E+00,(2.0E+02*abserr/resasc)**1.5E+00)
+    abserr = resasc*min ( 1.0d+00,(2.0E+02*abserr/resasc)**1.5E+00)
 
   if ( resabs > tiny ( resabs ) /(5.0E+01* epsilon ( resabs ) )) then
     abserr = max (( epsilon ( resabs ) *5.0E+01)*resabs,abserr)
@@ -7562,7 +7562,7 @@ subroutine qk51 ( f, a, b, result, abserr, resabs, resasc )
   abserr = abs((resk-resg)*hlgth)
 
   if ( resasc /= 0.0E+00.and.abserr /= 0.0E+00) then
-    abserr = resasc*min ( 1.0E+00,(2.0E+02*abserr/resasc)**1.5E+00)
+    abserr = resasc*min ( 1.0d+00,(2.0E+02*abserr/resasc)**1.5E+00)
   end if
 
   if ( resabs > tiny ( resabs ) / (5.0E+01* epsilon ( resabs ) ) ) then
@@ -7778,7 +7778,7 @@ subroutine qk61 ( f, a, b, result, abserr, resabs, resasc )
   abserr = abs((resk-resg)*hlgth)
 
   if ( resasc /= 0.0E+00 .and. abserr /= 0.0E+00) then
-    abserr = resasc*min ( 1.0E+00,(2.0E+02*abserr/resasc)**1.5E+00)
+    abserr = resasc*min ( 1.0d+00,(2.0E+02*abserr/resasc)**1.5E+00)
   end if
 
   if ( resabs > tiny ( resabs ) / (5.0E+01* epsilon ( resabs ) )) then
@@ -8291,7 +8291,7 @@ subroutine qng ( f, a, b, epsabs, epsrel, result, abserr, neval, ier )
     end if
 
     if ( resasc /= 0.0E+00.and.abserr /= 0.0E+00 ) then
-      abserr = resasc * min ( 1.0E+00,(2.0E+02*abserr/resasc)**1.5E+00)
+      abserr = resasc * min ( 1.0d+00,(2.0E+02*abserr/resasc)**1.5E+00)
     end if
 
     if ( resabs > tiny ( resabs ) / ( 5.0E+01 * epsilon ( resabs ) ) ) then

@@ -1,14 +1,7 @@
 # MuSTEM
 
 MuSTEM is a transmission electron microscopy (TEM) simulation suite, in particular for scanning transmission electron microscopy (STEM) images, that was developed mainly at the University of Melbourne. The computing suite is based on the multislice
-method.
-
-Thermal scattering is accounted for with one of two models:
-
-1. The absorptive scattering potential approach [1, 2, 7].
-2. The quantum excitation of phonons (QEP) model [6] which provides overall results numerically equivalent to the frozen phonon (FPh) method [8] but provides different physical insights and allows both elastic and inelastic phonon scattering to be separately elucidated.
-
-Image simulation of inner shell ionization, i.e. electron energy loss spectroscopy (EELS) and energy dispersive x-ray spectroscopy (EDX), are based on a parameterization of the effective ionization potential in the local approximation. For EELS, a correction is made for the finite detector aperture size. It is assumed that the aperture size is large enough that the elastic scattering of the outgoing electron can be neglected. More detail can be found in the following scientific paper:
+method. More detail can be found in the [manual](muSTEM_v4.9_manual.pdf) and the following scientific paper:
 
 [Modelling the inelastic scattering of fast electrons,
 L.J. Allen, A.J. D'Alfonso and S.D. Findlay,
@@ -16,7 +9,14 @@ Ultramicroscopy, Vol. 151, pp. 11-22, (2015).](http://www.sciencedirect.com/scie
 
 ## Getting Started
 
-MuSTEM is built using the [PGI Fortran compiler and Microsoft Visual Studio 2015](https://www.pgroup.com/products/pvf.htm), the following arguements are passed to the compiler:
+
+### Prerequisites
+
+[PGI Visual Fortran and Microsoft Visual Studio](https://www.pgroup.com/products/pvf.htm)
+
+### Installing
+
+MuSTEM is built using the [PGI Fortran compiler and Microsoft Visual Studio 2015](https://www.pgroup.com/products/pvf.htm), please make sure that this software is correctly installed before proceeding. Create a new Visual Studio project and add the source code contained this this repository. Modify the project properties so that Microsoft Visual Studio passes the following commands to the PGI compiler:
 
 Build commands:
 
@@ -28,77 +28,24 @@ Linker commands:
 
 The links to the PGI CUDA libraries and Windows kits may need to be modified depending on the install directories. $(Outdir) represents the output directory of the Microsoft Visual Studio build.
 
-### Prerequisites
+Some example simulations are included on the [MuSTEM website](http://tcmp.ph.unimelb.edu.au/mustem/download.php).
 
-[PGI Visual Fortran and Microsoft Visual Studio](https://www.pgroup.com/products/pvf.htm)
-
-```
-Give examples
-```
-
-### Installing
-
-A step by step series of examples that tell you have to get a development env running
-
-Say what the step will be
-
-```
-Give the example
-```
-
-And repeat
-
-```
-until finished
-```
-
-End with an example of getting some data out of the system or using it for a little demo
-
-## Running the tests
-
-Explain how to run the automated tests for this system
-
-### Break down into end to end tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
-
-### And coding style tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
-
-## Deployment
-
-Add additional notes about how to deploy this on a live system
-
-## Built With
-
-* [Dropwizard](http://www.dropwizard.io/1.0.2/docs/) - The web framework used
-* [Maven](https://maven.apache.org/) - Dependency Management
-* [ROME](https://rometools.github.io/rome/) - Used to generate RSS Feeds
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
-
-## Versioning
-
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/your/project/tags). 
+Please contact [Dr. Hamish Brown](https://github.com/HamishGBrown) with project suggestions and contributions.
 
 ## Authors
+* **Professor Les J Allen**
+* [**Dr. Hamish G Brown**](https://github.com/HamishGBrown) - *Maintainer*
+* **Dr. Adrian J D'Alfonso**
+* **Dr. Scott D Findlay**
+* **Dr. Ben D Forbes**
 
-* **Billie Thompson** - *Initial work* - [PurpleBooth](https://github.com/PurpleBooth)
 
 ## License
 
-This project is licensed under the GNU GPLv3.0 - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the GNU GPLv3.0 - see the [LICENSE.txt](LICENSE.txt) file for details.
 
 
 ## Acknowledgments

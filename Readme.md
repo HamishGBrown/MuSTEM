@@ -1,7 +1,7 @@
 # MuSTEM
 
 MuSTEM is a transmission electron microscopy (TEM) simulation suite, in particular for scanning transmission electron microscopy (STEM) images, that was developed mainly at the University of Melbourne. The computing suite is based on the multislice
-method. More detail can be found in the [manual](muSTEM_v4.9_manual.pdf) and the following scientific paper:
+method. More detail can be found in the [manual](muSTEM_manual.pdf) and the following scientific paper:
 
 [Modelling the inelastic scattering of fast electrons,
 L.J. Allen, A.J. D'Alfonso and S.D. Findlay,

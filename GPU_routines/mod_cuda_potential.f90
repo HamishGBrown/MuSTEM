@@ -244,11 +244,9 @@ module cuda_potential
     subroutine cuda_fph_make_potential(transf_d,ccd_slice,tau_ss,nat_layer,n_sub_slice,thickness,idum,plan,fz_d,inverse_sinc_d,bwl_mat_d)
     
         use global_variables
-        use output
         use m_precision
         use CUFFT
 	    use cufft_wrapper
-        use output
         use cudafor
         use m_slicing, only: n_slices, nat_slice, a0_slice
         use m_qep, only: displace
@@ -331,11 +329,9 @@ module cuda_potential
     subroutine cuda_make_abs_potential(transf_d,ccd_slice,tau_ss,nat_layer,thickness,plan,fz_d,fz_dwf_d,fz_abs_d,inverse_sinc_d,bwl_mat_d,volume)
     
         use global_variables
-        use output
         use m_precision
         use CUFFT
 	    use cufft_wrapper
-        use output
         use cudafor
         use cuda_array_library, only: blocks, threads
     
@@ -421,11 +417,9 @@ module cuda_potential
     subroutine cuda_make_adf_potential(real_inelastic_slice_potential_d,tau_ss,nat_layer,plan,fz_adf_d,inverse_sinc_d,volume)
     
         use global_variables
-        use output
         use m_precision
         use CUFFT
 	    use cufft_wrapper
-        use output
         use cudafor
         use cuda_array_library, only: blocks, threads
         
@@ -486,11 +480,9 @@ module cuda_potential
     subroutine cuda_make_ion_potential(real_inelastic_slice_potential_d,tau_ss,nat_layer,plan,fz_mu_d,fz_dwf_d,inverse_sinc_d,volume,kval)
     
         use global_variables
-        use output
         use m_precision
         use CUFFT
 	    use cufft_wrapper
-        use output
         use cudafor
         use cuda_array_library, only: blocks, threads
         

@@ -574,11 +574,15 @@
     
     subroutine setup_specimen_thickness()
     
-        use global_variables, only: thickness, n_cells, a0
+        use global_variables, only: thickness, n_cells, a0,nz,zarray,ncells
         use m_user_input, only: get_input
         use m_precision, only: fp_kind
+		use m_string, only: read_sequence_string
 
         implicit none
+
+		integer*4::i
+		character*120::thickness_string
       
         write(*,*) '|-------------------------------|'
 	    write(*,*) '|      Specimen thickness       |'
@@ -587,14 +591,23 @@
       
     10  write(6,11)
     11  format( ' Enter the specimen thickness in Angstroms:')
-        call get_input("Thickness", thickness)
-        write(*,*)
-    
+		call get_input("Thickness", thickness_string)
+		
+		call read_sequence_string(thickness_string,120,nz)
+		allocate(zarray(nz),ncells(nz))
+		call read_sequence_string(thickness_string,120,nz,zarray)
+		ncells = nint(zarray/a0(3))
+		zarray = ncells*a0(3)
+
+		thickness = zarray(nz)
+
         n_cells = nint(thickness/a0(3))
         thickness = n_cells*a0(3)
-    
-    15  format(' This corresponds to ', i5, ' unit cells with a total thickness of ', f6.1, ' ', a1, '.')
-        write(6, 15) n_cells, thickness, char(143)
+		do i=1,nz
+			write(6, 15) ncells(i), zarray(i), char(143)	
+		enddo
+	15  format(' This corresponds to ', i5, ' unit cells with a total thickness of ', f6.1, ' ', a1, '.')
+   
         write(*,*)
 
     end subroutine

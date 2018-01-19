@@ -263,7 +263,7 @@ module m_potential
     end subroutine make_site_factor_matmul
     
     
-    
+#ifdef GPU    
     subroutine make_site_factor_cuda(site_factor, tau)
 
         use m_precision, only: fp_kind
@@ -295,7 +295,7 @@ module m_potential
         site_factor = site_factor_d
         
     end subroutine make_site_factor_cuda
-    
+#endif    
     
     
     subroutine make_site_factor_hybrid(site_factor, tau)
@@ -418,17 +418,28 @@ module m_potential
         real(fp_kind) :: tau_slice(3,nt,maxnat_slice) !atom locations for the supercell slice
         integer(4) :: nat_slice(nt)       !number of atoms in this slice (of each type)
         real(fp_kind) :: CCD_slice        
-        procedure(make_site_factor_generic),pointer :: make_site_factor
+        procedure(make_site_factor_generic),pointer :: make_site_fact
+        procedure(make_site_factor_generic),pointer,optional:: make_site_factor
         
         integer :: m
         complex(fp_kind) :: site_factor(nopiy,nopix)
            
         potential = 0.0_fp_kind
-    
+        
+        if(present(make_site_factor)) then
+            make_site_fact => make_site_factor
+        else
+#ifdef GPU
+            make_site_fact => make_site_factor_cuda
+#else
+            make_site_fact => make_site_factor_matmul
+#endif
+        endif
+        
         do m = 1, nt
             if (nat_slice(m)==0) cycle
                
-            call make_site_factor(site_factor, tau_slice(:,m,1:nat_slice(m)))
+            call make_site_fact(site_factor, tau_slice(:,m,1:nat_slice(m)))
                        
             potential = potential + site_factor*CCD_slice*fz(:,:,m)
         
@@ -473,7 +484,7 @@ module m_potential
                
             call make_site_factor(site_factor, tau_slice(:,m,1:nat_slice(m)))
                        
-            potential = potential + site_factor*cmplx(CCD_slice*fz(:,:,m)*fz_DWF(:,:,m), fz_abs(:,:,m)*V_corr, fp_kind)
+            potential = potential + site_factor*(CCD_slice*fz(:,:,m)*fz_DWF(:,:,m)+cmplx(0,1)*fz_abs(:,:,m)*V_corr)
 
         
         enddo 

@@ -30,9 +30,16 @@ module output
 		module procedure array_from_txt_real_1d,array_from_txt_real
 	end interface
 		
+    interface quad_shift
+        module procedure quad_shift_complex,quad_shift_real
+    end interface
     
+    interface binary_out
+        module procedure binary_out_real, binary_out_complex
+    end interface
       
     character(120) :: output_prefix
+	logical :: timing
 
     contains
 
@@ -47,7 +54,7 @@ module output
 	  nlines = nlines + 1
 	END DO
 	CLOSE (50)
-	end
+	end function 
 
 	function array_from_txt_real_1d(fnam,nopiy) result(array_from_txt)
 
@@ -64,37 +71,6 @@ module output
 
 	close(50)
 	end function
-
-
-!	function array_from_txt_int_1d(fnam,nopiy) result(array_from_txt)
-!
-!	character*(*),intent(in)::fnam
-!	integer*4,intent(in)::nopiy
-!
-!	integer*4::array_from_txt(nopiy),i
-!
-!	open(unit = 50,file = fnam,status='old',action='read')
-!	do i=1,nopiy
-!		read(50,*) array_from_txt(i)
-!	enddo
-!
-!	close(50)
-!	end function
-
-	! function array_from_txt_int(fnam,nopiy,nopix) result(array_from_txt)
-
-	! character*(*),intent(in)::fnam
-	! integer*4,intent(in)::nopiy,nopix
-
-	! integer*4::array_from_txt(nopiy,nopix),i,j
-
-	! open(unit = 50,file = fnam,status='old',action='read')
-	! do i=1,nopix
-		! read(50,*) (array_from_txt(j,i),j=1,nopiy)
-	! enddo
-
-	! close(50)
-	! end function
 
 	function array_from_txt_real(fnam,nopiy,nopix) result(array_from_txt)
 
@@ -131,10 +107,10 @@ module output
 	    function truncate_integer_2d(matrix,yout,xout)
         
         integer*4,intent(in)::yout,xout
-        integer*4,intent(in)::matrix(yin,xin)
+        integer*4,intent(in)::matrix(:,:)
     
         integer*4::truncate_integer_2d(yout,xout)
-        integer*4::yin,xin,y(2),x(2),sze(2)
+        integer*4::y(2),x(2),sze(2)
 
         sze = shape(matrix)
 
@@ -247,7 +223,7 @@ module output
 
 
     
-    subroutine binary_out(nopiy, nopix, array, filename,write_to_screen)
+    subroutine binary_out_real(nopiy, nopix, array, filename,write_to_screen)
     
         implicit none
       
@@ -293,21 +269,9 @@ module output
         character(*) :: filename
         real(fp_kind) :: array_unwrapped(nopiy,nopix)
 		logical,optional,intent(in)::write_to_screen,to_bandlimit
-      
-	    integer::Npos_y, Npos_x, Nneg_y, Nneg_x
-        integer::shifty, shiftx
 		logical:: write_to_screen_,to_bandlimit_
 	  
-        Npos_y = int(floor(float(nopiy)/2))
-        Npos_x = int(floor(float(nopix)/2))
-      
-        Nneg_y = nopix - Npos_y - 1
-        Nneg_x = nopiy - Npos_x - 1
-      
-	    shifty = -Nneg_y
-        shiftx = -Nneg_x
-      
-	    array_unwrapped = cshift(cshift(array, shifty, 1), shiftx, 2)
+	    array_unwrapped = quad_shift(array,nopiy,nopix)
 		
 		if(present(write_to_screen)) then
 			write_to_screen_ = write_to_screen
@@ -323,11 +287,54 @@ module output
 
 		if(to_bandlimit_) then
 			call binary_out(nopiy*2/3, nopix*2/3, crop(array_unwrapped,nopiy*2/3, nopix*2/3), filename,write_to_screen_)
+			!call binary_out(nopiy, nopix, array_unwrapped, filename,write_to_screen_)
 		else
 			call binary_out(nopiy, nopix, array_unwrapped, filename,write_to_screen_)
 		endif
       
     end subroutine
+     
+    function quad_shift_real(array,nopiy,nopix)
+        real(fp_kind),intent(in)::array(nopiy,nopix)
+        integer*4,intent(in)::nopiy,nopix
+        
+        real(fp_kind)::quad_shift_real(nopiy,nopix)
+        integer::Npos_y, Npos_x, Nneg_y, Nneg_x
+        integer::shifty, shiftx
+        
+        Npos_y = int(floor(float(nopiy)/2))
+        Npos_x = int(floor(float(nopix)/2))
+      
+        Nneg_y = nopiy - Npos_y - 1
+        Nneg_x = nopix - Npos_x - 1
+      
+	    shifty = -Nneg_y
+        shiftx = -Nneg_x
+      
+	    quad_shift_real = cshift(cshift(array, shifty, 1), shiftx, 2)
+        
+    end function
+    
+    function quad_shift_complex(array,nopiy,nopix)
+        complex(fp_kind),intent(in)::array(nopiy,nopix)
+        integer*4,intent(in)::nopiy,nopix
+        
+        complex(fp_kind)::quad_shift_complex(nopiy,nopix)
+        integer::Npos_y, Npos_x, Nneg_y, Nneg_x
+        integer::shifty, shiftx
+        
+        Npos_y = int(floor(float(nopiy)/2))
+        Npos_x = int(floor(float(nopix)/2))
+      
+        Nneg_y = nopiy - Npos_y - 1
+        Nneg_x = nopix - Npos_x - 1
+      
+	    shifty = -Nneg_y
+        shiftx = -Nneg_x
+      
+	    quad_shift_complex = cshift(cshift(array, shifty, 1), shiftx, 2)
+        
+    end function
 
 
 
@@ -546,101 +553,100 @@ module output
       
       !----------------------------------------------------------------------------
       !subroutine output stem image
+	  !----------------------------------------------------------------------------
+      
 
-    subroutine output_stem_image(stem_image,fnam_det)
-        use global_variables
-        use m_lens
-        use m_probe_scan, only: nysample, nxsample, scan_quarter, unwrap_quarter_image
+    subroutine output_stem_image(stem_image,fnam_det,defoci)
+        use global_variables, only:output_nopiy,output_nopix,zarray,tiley,tilex
+        !use m_probe_scan, only: nysample, nxsample
+		use m_string, only: zero_padded_int
         
         implicit none
 
-        integer(4) :: i_df
-        real(fp_kind),dimension(:,:,:) :: stem_image
-        real(fp_kind),allocatable :: tiled_image(:,:)
+        integer(4) :: i_df,i_z,length,lengthdf,nysample,nxsample,n_df,nz
+        real(fp_kind),dimension(:,:,:,:) :: stem_image
+        real(fp_kind),allocatable :: tiled_image(:,:),montage(:,:)
         real(fp_kind) :: interpolated_image(output_nopiy,output_nopix)
+		real(fp_kind),optional:: defoci(size(stem_image,3))
         character(*) :: fnam_det
         character(512) :: fnam_temp,fnam_out
         
-        logical :: many_y, many_x, many_df
-                
-        if (scan_quarter) then
-            
-            do i_df = 1, n_df
-                call unwrap_quarter_image(stem_image(:,:,i_df), nysample, nxsample, stem_image(:,:,i_df))
-            enddo
-                        
-        endif
-        
+        logical :: many_y, many_x, many_df,many_z,make_montage
+     
+        nysample = size(stem_image,1)
+		nxsample = size(stem_image,2)
+		n_df = size(stem_image,3)
+		nz = size(stem_image,4) 
+
         many_y = nysample .gt. 1
         many_x = nxsample .gt. 1
         many_df = n_df .gt. 1
-        
-        if (many_y .and. many_x .and. many_df) then
+		many_z = nz>1
+		make_montage = many_df.and.many_z
+
+
+		if (make_montage) allocate(montage(output_nopiy*n_df,output_nopix*nz))
+
+		length = ceiling(log10(maxval(zarray)))
+		lengthdf = ceiling(log10(maxval(abs(defoci))))
+		if(any(defoci<0)) lengthdf = lengthdf+1
+        if (many_y .and. many_x) then
             ! y, x, df
         
             do i_df = 1, n_df
-            
+			do i_z = 1, nz            
                 ! Output STEM image at original sampling
             
-                fnam_temp = trim(adjustl(fnam_det)) // '_Defocus'
-                call add_zero_padded_int_signed(fnam_temp, fnam_out, int(defoci(i_df)), 5)
-                fnam_out = trim(fnam_out) // 'Ang'
-            
-                call binary_out(nysample, nxsample, stem_image(:,:,i_df), fnam_out)
+                fnam_out = trim(adjustl(fnam_det)) 
+				
+				if(many_df) fnam_out = trim(adjustl(fnam_out)) // '_Defocus_'//zero_padded_int(int(defoci(i_df)),lengthdf)//'_Ang'
+				 
+				if(nz>1) fnam_out = trim(adjustl(fnam_out))//'_z='//zero_padded_int(int(zarray(i_z)),length)//'_A'
+				
+                call binary_out(nysample, nxsample, stem_image(:,:,i_df,i_z), fnam_out)
                         
                 ! Output STEM image with tiling and interpolation
                 
                 if(allocated(tiled_image)) deallocate(tiled_image)
                 allocate(tiled_image(tiley*nysample,tilex*nxsample))
                 
-                call tile_output(stem_image(:,:,i_df), nysample, nxsample, tiley, tilex, tiled_image)
-
+                call tile_output(stem_image(:,:,i_df,i_z), nysample, nxsample, tiley, tilex, tiled_image)
+				
                 call interpolate_real2D(tiled_image, interpolated_image)
                 
+				if(make_montage) montage((i_df-1)*output_nopiy+1:i_df*output_nopiy,(i_z-1)*output_nopix+1:i_z*output_nopix) = interpolated_image
+				
                 fnam_out = trim(fnam_out) // '_Interpolated'
                 
                 call binary_out(output_nopiy, output_nopix, interpolated_image, fnam_out)
-                
+            enddo    
             enddo
-            
-        elseif (many_y .and. many_x) then
-            ! y vs. x
-        
-            ! Output STEM image at original sampling
-        
-            fnam_out = trim(fnam_det)
-            call binary_out(nysample, nxsample, stem_image(:,:,1), fnam_out)
-                        
-            ! Output STEM image with tiling and interpolation
-                
-            if(allocated(tiled_image)) deallocate(tiled_image)
-            allocate(tiled_image(tiley*nysample,tilex*nxsample))
-                
-            call tile_output(stem_image(:,:,1), nysample, nxsample, tiley, tilex, tiled_image)
-
-            call interpolate_real2D(tiled_image, interpolated_image)
-                
-            fnam_out = trim(fnam_det) // '_Interpolated'
-                
-            call binary_out(output_nopiy, output_nopix, interpolated_image, fnam_out)
-        
+			
+			if(make_montage) then
+				fnam_out = trim(adjustl(fnam_det)) //'_defocus_thickness_montage'
+				 call binary_out(output_nopiy*n_df,output_nopix*nz, montage, fnam_out)
+			endif 
         elseif (many_y .and. many_df) then
             ! y vs. df
-        
-            fnam_temp = trim(adjustl(fnam_det)) // '_Linescan(y)_vs_Defocus'
-            call binary_out(nysample, n_df, stem_image(:,1,:), fnam_temp)
-        
+			do i_z = 1, nz
+				fnam_temp = trim(adjustl(fnam_det)) // '_Linescan(y)_vs_Defocus'
+				if (nz>1) fnam_temp = trim(adjustl(fnam_temp)) //'_z='//zero_padded_int(int(zarray(i_z)),length)//'_A'
+				call binary_out(nysample, n_df, stem_image(:,1,:,i_z), fnam_temp)
+			enddo
         elseif (many_y) then
             ! y
-        
+			do i_z = 1, nz
             fnam_temp = trim(adjustl(fnam_det)) // '_Linescan(y).txt'
-            call printout_1d(stem_image(:,1,1), nysample, fnam_temp)
-        
+			if (nz>1) fnam_temp = trim(adjustl(fnam_out))//'_z='//zero_padded_int(int(zarray(i_z)),length)//'_A'
+            call printout_1d(stem_image(:,1,1,i_z), nysample, fnam_temp)
+			enddo
         elseif (many_x .and. many_df) then
             ! x vs. df
-
+			do i_z = 1, nz
             fnam_temp = trim(adjustl(fnam_det)) // '_Linescan(x)_vs_Defocus'
-            call binary_out(n_df, nxsample, transpose(stem_image(1,:,:)), fnam_temp)
+			if (nz>1) fnam_temp = trim(adjustl(fnam_out))//'_z='//zero_padded_int(int(zarray(i_z)),length)//'_A'
+            call binary_out(n_df, nxsample, transpose(stem_image(1,:,:,i_z)), fnam_temp)
+			enddo
             ! Note: the transpose is so that defocus is passed through to 
             ! binary_out() as the fastest varying dimension; binary_out()
             ! then transposes again so that x will be outputted as the fastest varying
@@ -648,26 +654,78 @@ module output
        
         elseif (many_x) then
             ! x
-
-            fnam_temp = trim(adjustl(fnam_det)) // '_Linescan(x).txt'
-            call printout_2d(stem_image(1:1,:,1), 1, nxsample, fnam_temp)
+			do i_z = 1, nz
+            fnam_temp = trim(adjustl(fnam_det)) 
+			if (nz>1) fnam_temp = trim(adjustl(fnam_out))//'_z='//zero_padded_int(int(zarray(i_z)),length)//'_A'
+			fnam_temp = trim(adjustl(fnam_out))// '_Linescan(x).txt'
+            call printout_2d(stem_image(1:1,:,1,i_z), 1, nxsample, fnam_temp)
             ! Note: use printout_2d() to force x horizontal
-            
+            enddo
         elseif (many_df) then
             !df
-        
+			do i_z = 1, nz
+			if (nz>1) fnam_temp = fnam_temp//'_z='//zero_padded_int(int(zarray(i_z)),length)//'_A'
             fnam_temp = trim(adjustl(fnam_det)) // '_DefocusSeries.txt'
-            call printout_1d(stem_image(1,1,:), n_df, fnam_temp)
+            call printout_1d(stem_image(1,1,:,i_z), n_df, fnam_temp)
+			enddo
         
         else
             !Single value
-        
-            fnam_temp = trim(adjustl(fnam_det)) // '_Signal.txt'
-            call printout_1d(stem_image(:,1,1), 1, fnam_temp)
-            
+			do i_z = 1,nz
+			fnam_temp = trim(adjustl(fnam_det))
+			if (nz>1) fnam_temp = trim(adjustl(fnam_out))//'_z='//zero_padded_int(int(zarray(i_z)),length)//'_A'
+             fnam_temp = trim(adjustl(fnam_out))// '_Signal.txt'
+            call printout_1d(stem_image(:,1,1,I_z), 1, fnam_temp)
+            enddo
+
         endif          
 
-	end subroutine
-
-
-    end module
+    end subroutine
+	
+        subroutine binary_out_complex(nopiy_temp,nopix_temp,array,fnam,cutoff,realimag,quadshift)
+    implicit none
+    
+    integer(4),intent(in):: nopiy_temp,nopix_temp
+    complex(fp_kind),intent(in) :: array(nopiy_temp,nopix_temp)
+    character*(*),intent(in) :: fnam
+    real(fp_kind),intent(in),optional::cutoff
+    logical,intent(in),optional::realimag,quadshift
+    
+    integer(4) i,j
+    real(fp_kind), allocatable :: obj_ret(:,:)
+    character*(120) fnam1
+    complex(fp_kind)::array_(nopiy_temp,nopix_temp)
+    logical::realimag_,mask(nopiy_temp,nopix_temp)
+    
+    array_ = array
+    if(present(quadshift)) then
+        if (quadshift) array_ = quad_shift(array_,nopiy_temp,nopix_temp)
+    endif
+    
+    realimag_ = .false.
+    if (present(realimag)) realimag_ = realimag
+    
+    if (realimag_) then
+        call binary_out(nopiy_temp,nopix_temp,real(array_),trim(adjustl(fnam))//'_real.bin')    
+        call binary_out(nopiy_temp,nopix_temp,imag(array_),trim(adjustl(fnam))//'_imag.bin')    
+    else
+        if(allocated(obj_ret)) deallocate(obj_ret)
+        allocate(obj_ret(nopiy_temp,nopix_temp))
+        obj_ret = conjg(array_)*array_
+        if(present(cutoff)) then
+            mask = obj_ret/maxval(obj_ret) > cutoff**2
+        else
+            mask = obj_ret/maxval(obj_ret) > 1e-8
+        endif
+        fnam1=trim(adjustl(fnam))//'_inten.bin'
+        call binary_out(nopiy_temp,nopix_temp,obj_ret,fnam1)
+        obj_ret = 0
+        forall(i=1:nopiy_temp,j=1:nopix_temp,mask(i,j)) obj_ret(i,j) = atan2(imag(array_(i,j)),real(array_(i,j)))
+        fnam1=trim(adjustl(fnam))//'_phase.bin'
+        call binary_out(nopiy_temp,nopix_temp,obj_ret,fnam1)
+    endif
+    
+    return
+    end subroutine
+    
+	end module

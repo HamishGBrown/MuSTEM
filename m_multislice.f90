@@ -45,8 +45,9 @@ module m_multislice
         
         implicit none
         
-        integer :: i_output
+        integer :: i_output,j
         real(fp_kind) :: thickness_interval
+        character(1024)::dir,fnam
         
         write(*,*) '|-----------------------------------|'
         write(*,*) '|      Output probe intensity       |'
@@ -79,13 +80,26 @@ module m_multislice
                     goto 20
                 endif
                 
+                j = index(output_prefix,'/',back=.true.)
+                j = max(j,index(output_prefix,'\',back=.true.))
+        
+                if(j>0) then
+                    dir = trim(adjustl(output_prefix(:j)))
+                    fnam = trim(adjustl(output_prefix(j:)))
+                else
+                    dir = ''
+                    fnam = trim(adjustl(output_prefix))
+                endif 
+                
+                call system('mkdir '//trim(adjustl(dir))//'Probe_intensity')
+                
                 call generate_cell_list(thickness_interval)
                 
                 call write_thicknesss_to_file
                 
                 write(*,*) 'The probe intensities will be written to the files'
                 write(*,*)
-                write(*,*) '    ' // trim(adjustl(output_prefix)) // '_ProbeIntensity*.bin'
+                write(*,*) '  '//trim(adjustl(dir))//'Probe_intensity' // trim(adjustl(fnam)) // '_ProbeIntensity*.bin'
                 write(*,*)
                 if (fp_kind.eq.4) then
                     write(*,*) 'as 32-bit big-endian floats.'
@@ -106,46 +120,55 @@ module m_multislice
     
     subroutine generate_cell_list(thickness_interval)
     
-        use global_variables, only: thickness, n_cells, a0
-		use m_slicing, only: n_slices
+        use global_variables, only: thickness, ncells, a0
+		use m_slicing, only: n_slices,depths
         
         implicit none
         
         real(fp_kind) :: thickness_interval
         
-        integer :: i_cell, count
-        real(fp_kind) :: t
+        integer :: i_cell, count,i,j
+        real(fp_kind) :: t,tout
         
-        allocate(output_cell_list(n_cells*n_slices))
+        allocate(output_cell_list(maxval(ncells)*n_slices))
         output_cell_list = .false.
         
-        allocate(cell_map(n_cells*n_slices))
+        allocate(cell_map(maxval(ncells)*n_slices))
         cell_map = 0
         
         t = 0.0_fp_kind
+		tout = thickness_interval
+
         count = 0
-        
-        do while (t.le.thickness)
-            i_cell = nint(t/a0(3)*n_slices)
-            if (i_cell.ge.1) then
-                output_cell_list(i_cell) = .true.
-                count = count + 1
-            endif
-            
-            t = t + thickness_interval
-        enddo
-        
+
+		do i= 1,maxval(ncells)
+		do j=1,n_slices
+			if((t+depths(j+1)*a0(3).gt.tout)) then
+				output_cell_list((i-1)*n_slices+j) =.true.
+				count = count + 1
+				tout = (floor((t+depths(j+1)*a0(3))/thickness_interval)+1)*thickness_interval
+			endif
+			
+		enddo
+		t = t+a0(3)
+		enddo        
         allocate(output_thickness_list(count))
         
-        count = 0
+        t = 0.0_fp_kind
+		tout = thickness_interval
         
-        do i_cell = 1, n_cells*n_slices
-            if (output_cell_list(i_cell)) then
-                count = count + 1
-                output_thickness_list(count) = i_cell * a0(3)/n_slices
-                cell_map(i_cell) = count
-            endif            
-        enddo
+        count = 0
+        do i= 1,maxval(ncells)
+		do j=1,n_slices
+			if((t+depths(j+1)*a0(3).gt.tout)) then
+				count = count + 1
+				output_thickness_list(count) = t+depths(j+1)*a0(3)
+				cell_map((i-1)*n_slices+j) = count
+				tout = (floor((t+depths(j+1)*a0(3))/thickness_interval)+1)*thickness_interval
+			endif
+		enddo
+		t = t+a0(3)
+		enddo
 
     end subroutine
     
@@ -157,15 +180,24 @@ module m_multislice
         
         implicit none
         
-        integer :: i
-        character(1024) :: filename
+        integer :: i,j
+        character(1024) :: filename,dir,fnam
         
-        filename = trim(adjustl(output_prefix))//'_probe_intensity_thicknesss.txt'
+        j = index(output_prefix,'/',back=.true.)
+        j = max(j,index(output_prefix,'\',back=.true.))
+        
+        if(j>0) then
+            dir = trim(adjustl(output_prefix(:j)))
+            fnam = trim(adjustl(output_prefix(j:)))
+            filename = trim(adjustl(dir))//'Probe_intensity'//trim(adjustl(fnam))//'_probe_intensity_thicknesss.txt'
+        else
+            filename = 'Probe_intensity\'//trim(adjustl(output_prefix))//'_probe_intensity_thicknesss.txt'
+        endif
         
         write(*,*) 'The thicknesses at which the probe intensity'
         write(*,*) 'is being outputted have been written to'
         write(*,*)
-        write(*,*) '    ' // trim(filename)
+        write(*,*) '  ' // trim(filename)
         write(*,*)
         
         open(unit=8734, file=filename)
@@ -176,9 +208,46 @@ module m_multislice
         
         close(8734)        
         
+        
+        
     end subroutine
     
+    subroutine probe_intensity_to_file(probe_intensity,i_df,ny,nx,n_qep_passes)
     
+    use output, only: output_prefix,quad_shift
+    use global_variables, only: nopiy,nopix
+    use m_probe_scan, only: nysample,nxsample
+    use m_lens, only:probe_ndf
+    use m_string
+    
+    real(fp_kind),intent(in)::probe_intensity(nopiy,nopix,size(output_thickness_list))
+    integer*4,intent(in)::i_df,ny,nx,n_qep_passes
+    
+    integer*4::j
+    character*1024::filename,fnam,dir
+    
+        j = index(output_prefix,'/',back=.true.)
+        j = max(j,index(output_prefix,'\',back=.true.))
+        
+        if(j>0) then
+            dir = trim(adjustl(output_prefix(:j)))
+            fnam = trim(adjustl(output_prefix(j:)))
+            filename = trim(adjustl(dir))//'Probe_intensity\'//trim(adjustl(fnam))//'_ProbeIntensity'
+        else
+            filename = 'Probe_intensity\'//trim(adjustl(output_prefix))//'_ProbeIntensity'
+        endif
+            
+        if (probe_ndf.gt.1) filename = trim(filename) // '_df' // to_string(i_df)
+        if (nysample.gt.1) filename = trim(filename) // '_ny' // to_string(ny)
+        if (nxsample.gt.1) filename = trim(filename) // '_nx' // to_string(nx)
+        filename = trim(filename) // '.bin'
+        open(4985, file=filename, form='binary', convert='big_endian')
+        do j=1,size(output_thickness_list)
+            write(4985) quad_shift(probe_intensity(:,:,j),nopiy,nopix)/ n_qep_passes
+        enddo
+        close(4985)
+    
+    end subroutine
     
     subroutine prompt_save_load_grates
     
@@ -281,8 +350,8 @@ module m_multislice
         use m_qep, only: displace, qep_grates,phase_ramp_shift, n_qep_grates
         use m_slicing, only: n_slices, nat_slice, a0_slice, tau_slice, maxnat_slice, ss_slice
         use m_string, only: to_string
-        use output, only: output_prefix
-        use m_potential, only: make_qep_potential, make_site_factor_generic, make_site_factor_cuda, make_site_factor_hybrid
+        use output, only: output_prefix,timing
+        use m_potential!, only: make_qep_potential, make_site_factor_generic, make_site_factor_cuda, make_site_factor_hybrid
         
         implicit none
     
@@ -337,7 +406,11 @@ module m_multislice
         t1 = secnds(0.0_fp_kind)
         
         if (high_accuracy) then
+#ifdef GPU
             make_site_factor => make_site_factor_cuda
+#else
+            make_site_factor => make_site_factor_matmul
+#endif            
         else
             make_site_factor => make_site_factor_hybrid
         endif
@@ -426,10 +499,12 @@ module m_multislice
         
         write(*,*) 'The calculation of transmission functions for the QEP model took ', delta, 'seconds.'
         write(*,*)
-        
-        open(unit=9834, file=trim(adjustl(output_prefix))//'_timing.txt', access='append')
-        write(9834, '(a, g, a, /)') 'The calculation of transmission functions for the QEP model took ', delta, 'seconds.'
-        close(9834)
+
+    	if(timing) then
+			open(unit=9834, file=trim(adjustl(output_prefix))//'_timing.txt', access='append')
+			write(9834, '(a, g, a, /)') 'The calculation of transmission functions for the QEP model took ', delta, 'seconds.'
+			close(9834)
+		endif
         
         if (save_grates) then
             write(*,*) 'Saving transmission functions to file...'
@@ -460,7 +535,7 @@ module m_multislice
       endif
       
       return
-      end
+      end function
     
     subroutine make_absorptive_grates
     
@@ -470,8 +545,8 @@ module m_multislice
         use m_absorption, only: transf_absorptive
         use m_slicing, only: n_slices, nat_slice, a0_slice, tau_slice, maxnat_slice, ss_slice
         use m_string, only: to_string
-        use output, only: output_prefix
-        use m_potential, only: make_absorptive_potential, make_site_factor_generic, make_site_factor_cuda, make_site_factor_hybrid
+        use output, only: output_prefix,timing
+        use m_potential!, only: make_absorptive_potential, make_site_factor_generic, make_site_factor_cuda, make_site_factor_hybrid
         
         implicit none
     
@@ -500,7 +575,11 @@ module m_multislice
         t1 = secnds(0.0_fp_kind)
         
         if (high_accuracy) then
+#ifdef GPU
             make_site_factor => make_site_factor_cuda
+#else
+            make_site_factor => make_site_factor_matmul
+#endif
         else
             make_site_factor => make_site_factor_hybrid
         endif
@@ -529,9 +608,11 @@ module m_multislice
         write(*,*) 'The calculation of transmission functions for the absorptive model took ', delta, 'seconds.'
         write(*,*)
         
-        open(unit=9834, file=trim(adjustl(output_prefix))//'_timing.txt', access='append')
-        write(9834, '(a, g, a, /)') 'The calculation of transmission functions for the absorptive model took ', delta, 'seconds.'
-        close(9834)
+		if(timing) then
+			open(unit=9834, file=trim(adjustl(output_prefix))//'_timing.txt', access='append')
+			write(9834, '(a, g, a, /)') 'The calculation of transmission functions for the absorptive model took ', delta, 'seconds.'
+			close(9834)
+		endif
     
         if (save_grates) then
             write(*,*) 'Saving transmission functions to file...'

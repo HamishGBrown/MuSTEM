@@ -40,12 +40,14 @@
     
         use m_user_input, only: init_input, get_input
         use global_variables, only: high_accuracy, nt, atf, nat, atomf, volts, ss, qep, adf, constants, nopiy, nopix
-        use m_lens, only: pw_illum, cb_illum, setup_imaging_lens_parameters, setup_probe_lens_parameters, setup_defocus_series
+        use m_lens, only: pw_illum, cb_illum, setup_imaging_lens_parameters, setup_probe_lens_parameters
         use local_ionization, only: setup_inelastic_ionization_types
+#ifdef GPU        
         use cuda_setup, only: setup_GPU
         use cuda_array_library, only: set_blocks
+#endif
         use m_slicing, only: setup_slicing_depths, calculate_slices
-        use output, only: setup_output_prefix
+        use output, only: setup_output_prefix,timing
         use m_probe_scan, only: setup_probe_scan, setup_probe_scan_pacbed, place_probe, probe_initial_position
         use m_tilt, only: prompt_tilt
         use m_qep, only: setup_qep_parameters
@@ -66,7 +68,7 @@
 
 
 108     write(6,109)
-109     format(&
+        109     format(&
        &1x,'|----------------------------------------------------------------------------|',/,&
        &1x,'|              Melbourne University (scanning) transmission electron         |',/,&
        &1x,'|                            microscopy computing suite                      |',/,&
@@ -89,7 +91,11 @@
 	   &1x,'|       General Public License Version 3 as published by the Free            |',/,&
 	   &1x,'|       Software Foundation.                                                 |',/,&
        &1x,'|                                                                            |',/,&
-       &1x,'|       Version 4.9                                                          |',/,&
+#ifdef GPU
+       &1x,'|       GPU Version 4.9                                                      |',/,&
+#else
+       &1x,'|       CPU only Version 4.9                                                 |',/,&
+#endif
        &1x,'|                                                                            |',/,&
        &1x,'|       Note: pass the argument "nopause" (without quotation marks)          |',/,&
        &1x,'|             e.g. muSTEM.exe nopause                                        |',/,&
@@ -98,11 +104,14 @@
        &1x,'|----------------------------------------------------------------------------|',/)
        
         ! Process command line arguments
+        ! Process command line arguments
         do i_arg = 1, command_argument_count()
             call get_command_argument(i_arg, command_argument)
             select case (trim(adjustl(command_argument)))
             case ('nopause')
                 nopause = .true.
+			case ('timing')
+				timing = .true.
             end select
         enddo
        
@@ -117,11 +126,14 @@
         call init_input
        
         ! Set up CPU multithreading
-        call setup_threading
-        
+        call setup_threading 
+#ifdef GPU
         ! Set up GPU
         call setup_GPU
-
+#else
+        open(6,carriagecontrol ='fortran')
+#endif
+        
         write(*,*) '|------------------------------|'
         write(*,*) '|        Dataset output        |'
         write(*,*) '|------------------------------|'
@@ -154,7 +166,9 @@
        
         ! Set up the potential calculation method
         call prompt_high_accuracy    
-        
+               
+        ! Set the unit cell tiling and grid size
+        call set_tiling_grid
         
         
         write(*,*) '|----------------------------|'
@@ -203,16 +217,14 @@
         
         ! Prompt for including absorptive potential
         if (complex_absorption) call prompt_include_absorption
-                
-        ! Set the unit cell tiling and grid size
-        call set_tiling_grid
+         
 
         ! Prompt user for a tilt for either kind of illumination
         call prompt_tilt        
-        
+#ifdef GPU        
         ! Setup the CUDA thread hierachy for nopiy, nopix arrays
         call set_blocks(nopiy, nopix)
-        
+#endif
         ! Calculate the slices of the supercell
         call calculate_slices
         
@@ -250,12 +262,13 @@
                 case (2)
                     ! PACBED pattern
                     call setup_probe_scan_pacbed
+					!call setup_probe_scan(.false.)
                     
                 case (3)
                     ! STEM images
-                    call setup_defocus_series
+                    !call setup_defocus_series
                     call setup_probe_scan
-                    !call prompt_output_probe_intensity
+                    call prompt_output_probe_intensity
 
                     if (qep) then
                         adf = .false. 

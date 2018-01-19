@@ -67,16 +67,16 @@
                   &' calculations will be ', a, ' * ', a, ' = ', a, '.', /)
         else
             write(6,101)
-        101 format( ,' The choice of tiling and grid size does not permit quick shifting ', /, &
+        101 format( ' The choice of tiling and grid size does not permit quick shifting ', /, &
                     &' of the precalculated transmission functions. Shifting using ', /, &
                     &' phase ramps can be performed but is time consuming. You may wish ', /, &
                     &' to go back and calculate more distinct transmission functions, or ', /, &
-                    &' simply proceed without using phase ramp shifting. ', /)
+                    &' simply proceed without using phase ramp shifting. ' /)
                 
         110 write(6,111)
         111 format(  ' <1> Go back and choose a larger number', /, &
                     &' <2> Proceed with phase ramp shifting', /, &
-                    &' <3> Proceed without phase ramp shifting', /, &                
+                    &' <3> Proceed without phase ramp shifting', / &                
                     )
             call get_input("<1> choose more <2> phase ramp <3> no phase ramp", i)
             write(*,*)

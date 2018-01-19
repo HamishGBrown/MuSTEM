@@ -44,8 +44,11 @@
     real(fp_kind)  :: bvec(3)                             !Beam tilt vector
     
     !sample thickness and slicing variables
-    real(fp_kind) :: thickness                                   !sample thickness
-    integer(4) :: n_cells                                 !number of unit cells
+    real(fp_kind) :: thickness                        !sample thickness
+	real(fp_kind),allocatable:: zarray(:)
+	integer(4),allocatable::ncells(:)
+	integer(4)::nz
+    integer(4) :: n_cells  
 
 	!integer(4) :: probe_output_interval
 	!logical:: prb_depth_output
@@ -88,6 +91,7 @@
     logical :: ionization = .false.
     logical :: adf 
     logical :: EELS = .false.
+
     
     logical :: qep
     
@@ -131,7 +135,7 @@
          &'     m* / m = ',g12.5,&
          &' (relativistic mass increment)',/,/)
 
-      end
+      end subroutine 
       
     
       end module global_variables

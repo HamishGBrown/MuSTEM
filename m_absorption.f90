@@ -20,7 +20,6 @@
 module m_absorption
     
     use m_precision, only: fp_kind
-	use m_numerical_tools,only: romberg_trap
 	use quadpack
     
     implicit none
@@ -53,6 +52,7 @@ module m_absorption
     integer :: i_species
 
     real(8),parameter :: abs_tol = 1e-10,rel_tol = 5e-6
+	
 	!real(fp_kind),parameter :: abs_tol = 1e-10,rel_tol = 5e-6
     
     
@@ -209,6 +209,8 @@ module m_absorption
 		
         use global_variables, only: nt
         use m_crystallography, only: trimi, trimr
+		use m_string
+		use output, only: output_prefix,timing
         
         implicit none
 
@@ -227,8 +229,8 @@ module m_absorption
         ! Double precision variables for accuracy
         real(8),parameter :: pi = 4.0d0*atan(1.0d0)
         real(8) :: sum1
-		!real(fp_kind) :: sum1,thmin,thmax
-    
+		!real(8) :: sum2,sum3,diff,mu(1000)
+		real(fp_kind) :: t1, delta
     
 
         ! Make sure orthogonal coordinate system has been previously set up
@@ -264,13 +266,20 @@ module m_absorption
 
         ! Accumulator for mu_0
         mu_0 = 0.0_fp_kind
+		t1 = secnds(0.0)
 
         ! Loop over reciprocal lattice vectors g
         do ipa = 1, max_int
 
             ! Status
-    131     format(a1,' Calculating absorptive scattering factor ', i4, ' of ', i4, '...' )
-            write(6,131, advance='no') achar(13), ipa, max_int
+#ifdef GPU            
+        131 format(a1,' Calculating absorptive scattering factor ', i4, ' of ', i4, '...' )
+            write(6,131, advance='no') achar(13),ipa, max_int
+#else
+        131 format(1h+,' Calculating absorptive scattering factor ', i4, ' of ', i4, '...' )
+            write(6,131) ipa, max_int
+#endif
+            !flush(unit=6)
 
             g = (ipa-1) * kstep
 
@@ -281,10 +290,10 @@ module m_absorption
         
                 ! Set global dwf which is used in tds_calc_phi()
                 dwf = exp( - tp2 * g2 * atf(3, i_species) )
-
+												
                 ! Integrate over theta and phi
 				call qag ( tds_calc_theta, thmin, thmax, abs_tol, rel_tol, 1, sum1, abserr, m, ier )
-
+				
                 ! Fractional occupancy
                 sum1 = sum1 * atf(2,i_species)
 
@@ -293,7 +302,7 @@ module m_absorption
             
                 ! Accumulate mu_0
                 if (all(g.eq.0.0_fp_kind)) then
-                    mu_0 = mu_0 + sum1*nat(i_species)
+                    mu_0 = mu_0 + sum1*nat(i_species) 
                 endif
 
             enddo
@@ -302,7 +311,15 @@ module m_absorption
 
         write(*,*)
         write(*,*)
-    
+
+		
+		if(timing) then
+			delta = secnds(t1)
+			open(unit=9834, file=trim(adjustl(output_prefix))//'_timing.txt', access='append')
+			write(9834, '(a, g, a, /)') 'Calculation of absorptive form factors took ', delta, 'seconds.'
+			close(9834)
+		endif
+		
         ! 1/Vc factor: 1/A for 2D Fourier series and 1/dz to get average potential
         ! Note that this is the unit cell volume and is corrected to be 
         ! the slice volume elsewhere in the program

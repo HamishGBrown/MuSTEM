@@ -81,7 +81,7 @@ subroutine normal_sample ( a, b, seed, x )
   x = a + b * x
 
   return
-end
+end subroutine
 
 !This function is a wrapper to the routine normal_01_sample that mimics
 !the interface to the gasdev function from Numerical Recipes (see comment
@@ -133,7 +133,7 @@ subroutine normal_01_sample ( seed, x )
   real ( kind = 8 ) r1
   real ( kind = 8 ) r2
   real ( kind = 8 ), parameter :: r8_pi = 3.141592653589793D+00
-  real ( kind = 8 ) r8_uniform_01
+  !real ( kind = 8 ) r8_uniform_01
   integer ( kind = 4 ) seed
   real ( kind = 8 ) x
 
@@ -142,7 +142,7 @@ subroutine normal_01_sample ( seed, x )
   x = sqrt ( -2.0D+00 * log ( r1 ) ) * cos ( 2.0D+00 * r8_pi * r2 )
 
   return
-end
+end subroutine
 
 function r8_uniform_01 ( seed )
 
@@ -219,7 +219,7 @@ function r8_uniform_01 ( seed )
 !
   implicit none
 
-  integer ( kind = 4 ) i4_huge
+  !integer ( kind = 4 ) i4_huge
   integer ( kind = 4 ) k
   real ( kind = 8 ) r8_uniform_01
   integer ( kind = 4 ) seed
@@ -245,7 +245,7 @@ function r8_uniform_01 ( seed )
   r8_uniform_01 = real ( seed, kind = 8 ) * 4.656612875D-10
 
   return
-end
+end function
 
 function i4_huge ( )
 
@@ -302,7 +302,7 @@ function i4_huge ( )
   i4_huge = 2147483647
 
   return
-end
+end function
 
 subroutine cubspl ( tau, c, n, ibcbeg, ibcend )
 
@@ -566,7 +566,7 @@ subroutine cubspl ( tau, c, n, ibcbeg, ibcend )
   end do
  
   return
-end
+end subroutine
 
 function ppvalu ( break, coef, l, k, x, jderiv )
 
@@ -684,7 +684,7 @@ function ppvalu ( break, coef, l, k, x, jderiv )
   ppvalu = value
  
   return
-end
+end function
 
 subroutine interv ( xt, lxt, x, left, mflag )
 
@@ -899,6 +899,6 @@ subroutine interv ( xt, lxt, x, left, mflag )
   end do
 
   return
-end
+end subroutine
 
 end module

@@ -121,8 +121,35 @@ module m_user_input
 
     end subroutine
 
+	function get_string_from_file(input_filenumber_,line_no,formatter)
 
+		character(128)::get_string_from_file
+		character*(*),optional,intent(in)::formatter
+		integer*4,intent(in)::input_filenumber_
+		integer*4,intent(inout)::line_no
 
+		logical::commented
+		integer*4::excl,iostat
+
+		commented = .true.
+
+	    do while(commented)
+			if(present(formatter)) then
+				read(input_filenumber_, formatter) get_string_from_file	
+			else
+				read(input_filenumber_, '(a128)') get_string_from_file
+			endif
+101         format(A128)
+			!Check for comment character and cycle through file if lines are commented
+			excl = index(adjustl(get_string_from_file),'!')
+			commented = excl==1
+			line_no = line_no + 1
+		enddo
+		
+		if (excl>0) get_string_from_file = get_string_from_file(:excl-1)
+
+	end function
+	
     subroutine get_input_int(prompt, num)
 
         implicit none
@@ -136,7 +163,7 @@ module m_user_input
         call test_prompt(prompt)
                
 5       write(*,'(1x, a)', advance='no') '> '
-        read(input_file_number, '(a128)') s
+        s = get_string_from_file(input_file_number,line_no)
         
         if (input_file_number.eq.in_file_number) write(*,*) trim(adjustl(s))
 
@@ -154,7 +181,7 @@ module m_user_input
             goto 5
         endif
         
-        line_no = line_no + 1
+        !line_no = line_no + 1
         call write_to_in_file(prompt, num)
 
     end subroutine
@@ -171,11 +198,11 @@ module m_user_input
         call test_prompt(prompt)
           
 5       write(*,'(1x, a)', advance='no') '> '
-        read(input_file_number, '(A120)') s
+        s = get_string_from_file(input_file_number,line_no)
         
         if (input_file_number.eq.in_file_number) write(*,*) trim(adjustl(s))
 
-        line_no = line_no + 1
+        !line_no = line_no + 1
         call write_to_in_file(prompt, s)
 
     end subroutine
@@ -195,7 +222,7 @@ module m_user_input
         call test_prompt(prompt)
         
 5       write(*,'(1x, a)', advance='no') '> '
-        read(input_file_number, '(a128)') s
+        s = get_string_from_file(input_file_number,line_no)
         
         if (input_file_number.eq.in_file_number) write(*,*) trim(adjustl(s))
 
@@ -218,7 +245,7 @@ module m_user_input
             goto 5
         endif
         
-        line_no = line_no + 1
+        !line_no = line_no + 1
         call write_to_in_file(prompt, num)
 
     end subroutine
@@ -238,7 +265,7 @@ module m_user_input
         call test_prompt(prompt)
         
 5       write(*,'(1x, a)', advance='no') '> '
-        read(input_file_number, '(a128)') s
+        s = get_string_from_file(input_file_number,line_no)
         
         if (input_file_number.eq.in_file_number) write(*,*) trim(adjustl(s))
 
@@ -261,7 +288,7 @@ module m_user_input
             goto 5
         endif
         
-        line_no = line_no + 1
+        !line_no = line_no + 1
         call write_to_in_file(prompt, num1, num2)
 
     end subroutine
@@ -283,7 +310,7 @@ module m_user_input
         call test_prompt(prompt)
         
 5       write(*,'(1x, a)', advance='no') '> '
-        read(input_file_number, '(a1024)') s
+		s = get_string_from_file(input_file_number,line_no,formatter = '(a1024)')
         
         if (input_file_number.eq.in_file_number) write(*,*) trim(adjustl(s))
 
@@ -313,7 +340,7 @@ module m_user_input
             goto 5
         endif
         
-        line_no = line_no + 1
+        !line_no = line_no + 1
         call write_to_in_file(prompt, array, length)
 
     end subroutine
@@ -333,7 +360,7 @@ module m_user_input
         call test_prompt(prompt)
         
 5       write(*,'(1x, a)', advance='no') '> '
-        read(input_file_number, '(a128)') s
+        s = get_string_from_file(input_file_number,line_no)
         
         if (input_file_number.eq.in_file_number) write(*,*) trim(adjustl(s))
 
@@ -356,7 +383,7 @@ module m_user_input
             goto 5
         endif
         
-        line_no = line_no + 1
+        !line_no = line_no + 1
         call write_to_in_file(prompt, num1, num2)
 
     end subroutine
@@ -378,7 +405,7 @@ module m_user_input
         call test_prompt(prompt)
         
 5       write(*,'(1x, a)', advance='no') '> '
-        read(input_file_number, '(a1024)') s
+        s = get_string_from_file(input_file_number,line_no)
         
         if (input_file_number.eq.in_file_number) write(*,*) trim(adjustl(s))
 
@@ -408,7 +435,7 @@ module m_user_input
             goto 5
         endif
         
-        line_no = line_no + 1
+        !line_no = line_no + 1
         call write_to_in_file(prompt, array, length)
 
     end subroutine
@@ -416,17 +443,27 @@ module m_user_input
 
     
     subroutine test_prompt(prompt)
-    
+		use m_string, only:to_upper
         implicit none
         
         character(*) :: prompt
         character(120) :: temp_string
 
-        integer :: iostat
+        integer :: iostat,excl
+		logical:: commented
         
         if (input_file_number .ne. 5) then
-            read(input_file_number, 101, iostat=iostat) temp_string
-101         format(A120)
+			commented = .true.
+		    do while(commented)
+				read(input_file_number, 101, iostat=iostat) temp_string
+	101         format(A120)
+				!Check for comment character and cycle through file if lines are commented
+				excl = index(adjustl(temp_string),'!')
+				commented = excl==1
+				line_no = line_no + 1
+			enddo
+
+			if (excl>0) temp_string = temp_string(:excl-1)
 
             if (iostat.ne.0) then
                 write(*,*) 'Error encountered when reading parameters file.'
@@ -437,9 +474,9 @@ module m_user_input
                 stop
             endif
             
-            line_no = line_no + 1
+            !line_no = line_no + 1
       
-            if (trim(adjustl(temp_string)) .ne. trim(prompt)) then
+            if (to_upper(trim(adjustl(temp_string))) .ne. to_upper(trim(prompt))) then
                 write(6,*) 'Wrong input string:'
                 write(6,*) trim(adjustl(temp_string))
                 write(6,*) 'Expected:'
@@ -624,7 +661,7 @@ module m_user_input
         endif
 
     end subroutine
-
+	
 
     end module
 

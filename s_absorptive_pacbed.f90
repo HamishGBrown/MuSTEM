@@ -19,12 +19,12 @@
 
     subroutine absorptive_pacbed
       
-        use global_variables, only: nopiy, nopix, n_cells, prop
+        use global_variables, only: nopiy, nopix, n_cells, prop,zarray,nz,ncells
         use m_lens, only: make_stem_wfn,probe_df
         use m_absorption, only: calculate_absorption_mu, transf_absorptive
         use cufft_wrapper, only: fft2, ifft2
         use m_precision, only: fp_kind
-        use output, only: output_prefix, binary_out_unwrap
+        use output, only: output_prefix, binary_out_unwrap,timing
         use m_slicing, only: n_slices
         use m_probe_scan, only: nysample, nxsample, probe_positions
         use m_tilt, only: tilt_wave_function
@@ -36,13 +36,13 @@
         implicit none
       
         !dummy variables
-        integer(4) ::  i_cell, i_slice, ny, nx, idum
+        integer(4) ::  i_cell, i_slice, ny, nx, idum,i,z_indx(1),length
 
         !probe variables
-        complex(fp_kind) :: psi(nopiy,nopix)
+        complex(fp_kind),dimension(nopiy,nopix) :: psi,psi_
       
         !output/detectors
-        real(fp_kind),dimension(nopiy, nopix) :: pacbed_pattern,fourDSTEM_pattern
+        real(fp_kind) :: pacbed_pattern(nopiy, nopix,nz),fourDSTEM_pattern(nopiy, nopix)
 
         !diagnostic variables
         real(fp_kind) :: intensity, t1, delta
@@ -81,14 +81,18 @@
 		fourDSTEM = idum == 1
         do ny = 1, nysample
         do nx = 1, nxsample
+#ifdef GPU                    
             write(6, 901, advance='no') achar(13), ny, nysample, nx, nxsample, intensity
 901         format(a1, 1x, 'y:', i3, '/', i3, ' x:', i3, '/', i3, ' Intensity: ', f12.6)
-      
-            call make_stem_wfn(psi, probe_df, probe_positions(:,ny,nx))
+#else
+        write(6,900) ny, nysample, nx, nxsample, intensity
+900     format(1h+, 1x, 'y:', i3, '/', i3, ' x:', i3, '/', i3, ' Intensity: ', f12.6)
+#endif      
+            call make_stem_wfn(psi, probe_df(1), probe_positions(:,ny,nx))
             
             call tilt_wave_function(psi)
             
-            do i_cell = 1, n_cells
+			do i_cell = 1,maxval(ncells)
                   do i_slice = 1, n_slices
 	                    psi = psi*transf_absorptive(:,:,i_slice)
                         
@@ -96,17 +100,23 @@
                         psi = prop(:,:,i_slice) * psi
                         call ifft2(nopiy, nopix, psi, nopiy, psi, nopiy)
                   enddo
-            enddo
-            
-            call fft2(nopiy, nopix, psi, nopiy, psi, nopiy)
-			fourDSTEM_pattern = abs(psi)**2
-            pacbed_pattern = pacbed_pattern + fourDSTEM_pattern
 
-			!Output 4D STEM diffraction pattern
-			if(fourDSTEM) then
-					filename = trim(adjustl(output_prefix)) //'_pp_'//to_string(nx)//'_'//to_string(ny)//'_abs_Diffraction_pattern'
-					call binary_out_unwrap(nopiy, nopix, fourDSTEM_pattern, filename,write_to_screen=.false.)
-			endif
+				!If this thickness corresponds to any of the output values then output images
+				if (any(i_cell==ncells)) then
+					call fft2(nopiy, nopix, psi, nopiy, psi_, nopiy)
+					fourDSTEM_pattern = abs(psi_)**2
+					z_indx = minloc(abs(ncells-i_cell))
+					pacbed_pattern(:,:,z_indx(1)) = pacbed_pattern(:,:,z_indx(1)) + fourDSTEM_pattern
+
+					!Output 4D STEM diffraction pattern
+					if(fourDSTEM) then
+							filename = trim(adjustl(output_prefix))
+							if (nz>1) filename = trim(adjustl(filename))//'_z='//to_string(int(zarray(z_indx(1))))//'_A'
+							filename = trim(adjustl(filename))//'_pp_'//to_string(nx)//'_'//to_string(ny)//'_abs_Diffraction_pattern'
+							call binary_out_unwrap(nopiy, nopix, fourDSTEM_pattern, filename,write_to_screen=.false.)
+					endif			
+				endif
+            enddo
             
             intensity = sum(fourDSTEM_pattern)
         enddo
@@ -121,9 +131,11 @@
         write(*,*) 
         write(*,*) 'Time elapsed ', delta, ' seconds.'
         
-        open(unit=9834, file=trim(adjustl(output_prefix))//'_timing.txt', access='append')
-        write(9834, '(a, g, a, /)') 'The multislice calculation took ', delta, 'seconds.'
-        close(9834)
+		if(timing) then
+			open(unit=9834, file=trim(adjustl(output_prefix))//'_timing.txt', access='append')
+			write(9834, '(a, g, a, /)') 'The multislice calculation took ', delta, 'seconds.'
+			close(9834)
+		endif
     
       
         if (fp_kind.eq.8) then
@@ -132,9 +144,17 @@
             write(*,*) 'The following files were outputted (as 32-bit big-endian floating point):'
 	    endif
         write(*,*)
+		
+		length = ceiling(log10(maxval(zarray)))
+		do i=1,nz
+			filename = trim(adjustl(output_prefix))
+			if(nz>1) filename = trim(adjustl(output_prefix))//'_z='//zero_padded_int(int(zarray(i)),length)//'_A'
+			filename = trim(adjustl(filename))//'_PACBED_Pattern'
+			call binary_out_unwrap(nopiy,nopix,pacbed_pattern(:,:,i),filename)
+		enddo
     
-        filename = trim(adjustl(output_prefix)) // '_PACBED_Pattern'
-        call binary_out_unwrap(nopiy,nopix,pacbed_pattern,filename)
+        ! filename = trim(adjustl(output_prefix)) // '_PACBED_Pattern'
+        ! call binary_out_unwrap(nopiy,nopix,pacbed_pattern,filename)
       
         deallocate(transf_absorptive,prop) !deallocate large arrays
 

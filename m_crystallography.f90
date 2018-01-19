@@ -63,7 +63,7 @@
 
 99    continue
       return
-      end
+      end SUBROUTINE
 !--------------------------------------------------------------------------------------
 	subroutine zone(ig1,ig2,izone)
       !
@@ -99,7 +99,7 @@
 		  izone(i) = izone(i) * float(ic)/float(max)
       enddo
 	return
-      end
+      end subroutine
 
 !--------------------------------------------------------------------------------------
       subroutine subuvw(hkl,ruvw,a0,deg,ss)
@@ -156,7 +156,7 @@
 	  endif
 
       return
-      end
+      end subroutine
 
 !--------------------------------------------------------------------------------------
       subroutine subhkl(izone,gg,a0,deg,ss)
@@ -230,7 +230,7 @@
       endif
 
       return
-      end
+      end subroutine
 !--------------------------------------------------------------------------------------
       subroutine rshkl(zone,gg,a0,deg,ss)
       !
@@ -294,7 +294,7 @@
 	  enddo
 
       return
-      end
+      end subroutine
 
 !--------------------------------------------------------------------------------------
       subroutine angle(ig1,ig2,ss,thetad)
@@ -334,7 +334,7 @@
       thetad = deg1 + deg2
       if(abs(thetad-90.0_fp_kind).lt.0.0001_fp_kind) thetad = 90.0_fp_kind
    99 return
-      end
+      end subroutine
 
 !--------------------------------------------------------------------------------------      
       function trimr(A,SS)
@@ -361,7 +361,7 @@
       YY = Y1 + Y2 + Y3
       trimr = sqrt( abs( XX + YY ))/ SS(7)
       RETURN
-      END
+      END function
 
 !--------------------------------------------------------------------------------------
       function trimi(A,SS)
@@ -389,7 +389,7 @@
       YY = Y1 + Y2 + Y3
       trimi = sqrt( abs( XX + YY ))/ SS(7)
       RETURN
-      END
+      END function
 
 !--------------------------------------------------------------------------------------
       FUNCTION RSD(Z,A0,DEG)
@@ -423,7 +423,7 @@
 
       RSD = sqrt(ONE + TWO)
       RETURN
-      END
+      END FUNCTION
 !--------------------------------------------------------------------------------------
       FUNCTION COSANR(A,B,SS)
 
@@ -456,7 +456,7 @@
             cosanr = prelim
       endif
       RETURN
-      END
+      END FUNCTION
 
 
       !--------------------------------------------------------------------------------
@@ -498,7 +498,7 @@
 	thetad = deg1 + deg2
 	if(abs(thetad-90).lt.0.0001_fp_kind) thetad = 90.0_fp_kind
  99   return
-	end
+	end subroutine
 	
 end module m_crystallography
 

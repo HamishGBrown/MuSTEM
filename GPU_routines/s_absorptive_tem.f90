@@ -60,11 +60,11 @@ subroutine absorptive_tem
     use m_tilt, only: tilt_wave_function
     use m_multislice, only: make_absorptive_grates, setup_propagators
     use m_potential, only: precalculate_scattering_factors
-    
+    use m_string
     implicit none
     
     !dummy variables
-    integer(4) :: i_cell,i_slice
+    integer(4) :: i_cell,i_slice,z_indx(1),length,lengthdf,i
     
     !random variables
     integer(4) :: count
@@ -72,7 +72,7 @@ subroutine absorptive_tem
     !probe variables
     complex(fp_kind) :: psi(nopiy,nopix)
     complex(fp_kind) :: psi_initial(nopiy,nopix)
-    complex(fp_kind) :: ctf(nopiy,nopix)
+    complex(fp_kind) :: lens_ctf(nopiy,nopix,imaging_ndf)
     
     !output
     real(fp_kind) :: cbed(nopiy,nopix)
@@ -84,7 +84,7 @@ subroutine absorptive_tem
     real(fp_kind) :: intensity, t1, delta
     
     !output variables
-    character(120) :: filename
+    character(120) :: filename,fnam_df
     
     !device variables
 	integer :: plan
@@ -106,8 +106,14 @@ subroutine absorptive_tem
     write(*,*) '|----------------------------------|'
 	write(*,*) '|      Pre-calculation setup       |'
 	write(*,*) '|----------------------------------|'
-    write(*,*)
-        
+    write(*,*) 
+
+    if (imaging) then	
+		do i=1,imaging_ndf
+          call make_lens_ctf(lens_ctf(:,:,i),imaging_df(i))
+		enddo
+    endif
+	   
     call calculate_absorption_mu        
 
     ! Precalculate the scattering factors on a grid
@@ -121,9 +127,7 @@ subroutine absorptive_tem
     
 	call setup_propagators
     
-    if (imaging) then
-          call make_ctf(ctf,imaging_df)
-    endif
+
 
     write(*,*) '|--------------------------------|'
 	write(*,*) '|      Calculation running       |'
@@ -144,7 +148,7 @@ subroutine absorptive_tem
 	if (pw_illum) then
         psi_initial = 1.0_fp_kind/sqrt(float(nopiy*nopix))
 	else
-	    call make_stem_wfn(psi_initial,probe_df,probe_initial_position)
+	    call make_stem_wfn(psi_initial,probe_df(1),probe_initial_position)
     endif
     
     call tilt_wave_function(psi_initial)
@@ -167,11 +171,14 @@ subroutine absorptive_tem
 	    transf_d=transf_absorptive
     endif
     allocate(prop_d(nopiy,nopix,n_slices))
-    
+   lengthdf = ceiling(log10(maxval(abs(imaging_df))))
+   if(any(imaging_df<0)) lengthdf = lengthdf+1
+
     prop_d = prop
     psi_d = psi_initial
+	length = ceiling(log10(maxval(zarray)))
     
-    do i_cell = 1, n_cells
+    do i_cell = 1, maxval(ncells)
         do i_slice = 1, n_slices
             
             if(on_the_fly) then
@@ -186,6 +193,31 @@ subroutine absorptive_tem
             call cufftExec(plan,psi_out_d,psi_d,CUFFT_INVERSE)
         enddo ! End loop over slices
         
+		!If this thickness corresponds to any of the output values then output images
+		if (any(i_cell==ncells)) then
+			psi = psi_d
+			call fft2(nopiy, nopix, psi, nopiy, psi, nopiy)
+			cbed = abs(psi)**2
+			z_indx = minloc(abs(ncells-i_cell))
+			filename = trim(adjustl(output_prefix))
+			if (nz>1) filename = trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(z_indx(1))),length)//'_A'
+			call binary_out_unwrap(nopiy, nopix, cbed, trim(adjustl(filename))//'_DiffractionPattern',write_to_screen=.false.)
+			
+			if (imaging) then
+				
+				do i=1,imaging_ndf
+					psi = psi_d
+					call fft2(nopiy, nopix, psi, nopiy, psi, nopiy)
+					psi = psi*lens_ctf(:,:,i)
+					call ifft2(nopiy, nopix, psi, nopiy, psi, nopiy)
+					tem_image = abs(psi)**2
+					fnam_df = trim(adjustl(filename))// '_Image'
+					if(imaging_ndf>1) fnam_df = trim(adjustl(fnam_df))//'_Defocus_'//zero_padded_int(int(imaging_df(i)),lengthdf)//'_Ang'
+					call binary_out(nopiy, nopix, tem_image, fnam_df,write_to_screen=.false.)
+				enddo
+			endif
+			
+		endif
         intensity = get_sum(psi_d)
 	    write(6,900,advance='no') achar(13), i_cell, intensity
 900     format(a1, 1x, 'Cell: ', i5, ' Intensity: ', f12.6)	
@@ -203,32 +235,11 @@ subroutine absorptive_tem
     write(*,*) 'Time elapsed: ', delta, ' seconds.'
     write(*,*)  
     
-    open(unit=9834, file=trim(adjustl(output_prefix))//'_timing.txt', access='append')
-    write(9834, '(a, g, a, /)') 'The multislice calculation took ', delta, 'seconds.'
-    close(9834)
-    
-    if (fp_kind.eq.8) then
-        write(*,*) 'The following files were outputted (as 64-bit big-endian floating point):'
-	else
-        write(*,*) 'The following files were outputted (as 32-bit big-endian floating point):'
+	if(timing) then
+		open(unit=9834, file=trim(adjustl(output_prefix))//'_timing.txt', access='append')
+		write(9834, '(a, g, a, /)') 'The multislice calculation took ', delta, 'seconds.'
+		close(9834)
 	endif
-    write(*,*)
- 
-    psi = psi_d
-    call fft2(nopiy, nopix, psi, nopiy, psi, nopiy)
-    cbed = abs(psi)**2
 
-    filename = trim(adjustl(output_prefix)) // '_DiffractionPattern'
-    call binary_out_unwrap(nopiy, nopix, cbed, filename)
-
-    ! Image the elastic wave function
-    if (imaging) then
-          psi = psi*ctf
-          call ifft2(nopiy, nopix, psi, nopiy, psi, nopiy)
-          tem_image = abs(psi)**2
-          
-          filename = trim(adjustl(output_prefix)) // '_Image'
-          call binary_out(nopiy, nopix, tem_image, filename)
-    endif
 
 end subroutine absorptive_tem

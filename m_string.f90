@@ -1,28 +1,22 @@
-!--------------------------------------------------------------------------------
-!
-!  Copyright (C) 2017  L. J. Allen, H. G. Brown, A. J. D’Alfonso, S.D. Findlay, B. D. Forbes
-!
-!  This program is free software: you can redistribute it and/or modify
-!  it under the terms of the GNU General Public License as published by
-!  the Free Software Foundation, either version 3 of the License, or
-!  (at your option) any later version.
-!  
-!  This program is distributed in the hope that it will be useful,
-!  but WITHOUT ANY WARRANTY; without even the implied warranty of
-!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-!  GNU General Public License for more details.
-!   
-!  You should have received a copy of the GNU General Public License
-!  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-!                       
-!--------------------------------------------------------------------------------
-
 module m_string
-    implicit none
+use m_precision
+implicit none
+	interface to_string
+		module procedure to_string_integer,to_string_real
+	end interface
+    
 
     contains
-
-        function to_string(i) result(s)
+		 function is_numeric(string)
+			  character(len=*), intent(in) :: string
+			  logical :: is_numeric
+			  real :: x
+			  integer :: e
+			  read(string,*,iostat=e) x
+			  is_numeric = e == 0
+			end function is_numeric
+			
+        function to_string_integer(i) result(s)
             implicit none
 
             character(:),allocatable :: s
@@ -42,6 +36,195 @@ module m_string
             s = trim(ss)
 
         end function
+			
+    pure function to_string_real(input) result(to_string)
+        real(fp_kind),intent(in):: input
+        character(len=:),allocatable :: to_string
+        character*50::dum
+        if((abs(input).lt.1d3).and.(abs(input).gt.1d-3)) then
+			write(dum, '(f9.3)') input
+		elseif((abs(input).lt.1d-16)) then
+			write(dum, '(i1)') 0
+		else
+			write(dum, '(e10.3)') input
+		endif
+        allocate(character(len = len_trim(adjustl(dum))) :: to_string)
+        to_string = trim(adjustl(dum))
+    end function
+		    
+	!Allows thickness to be read in via:
+	!Single value in  the format: [z1]
+	!List of values in the format: [z1],[z2],[z3]
+	!A sequence of values in the format: [zstart]:[zstop]:[zstep]
+	subroutine read_sequence_string(string,lstring,nz,zarray)
+		character(len=lstring), intent(in) :: string
+		integer*4,intent(in)::lstring
+		integer*4,intent(inout)::nz
+		real(fp_kind),optional::zarray(nz)
+		
+		character(len=1)::sgn
+		integer*4::i,ii,j,nsteps,zi
+		real(fp_kind):: zseq(3),z
+		logical:: is_sequence,is_list
+		
+		
+		!See if ':' is string
+		is_sequence = (index(string,':').ne.0)
+		
+		!See if ',' is string
+		is_list = (index(string,',').ne.0)
+		
+		if (is_sequence.and.is_list) then
+			pause "Both of the characters ',', for a list of values, and ':', for an ordered sequence of values, were found in the input, please rectify and re-run program"
+			stop
+		endif
 
+		if(is_sequence) then
+			i=1
+			do ii=1,2
+				j = index(string(i:),':')+i-2
+
+				if (is_numeric(string(i:j))) then
+					read(string(i:j),*) zseq(ii)
+				else
+					write(*,*) "Expected numeric input of the kind [start]:[stop]:[step], got: "//string(i:j)
+					stop
+				endif
+				i=j+2
+			enddo
+
+			!Read final value into array
+			if (is_numeric(string(i:))) then
+				read(string(i:),*) zseq(ii)
+			else
+				write(*,*) "Expected numeric input of the kind [start]:[stop]:[step], got: "//string(i:)
+				stop
+			endif
+
+			if(zseq(2)<zseq(1)*sign(1.0_fp_kind,zseq(3))) then
+                if(zseq(3)>0) then
+                    sgn = ">"
+                else
+                    sgn = "<"
+                endif
+				write(*,*) "Expected numeric input of the kind [start]:[stop]:[step], however [start] = "//to_string(zseq(1))//sgn//" [stop] = "//to_string(zseq(2))//" with [step] = "//to_string(zseq(3))
+				stop
+			endif
+			z=zseq(1)
+			nsteps = 0
+			do while(z<=zseq(2))
+				nsteps = nsteps+1
+				z = z+zseq(3)
+			enddo
+			!nsteps = nint((zseq(2)-zseq(1)/zseq(3)))+1
+
+			if (present(zarray)) then
+				zarray = (/(zi, zi=0,nsteps, 1)/)*zseq(3)+zseq(1)
+			else
+				nz = nsteps
+			endif
+			
+		elseif(is_list) then 
+			i=1
+			ii=0
+			do while (index(string(i:),',').ne.0)  
+				!write(*,*) i,index(string(i:),',')
+				j = index(string(i:),',')+i-2
+				ii=ii+1
+				if (present(zarray)) then 
+					if (.not.is_numeric(string(i:j))) then
+						write(*,*) "Expected numeric input, got: "//string(i:j)
+						stop
+					endif
+					read(string(i:j),*) zarray(ii)
+				endif
+				
+				i=j+2
+				
+				
+			end do
+			nz = ii+1
+			!Read final value into array
+			if (.not.is_numeric(string(i:))) then
+				write(*,*) "Expected numeric input, got: "//string(i:)
+				stop
+			endif
+			if (present(zarray)) read(string(i:),*) zarray(ii+1)
+		else
+			
+			if (present(zarray)) then
+				write(*,*) 1
+				read(string,*) zarray(1)
+			else
+				!write(*,*) 1
+				nz = 1
+				
+			endif
+		endif
+	
+	end subroutine
+
+	function zero_padded_int(num, width)
+        implicit none
+        
+        integer*4,intent(in) :: num, width
+        character(len=width) :: zero_padded_int
+        
+        
+        character(10) :: fmt
+        
+10      format('(i', i1, '.', i1, ')')   
+
+        if (num.ge.0) then
+            write(fmt, 10) width, width
+        else
+            write(fmt, 10) width, width-1
+        endif
+
+        write(zero_padded_int, fmt) num
+        
+      end function
+
+	function to_upper(strIn) result(strOut)
+		! Adapted from http://www.star.le.ac.uk/~cgp/fortran.html (25 May 2012)
+		! Original author: Clive Page
+
+			 implicit none
+
+			 character(len=*), intent(in) :: strIn
+			 character(len=len(strIn)) :: strOut
+			 integer :: i,j
+
+			 do i = 1, len(strIn)
+				  j = iachar(strIn(i:i))
+				  if (j>= iachar("a") .and. j<=iachar("z") ) then
+					   strOut(i:i) = achar(iachar(strIn(i:i))-32)
+				  else
+					   strOut(i:i) = strIn(i:i)
+				  end if
+			 end do
+
+	end function to_upper
+
+	function to_lower(strIn) result(strOut)
+		! Adapted from http://www.star.le.ac.uk/~cgp/fortran.html (25 May 2012)
+		! Original author: Clive Page
+
+			 implicit none
+
+			 character(len=*), intent(in) :: strIn
+			 character(len=len(strIn)) :: strOut
+			 integer :: i,j
+
+			 do i = 1, len(strIn)
+				  j = iachar(strIn(i:i))
+				  if (j>= iachar("A") .and. j<=iachar("Z") ) then
+					   strOut(i:i) = achar(iachar(strIn(i:i))+32)
+				  else
+					   strOut(i:i) = strIn(i:i)
+				  end if
+			 end do
+
+	end function to_lower
 end module
 

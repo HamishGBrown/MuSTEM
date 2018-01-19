@@ -23,7 +23,7 @@
       use m_absorption
       use m_precision
       use m_user_input
-      use CUFFT
+      !use CUFFT
 	  use cufft_wrapper
 	  !use numerical_tools!, only: cubspl,ppvalu
       implicit none
@@ -296,7 +296,6 @@
       
       use m_string, only: to_string
 	  use m_numerical_tools, only: cubspl,ppvalu
-	  use output
       
       implicit none
       
@@ -507,7 +506,7 @@
 	!!$OMP END PARALLEL
 
     return
-    end
+    end subroutine
     
       
     subroutine make_fz_adf()
@@ -571,7 +570,7 @@
       fz_adf = 2.0_fp_kind*tp*fz_adf
 
     return
-    end
+    end subroutine 
     
     
 
@@ -590,7 +589,7 @@
       integer(4)   i,j,m,n,ny,nx        
       integer(4)   nmax,idum
       real(fp_kind)  ss_temp(7)
-      complex(fp_kind) :: potential_matrix_complex(nopiy,nopix)
+      real(fp_kind) :: potential_matrix_complex(nopiy,nopix)
 
        
       !write(*,*) 'This will setup that ADF mu`s please enter the same slicing as before'
@@ -610,14 +609,14 @@
 	      
 	      !calculate the ionization potential
 	      if(ionization) then
-                call make_mu_potential(potential_matrix_complex,fz_mu,tau_slice(:,:,:,j),nat_slice(:,j),ss_slice(7,j))
-	            ionization_potential(:,:,j)=real(potential_matrix_complex,fp_kind)  !only take the real part of the potential
+                call make_ion_potential(potential_matrix_complex,fz_mu,tau_slice(:,:,:,j),nat_slice(:,j),ss_slice(7,j))
+	            ionization_potential(:,:,j)= potential_matrix_complex
                
 	      endif  
 	      !calculate the ADF potential    
             if(adf) then
                   call make_adf_potential(potential_matrix_complex,fz_adf,tau_slice(:,:,:,j),nat_slice(:,j),ss_slice(7,j))
-                  adf_potential(:,:,j)=real(potential_matrix_complex ,fp_kind)  !only take the real part of the potential
+                  adf_potential(:,:,j)= potential_matrix_complex
             endif
       enddo	!ends loop over the number of potential subslices
       
@@ -626,30 +625,38 @@
       
       
     !--------------------------------------------------------------------------------------
-    subroutine make_adf_potential(slice_potential,scattering_factor,tau_ss_in,nat_layer,volume)
+    subroutine make_adf_potential(slice_potential_out,scattering_factor,tau_ss_in,nat_layer,volume)
     use global_variables
     use m_precision
-    use CUFFT
 	use cufft_wrapper
     use m_slicing, only: maxnat_slice
-    use m_potential, only: make_site_factor_cuda, make_site_factor_hybrid
+    use m_potential!, only: make_site_factor_cuda, make_site_factor_hybrid
     
     implicit none
     
     integer(4) :: nat_layer(nt)
     complex(fp_kind),dimension(nopiy,nopix) :: slice_potential,potential,site_term,atom_mask 
     complex(fp_kind),dimension(nopiy,nopix,nt) ::  scattering_factor
+    real(fp_kind),intent(out)::slice_potential_out(nopiy,nopix)
     real(fp_kind) :: tau_ss_in(3,nt,maxnat_slice)  !just changed this from nat_slice?
     real(fp_kind) :: volume,V_corr
     integer(4) :: i,j
+    
+    procedure(make_site_factor_generic),pointer :: make_site_factor
 
+#ifdef GPU
+    make_site_factor => make_site_factor_cuda
+#else
+    make_site_factor => make_site_factor_matmul
+#endif      
+    
     slice_potential = 0.0_fp_kind
     V_corr = ss(7)/volume
     do i = 1, nt
         if (nat_layer(i)==0) cycle
         
         if (high_accuracy) then
-            call make_site_factor_cuda(site_term, tau_ss_in(:,i,1:nat_layer(i)))
+            call make_site_factor(site_term, tau_ss_in(:,i,1:nat_layer(i)))
             
         else
             call make_site_factor_hybrid(site_term,  tau_ss_in(:,i,1:nat_layer(i)))
@@ -666,27 +673,35 @@
     slice_potential = slice_potential * sqrt(float(nopiy)*float(nopix))
     
     ! Force that imaginary term is zero
-    slice_potential = cmplx(real(slice_potential,fp_kind),0.0_fp_kind, fp_kind)  
+    slice_potential_out = real(slice_potential,fp_kind)
     
     end subroutine
     
     !--------------------------------------------------------------------------------------
-    subroutine make_mu_potential(slice_potential,scattering_factor,tau_ss_in,nat_layer,volume)
+    subroutine make_ion_potential(slice_potential_out,scattering_factor,tau_ss_in,nat_layer,volume)
     use global_variables
     use m_precision
-    use CUFFT
+    !use CUFFT
     use cufft_wrapper
-    use output
     use m_slicing, only: maxnat_slice
-    use m_potential, only: make_site_factor_cuda, make_site_factor_hybrid
+    use m_potential!, only: make_site_factor_cuda, make_site_factor_hybrid
     
     implicit none
     
     integer(4) :: nat_layer(nt)
     complex(fp_kind),dimension(nopiy,nopix) :: slice_potential, site_term, potential, scattering_factor 
+    real(fp_kind),intent(out)::slice_potential_out(nopiy,nopix)
     real(fp_kind) :: tau_ss_in(3,nt,maxnat_slice)
     real(fp_kind) :: volume
- 
+
+    procedure(make_site_factor_generic),pointer :: make_site_factor
+    
+#ifdef GPU
+    make_site_factor => make_site_factor_cuda
+#else
+    make_site_factor => make_site_factor_matmul
+#endif        
+    
     slice_potential = 0.0_fp_kind
     
     if (nat_layer(kval)==0) then
@@ -695,7 +710,7 @@
     endif
     
     if (high_accuracy) then
-        call make_site_factor_cuda(site_term, tau_ss_in(:,kval,1:nat_layer(kval)))
+        call make_site_factor(site_term, tau_ss_in(:,kval,1:nat_layer(kval)))
     else
         call make_site_factor_hybrid(site_term, tau_ss_in(:,kval,1:nat_layer(kval)))        
     endif
@@ -707,7 +722,7 @@
     slice_potential = slice_potential*sqrt(float(nopiy*nopix))
     
     ! Force that imaginary term is zero
-    slice_potential = real(slice_potential)
+    slice_potential_out = real(slice_potential)
     
     end subroutine
     

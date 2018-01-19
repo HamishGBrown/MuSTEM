@@ -36,14 +36,20 @@ module m_probe_scan
     
     
     
-    subroutine setup_probe_scan()
+    subroutine setup_probe_scan(interp_setup)
     
         use global_variables, only: uvw1, uvw2
         
         implicit none
 
         real(fp_kind) :: fract, origin(3)
-    
+        logical,intent(in),optional::interp_setup
+        logical::interp_
+        
+        
+        interp_ = .true.
+        if (present(interp_setup)) interp_ = interp_setup
+        
         write(*,*) '|-------------------------------|'
         write(*,*) '|      Probe scan details       |'
         write(*,*) '|-------------------------------|'
@@ -59,7 +65,7 @@ module m_probe_scan
     
         call calculate_probe_positions(uvw1, uvw2, origin)
         
-        call setup_stem_image_interpolation
+        if(interp_) call setup_stem_image_interpolation
 
     end subroutine
 
@@ -281,7 +287,6 @@ module m_probe_scan
             call get_input('output interpolation max pixels', out_max)
             write(*,*) 
             
-            if(out_max.lt.max(nxsample, nysample)) out_max = max(nxsample, nysample)
             
             write(*,*) 'Enter the tiling in x and y for interpolation output'
             call get_input('output interpolation tilex', tilex)
@@ -293,6 +298,15 @@ module m_probe_scan
 
             if(mod(out_max, 2).ne.0) out_max = out_max + 1
             
+            if(out_max.lt.max(nxsample*tilex, nysample*tiley)) then
+				write(6,105) out_max,max(nxsample*tilex, nysample*tiley)
+105			format(' The choice of ',i4,' output pixels means that sampling of the output STEM image',/,&
+				& ' would fall below the Nyquist  criterion for your choice of probe parameters.',/,&
+				&' The maximum number of output pixels has been increased to ',i4,' to avoid ',/,&
+				&' aliasing of the output.',/)
+				out_max = max(nxsample*tilex, nysample*tiley)
+			endif
+
             if((nxsample*tilex).ge.(nysample*tiley)) then
                 output_nopix = out_max
                 output_nopiy = int( float(nysample*tiley)/float(nxsample*tilex)*output_nopix)

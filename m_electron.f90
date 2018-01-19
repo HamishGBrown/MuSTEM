@@ -39,7 +39,7 @@ module m_electron
       
       wavev = sqrt( e + c1 *e ** 2.0_fp_kind ) / c2
       
-      end
+      end function 
    
     
     

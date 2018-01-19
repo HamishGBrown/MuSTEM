@@ -240,7 +240,7 @@ module m_slicing
         
 	enddo
 
-    end
+    end subroutine
     
 !--------------------------------------------------------------------------------------
 	subroutine make_mod_tau_unitcell( depth1, depth2, tau, mod_tau, nm, nt, nat, nat2)
@@ -281,6 +281,6 @@ module m_slicing
 	    nat2(i)=jj-1
 	enddo
     
-	end
+	end subroutine
     
 end module

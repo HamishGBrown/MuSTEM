@@ -173,7 +173,7 @@ module m_tilt
         allocate(psi2(nopiy,nopix))
         shift = [alpha*ifactorx, beta*ifactory, 0.0_fp_kind]
         shift_frac = shift / [nopiy, nopix, 1]
-        bvec_ = bvec/[nopiy,nopix,1.0_fp_kind]*[ifactory,ifactorx,0.0_fp_kind]
+        bvec_ = bvec/[nopiy,nopix,1]*[ifactory,ifactorx,0]
         bvec_ = [bvec_(2),bvec_(1),0]
         !$OMP PARALLEL DO PRIVATE(nx, ny)
         do nx = 1, nopix

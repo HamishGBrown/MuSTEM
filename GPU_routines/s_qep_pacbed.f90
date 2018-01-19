@@ -75,17 +75,17 @@ subroutine qep_pacbed
     !dummy variables
     integer(4) ::  i, j, i_qep_pass
     integer(4) ::  shifty,shiftx
-    integer(4) ::  ny, nx
+    integer(4) ::  ny, nx,z_indx(1),length
     
     !random variables
     integer(4) :: idum
     !real(fp_kind) :: ran1
        
     !probe variables
-    complex(fp_kind) :: psi(nopiy,nopix)
-    complex(fp_kind) :: psi_initial(nopiy,nopix)
+    complex(fp_kind),dimension(nopiy,nopix) :: psi,psi_initial,psi_elastic
          
-    real(fp_kind),dimension(nopiy, nopix) :: pacbed_pattern,fourDSTEM_pattern
+    real(fp_kind),dimension(nopiy, nopix) :: fourDSTEM_pattern,cbed,fourDSTEM_pattern_el
+	real(fp_kind),dimension(nopiy,nopix,nz)::pacbed_pattern
     
     !diagnostic variables
     real(fp_kind) :: intensity,t1, delta
@@ -96,8 +96,9 @@ subroutine qep_pacbed
     !device variables
 	integer :: plan
     complex(fp_kind),device,dimension(nopiy,nopix) :: psi_initial_d, psi_d, psi_out_d,fourDSTEM_el_pattern_d
-    real(fp_kind),device,dimension(nopiy,nopix) :: temp_cbed_d, pacbed_pattern_d,fourDSTEM_pattern_d
-	complex(fp_kind),device,allocatable :: prop_d(:,:,:), transf_d(:,:,:,:)
+    real(fp_kind),device,dimension(nopiy,nopix) :: temp_cbed_d, pacbed_pattern_d,fourDSTEM_pattern_d,temp_d
+	real(fp_kind),device,dimension(nopiy,nopix),allocatable :: cbed_d(:,:,:)
+	complex(fp_kind),device,allocatable :: prop_d(:,:,:), transf_d(:,:,:,:),psi_elastic_d(:,:,:)
 	complex(fp_kind),device,allocatable :: trans_d(:,:), shift_arrayx_d(:,:), shift_arrayy_d(:,:), shift_array_d(:,:)
     
     !device variables for on the fly potentials
@@ -130,6 +131,9 @@ subroutine qep_pacbed
 	
 	fourDSTEM = (idum == 1.or.idum ==2)
 	elfourd = idum == 2
+	
+	if(elfourd) allocate(psi_elastic_d(nopiy,nopix,nz))
+	allocate(cbed_d(nopiy,nopix,nz))
 	
     call precalculate_scattering_factors
     
@@ -196,7 +200,7 @@ subroutine qep_pacbed
         write(6,903,ADVANCE='NO') achar(13), ny, nysample, nx, nxsample, intensity
 903     format(a1, ' y:', i3, '/', i3, ' x:', i3, '/', i3, '  Intensity:', f6.3, ' (to monitor BWL)')	
     
-        call make_stem_wfn(psi_initial, probe_df, probe_positions(:,ny,nx))
+        call make_stem_wfn(psi_initial, probe_df(1), probe_positions(:,ny,nx))
         
         call tilt_wave_function(psi_initial)
         
@@ -205,6 +209,8 @@ subroutine qep_pacbed
 		!Reset 4DSTEM pattern to zero
 		fourDSTEM_pattern_d = 0_fp_kind
 		fourDSTEM_el_pattern_d = 0_fp_kind
+		psi_elastic_d = 0
+		cbed_d = 0
 
         do i_qep_pass = 1, n_qep_passes 
         
@@ -213,7 +219,7 @@ subroutine qep_pacbed
             
 			
 
-            do i = 1, n_cells
+            do i = 1,maxval(ncells)
 	            do j = 1, n_slices
                     
                     ! Phase grate
@@ -243,44 +249,60 @@ subroutine qep_pacbed
                     call cufftExec(plan,psi_out_d,psi_d,CUFFT_INVERSE)
                     
 		        enddo ! End loop over slices
-            enddo ! End loop over cells
-            
-            ! Accumulate PACBED pattern (and 4DSTEM diffraction pattern)
-            call cufftExec(plan, psi_d, psi_out_d, CUFFT_FORWARD)
-            call cuda_mod<<<blocks,threads>>>(psi_out_d, temp_cbed_d, normalisation, nopiy, nopix)
-            if (fourDSTEM) then
-				call cuda_addition<<<blocks,threads>>>(fourDSTEM_pattern_d, temp_cbed_d, fourDSTEM_pattern_d, 1.0_fp_kind, nopiy, nopix)
-				if (elfourd) call cuda_addition<<<blocks,threads>>>(fourDSTEM_el_pattern_d, psi_out_d, fourDSTEM_el_pattern_d, 1.0_fp_kind, nopiy, nopix)
-			endif
-			call cuda_addition<<<blocks,threads>>>(pacbed_pattern_d, temp_cbed_d, pacbed_pattern_d, 1.0_fp_kind, nopiy, nopix)
+				
+				!If this thickness is an output thickness then accumulate pacbed and output relevant diffraction patterns
+				if (any(i==ncells)) then
+					!Transform into diffraction space
+					call cufftExec(plan,psi_d,psi_out_d,CUFFT_FORWARD)
+					z_indx = minloc(abs(ncells-i))
 
-			
+					! Accumulate elastic wave function
+					if(elfourd) call cuda_addition<<<blocks,threads>>>(psi_elastic_d(:,:,z_indx(1)),psi_out_d,psi_elastic_d(:,:,z_indx(1)),1.0_fp_kind,nopiy,nopix)
+            
+
+					! Accumulate diffaction pattern
+					call cuda_mod<<<blocks,threads>>>(psi_out_d,temp_d,normalisation,nopiy,nopix)
+					call cuda_addition<<<blocks,threads>>>(cbed_d(:,:,z_indx(1)),temp_d,cbed_d(:,:,z_indx(1)),1.0_fp_kind,nopiy,nopix)
+
+				endif
+				
+            enddo ! End loop over cells
+          
+		
             
 	    enddo ! End loop over QEP passes
         
         intensity = get_sum(psi_d)
+		length = ceiling(log10(maxval(zarray)))
+		do i=1,nz
+			fourDSTEM_pattern = cbed_d(:,:,i)
+			!Output 4D STEM diffraction pattern
+			if(fourDSTEM) then
+					!Output total (elastic and inelastic) diffraction pattern
+					filename = trim(adjustl(output_prefix))
+					if (nz>1) filename = trim(adjustl(filename))//'_z='//to_string(int(zarray(i)))//'_A'
+					call binary_out_unwrap(nopiy, nopix, fourDSTEM_pattern/n_qep_passes, trim(adjustl(filename)) //'_pp_'//&
+										  &to_string(nx)//'_'//to_string(ny)//'_Diffraction_pattern',write_to_screen=.false.)
+			endif
 
-        !Output 4D STEM diffraction pattern
-		if(fourDSTEM) then
-				!Output total (elastic and inelastic) diffraction pattern
-				filename = trim(adjustl(output_prefix)) //'_pp_'//to_string(nx)//'_'//to_string(ny)//'_Diffraction_pattern'
-				fourDSTEM_pattern = fourDSTEM_pattern_d
-				call binary_out_unwrap(nopiy, nopix, fourDSTEM_pattern/n_qep_passes, filename,write_to_screen=.false.)
-		endif
-		if (elfourd.and.fourDSTEM) then 
-				!Output elastic only diffraction pattern
-				filename = trim(adjustl(output_prefix)) //'_pp_'//to_string(nx)//'_'//to_string(ny)//'_elastic_Diffraction_pattern'
-				call cuda_mod<<<blocks,threads>>>(fourDSTEM_el_pattern_d, fourDSTEM_pattern_d, normalisation, nopiy, nopix)
-				fourDSTEM_pattern = fourDSTEM_pattern_d/(float(n_qep_passes)**2)
-				call binary_out_unwrap(nopiy, nopix, fourDSTEM_pattern, filename,write_to_screen=.false.)
-		endif
-		!end
+			pacbed_pattern(:,:,i) = pacbed_pattern(:,:,i) + fourDSTEM_pattern
+
+			if (elfourd.and.fourDSTEM) then 
+					!Output elastic only diffraction pattern
+					filename = trim(adjustl(filename))//'_pp_'//to_string(nx)//'_'//to_string(ny)//'_Elastic_Diffraction_pattern'
+					call cuda_mod<<<blocks,threads>>>(psi_elastic_d(:,:,i), fourDSTEM_pattern_d, normalisation, nopiy, nopix)
+					fourDSTEM_pattern_el = fourDSTEM_pattern_d
+					call binary_out_unwrap(nopiy, nopix, fourDSTEM_pattern_el/n_qep_passes**2, filename,write_to_screen=.false.)
+			endif
+		
+		
+		enddo
 
 	enddo ! End loop over x probe positions
 	enddo ! End loop over y probe positions
 	
     ! Copy PACBED pattern to CPU
-    pacbed_pattern = pacbed_pattern_d
+    !pacbed_pattern = pacbed_pattern_d
     
     ! QEP normalisation
     pacbed_pattern = pacbed_pattern / n_qep_passes
@@ -295,9 +317,11 @@ subroutine qep_pacbed
     write(*,*) 'Time elapsed ', delta, ' seconds.'
     write(*,*)    
     
-    open(unit=9834, file=trim(adjustl(output_prefix))//'_timing.txt', access='append')
-    write(9834, '(a, g, a, /)') 'The multislice calculation took ', delta, 'seconds.'
-    close(9834)
+	if(timing) then
+		open(unit=9834, file=trim(adjustl(output_prefix))//'_timing.txt', access='append')
+		write(9834, '(a, g, a, /)') 'The multislice calculation took ', delta, 'seconds.'
+		close(9834)
+	endif
     
     if (fp_kind.eq.8) then
         write(*,*) 'The following files were outputted (as 64-bit big-endian floating point):'
@@ -307,7 +331,12 @@ subroutine qep_pacbed
     
     write(*,*)
 
-    filename = trim(adjustl(output_prefix)) // '_PACBED_pattern'
-    call binary_out_unwrap(nopiy, nopix, pacbed_pattern, filename)
+    length = ceiling(log10(maxval(zarray)))
+	do i=1,nz
+		filename = trim(adjustl(output_prefix))
+		if(nz>1) filename=trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(i)),length)//'_A_'
+		filename = trim(adjustl(filename))//'_PACBED_Pattern'
+		call binary_out_unwrap(nopiy,nopix,pacbed_pattern(:,:,i),filename)
+	enddo
     
 end subroutine qep_pacbed

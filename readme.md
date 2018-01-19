@@ -12,15 +12,21 @@ Ultramicroscopy, Vol. 151, pp. 11-22, (2015).](http://www.sciencedirect.com/scie
 
 ### Prerequisites
 
+GPU version
 [PGI Visual Fortran and Microsoft Visual Studio](https://www.pgroup.com/products/pvf.htm)
+
+CPU version
+Any Fortran 90 compiler and MKL libraries (for fast Fourier transform routines)
 
 ### Installing
 
-MuSTEM is built using the [PGI Fortran compiler and Microsoft Visual Studio 2015](https://www.pgroup.com/products/pvf.htm), please make sure that this software is correctly installed before proceeding. Create a new Visual Studio project and add the source code contained this this repository. Modify the project properties so that Microsoft Visual Studio passes the following commands to the PGI compiler:
+MuSTEM is built using the [PGI Fortran compiler and Microsoft Visual Studio 2015](https://www.pgroup.com/products/pvf.htm), please make sure that this software is correctly installed before proceeding. Create a new Visual Studio project and add the source code contained in this repository. The GPU version of the code requires the source files in the GPU_routines folder and the CPU only version of the code requires the source files in the CPU_routines folder. Modify the project properties so that Microsoft Visual Studio passes the following commands to the PGI compiler:
 
 Build commands:
 
--Mpreprocess -Dsingle_precision -Bstatic -Mbackslash -mp -Mcuda=cuda8.0 -I"C:\Program Files\PGI\win64\17.3\include" -I"c:\program files\pgi\win64\17.3\include" -I"C:\Program Files\PGI\Microsoft Open Tools 14\include" -I"C:\Program Files (x86)\Windows Kits\10\Include\shared" -I"C:\Program Files (x86)\Windows Kits\10\Include\um" -fast -ta=tesla -Minform=warn 
+-Mpreprocess -Bstatic -Mbackslash -mp -Mcuda=cuda8.0 -I"C:\Program Files\PGI\win64\17.3\include" -I"c:\program files\pgi\win64\17.3\include" -I"C:\Program Files\PGI\Microsoft Open Tools 14\include" -I"C:\Program Files (x86)\Windows Kits\10\Include\shared" -I"C:\Program Files (x86)\Windows Kits\10\Include\um" -fast -ta=tesla -Minform=warn 
+
+To build the single precision version add the command -Dsingle_precision. For the Double precision version add the command -Ddouble_precision. To build the GPU version (requires the PGI compiler) add the command -DGPU. The code also requires recursive routines to be enabled (The  /recursive command in the Intel Visual Fortran compiler) for correct calculation of the absorptive form factors.
 
 Linker commands:
 

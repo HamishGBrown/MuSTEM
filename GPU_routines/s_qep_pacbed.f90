@@ -136,12 +136,12 @@ subroutine qep_pacbed
 	allocate(cbed_d(nopiy,nopix,nz))
 	
     call precalculate_scattering_factors
-    
+    idum = seed_rng()
     if (on_the_fly) then
         call cuda_setup_many_phasegrate
         
     else
-        idum = seed_rng()
+        
         call make_qep_grates(idum)
     
     endif
@@ -200,7 +200,7 @@ subroutine qep_pacbed
         write(6,903,ADVANCE='NO') achar(13), ny, nysample, nx, nxsample, intensity
 903     format(a1, ' y:', i3, '/', i3, ' x:', i3, '/', i3, '  Intensity:', f6.3, ' (to monitor BWL)')	
     
-        call make_stem_wfn(psi_initial, probe_df(1), probe_positions(:,ny,nx))
+        call make_stem_wfn(psi_initial, probe_df(1), probe_positions(:,ny,nx),probe_aberrations)
         
         call tilt_wave_function(psi_initial)
         
@@ -287,7 +287,7 @@ subroutine qep_pacbed
 
 			pacbed_pattern(:,:,i) = pacbed_pattern(:,:,i) + fourDSTEM_pattern
 
-			if (elfourd.and.fourDSTEM) then 
+			if (output_thermal.and.fourDSTEM) then 
 					!Output elastic only diffraction pattern
 					filename = trim(adjustl(filename))//'_pp_'//to_string(nx)//'_'//to_string(ny)//'_Elastic_Diffraction_pattern'
 					call cuda_mod<<<blocks,threads>>>(psi_elastic_d(:,:,i), fourDSTEM_pattern_d, normalisation, nopiy, nopix)

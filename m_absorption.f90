@@ -76,17 +76,8 @@ module m_absorption
         call get_input("<1> Absorption <2> No absorption", choice) 
         write(*,*)
         
-        if (choice.eq.1) then
-            include_absorption = .true.
-            
-        elseif (choice.eq.2) then
-            include_absorption = .false.
-            
-        else
-            goto 206
-            
-        endif
-        
+		include_absorption = .not.(choice==2)
+                
     end subroutine
 
     

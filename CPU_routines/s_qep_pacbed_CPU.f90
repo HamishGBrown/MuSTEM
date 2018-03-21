@@ -99,16 +99,12 @@ subroutine qep_pacbed
     write(*,*)
     
 	write(*,*) 'Output diffraction patterns for each scan position?'
-    write(*,*) '<1> Output the total diffraction pattern (including elastically and '
-	write(*,*) '    inelastically scattered contributions) for each scan position' 
-    write(*,*) '<2> Output both the total diffraction pattern and also the elastically'
-	write(*,*) '    scattered contribution for each scan position'
-    write(*,*) '<3> Do not output diffraction patterns for each scan position'
-	call get_input('Diffraction pattern for each probe position choice',idum)
+    write(*,*) '<1> Output the diffraction pattern for each scan position'
+    write(*,*) '<2> Do not output diffraction patterns for each scan position'
+	call get_input('Diffraction pattern for each probe position? <1> y <2> n',idum)
 	write(*,*)
 	
-	fourDSTEM = (idum == 1.or.idum ==2)
-	elfourd = idum == 2
+	fourDSTEM = idum == 1
 	
     call precalculate_scattering_factors
     !Generally not practical for CPU calculations
@@ -146,7 +142,7 @@ subroutine qep_pacbed
 900     format(1h+,  ' y:', i3, '/', i3, ' x:', i3, '/', i3, '  Intensity:', f6.3, ' (to monitor BWL)')
 #endif
     
-        call make_stem_wfn(psi_initial, probe_df(1), probe_positions(:,ny,nx))
+        call make_stem_wfn(psi_initial, probe_df(1), probe_positions(:,ny,nx),probe_aberrations)
         
         call tilt_wave_function(psi_initial)
         
@@ -226,7 +222,7 @@ subroutine qep_pacbed
 
 			pacbed_pattern(:,:,i) = pacbed_pattern(:,:,i) + fourDSTEM_pattern
 
-			if (elfourd.and.fourDSTEM) then 
+			if (output_thermal.and.fourDSTEM) then 
 					!Output elastic only diffraction pattern
 					filename = trim(adjustl(filename))//'_pp_'//to_string(nx)//'_'//to_string(ny)//'_Elastic_Diffraction_pattern'
 					fourDSTEM_el_pattern = abs(psi_elastic(:,:,i))**2

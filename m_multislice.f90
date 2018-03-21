@@ -62,13 +62,10 @@ module m_multislice
         write(*,*) '<1> Output probe intensity'
         call get_input('<0> Proceed <1> Output probe intensity', i_output)
         write(*,*)
-  
-        select case (i_output)
-            case (0)
-                return
-                
-            case (1)
-                output_probe_intensity = .true.
+        
+        output_probe_intensity = i_output ==1
+        
+        if(output_probe_intensity) then
                 
 20              write(*,*) 'At what thickness interval (in Angstroms)'
                 write(*,*) 'should intensities be outputted?'
@@ -108,11 +105,7 @@ module m_multislice
                 endif
                 write(*,*) 'Each file contains a sequence of ' // to_string(nopiy) // 'x' // to_string(nopix) // ' arrays.'
                 write(*,*)
-                
-            case default
-                goto 10
-                
-        end select
+        end if
         
     end subroutine
     
@@ -130,9 +123,11 @@ module m_multislice
         integer :: i_cell, count,i,j
         real(fp_kind) :: t,tout
         
+        if(allocated(output_cell_list)) deallocate(output_cell_list)
         allocate(output_cell_list(maxval(ncells)*n_slices))
         output_cell_list = .false.
         
+        if(allocated(cell_map)) deallocate(cell_map)
         allocate(cell_map(maxval(ncells)*n_slices))
         cell_map = 0
         
@@ -151,7 +146,8 @@ module m_multislice
 			
 		enddo
 		t = t+a0(3)
-		enddo        
+        enddo        
+        if(allocated(output_thickness_list)) deallocate(output_thickness_list)
         allocate(output_thickness_list(count))
         
         t = 0.0_fp_kind

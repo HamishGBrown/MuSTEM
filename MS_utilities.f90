@@ -23,6 +23,7 @@
       use global_variables
       use m_xray_factors
       use m_user_input
+      use m_string, only:is_numeric
       use m_crystallography, only: cryst, zone, subuvw, subhkl, rshkl, angle, trimr, trimi, rsd
       
       implicit none
@@ -32,6 +33,7 @@
       character*120     xtl_fnam
       character*20      junk
       character*2       junk4
+      logical:: contains_kev
       real(fp_kind) junk2(6), junk3, junk5(1:3)
       
       integer(4) nb
@@ -46,13 +48,26 @@
       call get_input("Input crystal file name", xtl_fnam)
       open(unit=iunit,file=xtl_fnam,status='old',err=998)
       
+      !First check if accelerating voltage is in xtl file
+      do i=1,4
+          read(iunit,*) junk
+      enddo
+      !If the fourth line is numeric (ie number of atoms) then
+      !the accelerating voltage is in the xtl file
+      contains_kev = is_numeric(junk)
+      if(.not.contains_keV) then
+        write(*,*) char(10),'Please input the probe accelerating voltage in kV'
+        call get_input("Probe accelerating voltage (kV)",ekv)
+      endif
+      rewind(iunit)
+      
       nm = 0
       ! Determine the maximum number of atoms an types to allocate the
       ! pertinent automatic objects stored in the module
       ! global_variables.	
       read(iunit,*) junk
       read(iunit,*) junk2(1:6)
-      read(iunit,*) junk3
+      if(contains_kev) read(iunit,*) junk3
       read(iunit,*) nt
       do i = 1, nt
             read(iunit,*) junk4
@@ -63,10 +78,7 @@
             enddo
       enddo
       rewind(iunit)
-        
-      if (i_xtl.eq.1) then
-            deallocate( atf,tau,atomf,nat,substance_atom_types,fx)
-      endif
+      
       allocate(atf(3,nt),tau(3,nt,nm),nat(nt),atomf(13,nt),substance_atom_types(nt),fx(nt))
 
 
@@ -80,10 +92,12 @@
 121   format(4x,' a = ',f9.4,7x,'b = ',f9.4,6x,'c = ',f9.4,1x,a1,/,&
      &' alpha = ',f9.4,2x,'  beta = ',f9.4,2x,'gamma = ',f9.4,&
      &' degrees',/)
-
+     
+      if(contains_kev) then
       read(iunit,*) ekv
       write(6,131) ekv
 131   format(' Incident beam energy = ',f12.3,' keV',/)
+      endif
 
       read(iunit,*) nt
       write(6,141) nt
@@ -207,7 +221,7 @@
      &' Mott formula used for conversion to electron form factors', /)
 
         i_xtl=1     !set the flag ixtl=1 as in the file has been read
-      
+      close(iunit)
       goto 999
 998   write(6,*) 'ERROR: Crystal file ', trim(xtl_fnam), ' does not exist!'
       goto 100     
@@ -471,22 +485,19 @@
         real(fp_kind) :: inner_mrad(ndet), outer_mrad(ndet)
         
         write(*,*) 'Select a method for choosing inner and outer angles:'
-        write(*,*) '<1> Manual'
-        write(*,*) '<2> Automatic'
+        write(*,*) '<1> Manual',char(10),'<2> Automatic'
     
         call get_input("manual detector <1> auto <2>",ichoice)
         write(*,*)
     
         write(*,*) 'Select how angles will be specified:'
-        write(*,*) '<1> mrad'
-        write(*,*) '<2> inverse Angstroms'
+        write(*,*) '<1> mrad',char(10),'<2> inverse Angstroms'
         call get_input("<1> mrad <2> inv A", mrad)
         write(*,*)
     
         if(ichoice.eq.1) then
               do i = 1, ndet
-                    write(*,*) 'Detector ', to_string(i)
-                    write(*,*) 'Inner angle:'
+                    write(*,*) 'Detector ', to_string(i),char(10),'Inner angle:'
                     call get_input("inner",dummy)
                     if(mrad.eq.1) then 
                           inner(i) = k*tan(dummy/1000.0_fp_kind)
@@ -593,9 +604,9 @@
     11  format( ' Enter the specimen thickness in Angstroms:')
 		call get_input("Thickness", thickness_string)
 		
-		call read_sequence_string(thickness_string,120,nz)
+		call read_sequence_string(thickness_string,120,nz,minstep=a0(3))
 		allocate(zarray(nz),ncells(nz))
-		call read_sequence_string(thickness_string,120,nz,zarray)
+		call read_sequence_string(thickness_string,120,nz,zarray,a0(3))
 		ncells = nint(zarray/a0(3))
 		zarray = ncells*a0(3)
 
@@ -697,7 +708,6 @@
     shiftx = (nopix-1)/2-1
     ig1_temp=float(ig1)/float(ifactorx)
     ig2_temp=float(ig2)/float(ifactory)
-
     do nx=1,nopix
           m1 = float(mod( nx+shiftx, nopix) - shiftx -1)
           kx = m1 * ig1_temp
@@ -740,31 +750,6 @@
         enddo
     
     end
-
-    
-    
-    !make the shift array from the precomputed 1d factorisations
-    subroutine make_shift_array(shift_array, shifty, shiftx)
-    
-        use m_precision, only: fp_kind
-        use global_variables, only: nopiy, nopix
-        
-        implicit none
-    
-        integer(4) :: i, j
-        complex(fp_kind),intent(in) :: shifty(nopiy), shiftx(nopix)
-        complex(fp_kind),dimension(nopiy,nopix),intent(out) :: shift_array
-    
-    
-        do j = 1, nopix
-            do i = 1, nopiy
-                shift_array(i,j) = shiftx(j)*shifty(i)
-            enddo
-        enddo
-    
-    end
-    
-    
     
     !----------------------------------------------------------------
     !Subroutine to do the fastest shift array from the precomputed
@@ -777,17 +762,10 @@
         
         implicit none
     
-        complex(fp_kind),intent(in) :: shifty(nopiy), shiftx(nopix)
-        complex(fp_kind),dimension(nopiy,nopix),intent(in) :: input
+        complex(fp_kind),intent(in) :: shifty(nopiy), shiftx(nopix),input(nopiy,nopix)
         complex(fp_kind),dimension(nopiy,nopix),intent(out) :: output
-        complex(fp_kind),dimension(nopiy,nopix) :: shift_array
     
-    
-        call make_shift_array(shift_array, shifty, shiftx)
-        output = input*shift_array
+        output = input*spread(shiftx,dim=1,ncopies=nopiy)*spread(shifty,dim=2,ncopies = nopix)
         call ifft2(nopiy, nopix, output, nopiy, output, nopiy)
     
     end
-    
-
-    

@@ -477,7 +477,7 @@ module cuda_potential
     
     
     
-    subroutine cuda_make_ion_potential(real_inelastic_slice_potential_d,tau_ss,nat_layer,plan,fz_mu_d,fz_dwf_d,inverse_sinc_d,volume,kval)
+    subroutine cuda_make_ion_potential(real_inelastic_slice_potential_d,tau_ss,nat_layer,plan,fz_mu_d,inverse_sinc_d,volume)
     
         use global_variables
         use m_precision
@@ -489,14 +489,15 @@ module cuda_potential
         implicit none
     
         integer plan
-        integer(4) :: j,nat_layer(nt),kval
+        integer(4) :: j,nat_layer,kval
     
-        real(fp_kind) :: tau_ss(3,nt,maxval(nat)*ifactorx*ifactory)
+        real(fp_kind) :: tau_ss(3,maxval(nat)*ifactorx*ifactory)
         real(fp_kind) :: volume,absorptive_scale
     
         !Device variables
         type(dim3) :: blocks_nat, threads_nat
-        real(fp_kind),device :: tau_d(3,nat_layer(kval))
+		!max(nat_layer,1) avoids a bug where the program attempts to allocate zero memory
+        real(fp_kind),device :: tau_d(3,max(nat_layer,1))
         real(fp_kind),device,dimension(nopiy,nopix) :: real_inelastic_slice_potential_d
         complex(fp_kind),device,dimension(nopiy,nopix) :: fz_mu_d,fz_dwf_d
         complex(fp_kind),device,dimension(nopiy,nopix) :: slice_potential_d,potential_d,inverse_sinc_d,atom_mask_d
@@ -506,15 +507,16 @@ module cuda_potential
     
         absorptive_scale = 1.0_fp_kind/volume
         inelastic_slice_potential_d = 0.0_fp_kind
+		if(nat_layer>1) then
         
         !make the atom mask
         threads_nat = dim3(1024, 1, 1)
-        blocks_nat = dim3(ceiling(float(nat_layer(kval))/threads_nat%x), 1, 1)
+        blocks_nat = dim3(ceiling(float(nat_layer)/threads_nat%x), 1, 1)
         
-        tau_d = tau_ss(:,kval,1:nat_layer(kval))
+        tau_d = tau_ss(:,1:nat_layer)
         
         atom_mask_real_d = 0.0_fp_kind
-        call cuda_make_atom_mask_real<<<blocks_nat,threads_nat>>>(tau_d,nat_layer(kval),atom_mask_real_d,nopiy,nopix)
+        call cuda_make_atom_mask_real<<<blocks_nat,threads_nat>>>(tau_d,nat_layer,atom_mask_real_d,nopiy,nopix)
         call cuda_cshift_real<<<blocks,threads>>>(atom_mask_real_d, temp_d, nopiy, nopix, -1, -1)
         call cuda_copy_real_to_cmplx<<<blocks,threads>>>(temp_d, atom_mask_d, nopiy, nopix)           
         
@@ -525,15 +527,16 @@ module cuda_potential
         call cuda_multiplication<<<blocks,threads>>>(potential_d,fz_mu_d,potential_d,1.0_fp_kind,nopiy,nopix)  
         
         !DWF potential
-        call cuda_multiplication<<<blocks,threads>>>(potential_d,fz_dwf_d,potential_d,absorptive_scale,nopiy,nopix) 
-        call cuda_addition<<<blocks,threads>>>(inelastic_slice_potential_d,potential_d,inelastic_slice_potential_d,normalisation,nopiy,nopix) 
+        !call cuda_multiplication<<<blocks,threads>>>(potential_d,fz_dwf_d,potential_d,absorptive_scale,nopiy,nopix) 
+        call cuda_addition<<<blocks,threads>>>(inelastic_slice_potential_d,potential_d,inelastic_slice_potential_d,normalisation*absorptive_scale,nopiy,nopix) 
         
         !divide by the sinc function
         call cuda_multiplication<<<blocks,threads>>>(inelastic_slice_potential_d,inverse_sinc_d,potential_d,1.0_fp_kind,nopiy,nopix)   
         
         !get realspace potential
         call cufftExec(plan,potential_d,inelastic_slice_potential_d,CUFFT_INVERSE)
-    
+
+		endif
         call cuda_take_real<<<blocks,threads>>>(inelastic_slice_potential_d,real_inelastic_slice_potential_d,nopiy,nopix)   
     
     end subroutine cuda_make_ion_potential

@@ -25,8 +25,8 @@ module m_slicing
     integer(4) :: n_slices                             !number of subslices in the unit cell
     integer(4) :: maxnat_slice                            !maximum number of atoms for a particular type in the supercell
     real(fp_kind), allocatable :: a0_slice(:,:)
-    integer(4), allocatable :: nat_slice(:,:)             !number of atoms for each type in the slice (supercell)
-    integer(4), allocatable :: nat_slice_unitcell(:,:)    !number of atoms for each type in the slice (unit cell)
+    integer(4),    allocatable :: nat_slice(:,:)             !number of atoms for each type in the slice (supercell)
+    integer(4),    allocatable :: nat_slice_unitcell(:,:)    !number of atoms for each type in the slice (unit cell)
     real(fp_kind), allocatable :: tau_slice(:,:,:,:)      !the atom positions for each potential subslice (supercell)
     real(fp_kind), allocatable :: tau_slice_unitcell(:,:,:,:) !the atom positions for each potential subslice (unit cell)
     real(fp_kind), allocatable :: prop_distance(:)        !Unit cell subslice propagation distance
@@ -97,6 +97,7 @@ module m_slicing
             call calculate_depths_no_slicing
                         
         elseif (n_slices.gt.1) then
+            if (allocated(depths)) deallocate(depths)
             allocate(depths(n_slices+1))
 
             depths(n_slices+1) = 1.0_fp_kind
@@ -161,13 +162,9 @@ module m_slicing
         
         maxnat_slice = maxval(nat) * ifactory * ifactorx
         
-        allocate(nat_slice(nt,n_slices))
-        allocate(tau_slice(3,nt,maxnat_slice,n_slices))
-        allocate(a0_slice(3,n_slices))
-        allocate(ss_slice(7,n_slices))
-        allocate(prop_distance(n_slices))
-        allocate(nat_slice_unitcell(nt,n_slices))
-        allocate(tau_slice_unitcell(3,nt,nm,n_slices))
+        allocate(nat_slice(nt,n_slices),tau_slice(3,nt,maxnat_slice,n_slices),&
+                &a0_slice(3,n_slices),ss_slice(7,n_slices),prop_distance(n_slices),&
+                 nat_slice_unitcell(nt,n_slices),tau_slice_unitcell(3,nt,nm,n_slices))
         
         do j = 1, n_slices
           a0_slice(1,j) = a0(1)*ifactorx	

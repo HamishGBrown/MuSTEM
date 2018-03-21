@@ -36,7 +36,7 @@ function qep_tem_GPU_memory() result(required_memory)
     
     array_count = 2*(3 + n_slices + n_slices*n_qep_grates) + 3
     
-    if (imaging) array_count = array_count + 2 + 1 +imaging_ndf
+    array_count = array_count + 2 + 1 +imaging_ndf
     if (on_the_fly.or.quick_shift.or.phase_ramp_shift) array_count = array_count + 2
     if (phase_ramp_shift) array_count = array_count + 2
     
@@ -53,7 +53,7 @@ subroutine qep_tem
     use m_precision, only: fp_kind
 	use m_numerical_tools
     use global_variables!, only: nopiy, nopix, ifactory, ifactorx, npixels, nopix_ucell, nopiy_ucell, normalisation, n_cells, ndet, ionization, on_the_fly, ig1, ig2, nt, prop, fz, inverse_sinc, bwl_mat
-    use m_lens, only: imaging, imaging_df, pw_illum, probe_df, make_lens_ctf, make_stem_wfn,imaging_ndf,imaging_df
+    use m_lens!, only: imaging, imaging_df, pw_illum, probe_df, make_lens_ctf, make_stem_wfn,imaging_ndf,imaging_df
     use m_qep, only: n_qep_passes, n_qep_grates, seed_rng, qep_grates, quick_shift, phase_ramp_shift, shift_arrayx, shift_arrayy, nran
 	use cufft_wrapper, only: cufft_z2z, cufft_c2c, cufft_inverse, cufft_forward, cufftPlan, cufftExec, fft2, ifft2
     use cuda_array_library, only: cuda_multiplication, cuda_addition, cuda_mod, blocks, threads
@@ -122,28 +122,26 @@ subroutine qep_tem
     write(*,*)
 
     call precalculate_scattering_factors
-
+	idum = seed_rng()
     if (on_the_fly) then
         call cuda_setup_many_phasegrate
         
     else
-        idum = seed_rng()
+        
         
         call make_qep_grates(idum)
         
     endif
     
     call setup_propagators
-    if (imaging) then
-          do i=1,imaging_ndf
-          call make_lens_ctf(ctf(:,:,i),imaging_df(i))
-		enddo
-          allocate(ctf_d(nopiy,nopix,imaging_ndf))
-          ctf_d = ctf
+    do i=1,imaging_ndf
+		call make_lens_ctf(ctf(:,:,i),imaging_df(i),imaging_aberrations)
+	enddo
+    allocate(ctf_d(nopiy,nopix,imaging_ndf))
+    ctf_d = ctf
           
-          allocate(tem_image_d(nopiy,nopix,nz,imaging_ndf))
-          tem_image_d = 0.0_fp_kind
-    endif
+    allocate(tem_image_d(nopiy,nopix,nz,imaging_ndf))
+    tem_image_d = 0.0_fp_kind
 
     
     
@@ -193,7 +191,7 @@ subroutine qep_tem
 	if (pw_illum) then
 	      psi_initial = 1.0_fp_kind / sqrt(float(npixels))
 	else
-	      call make_stem_wfn(psi_initial, probe_df(1), probe_initial_position)
+	      call make_stem_wfn(psi_initial, probe_df(1), probe_initial_position,probe_aberrations)
 	endif
     
     call tilt_wave_function(psi_initial)
@@ -264,15 +262,13 @@ subroutine qep_tem
 					call cuda_addition<<<blocks,threads>>>(cbed_d(:,:,z_indx(1)),temp_d,cbed_d(:,:,z_indx(1)),1.0_fp_kind,nopiy,nopix)
 					
 					! Accumulate image
-					if (imaging) then
-						do i=1,imaging_ndf
-							psi_temp = psi_out_d
-						  call cuda_multiplication<<<blocks,threads>>>(psi_temp, ctf_d(:,:,i), psi_temp, sqrt(normalisation), nopiy, nopix)
-						  call cufftExec(plan, psi_temp, psi_temp, CUFFT_INVERSE)
-						  call cuda_mod<<<blocks,threads>>>(psi_temp, temp_image_d, normalisation, nopiy, nopix)
-						  call cuda_addition<<<blocks,threads>>>(tem_image_d(:,:,z_indx(1),i), temp_image_d, tem_image_d(:,:,z_indx(1),i), 1.0_fp_kind, nopiy, nopix)
-						enddo
-					endif
+					do i=1,imaging_ndf
+						psi_temp = psi_out_d
+						call cuda_multiplication<<<blocks,threads>>>(psi_temp, ctf_d(:,:,i), psi_temp, sqrt(normalisation), nopiy, nopix)
+						call cufftExec(plan, psi_temp, psi_temp, CUFFT_INVERSE)
+						call cuda_mod<<<blocks,threads>>>(psi_temp, temp_image_d, normalisation, nopiy, nopix)
+						call cuda_addition<<<blocks,threads>>>(tem_image_d(:,:,z_indx(1),i), temp_image_d, tem_image_d(:,:,z_indx(1),i), 1.0_fp_kind, nopiy, nopix)
+					enddo
 
 				endif
         enddo ! End loop over cells
@@ -280,35 +276,13 @@ subroutine qep_tem
         intensity = get_sum(psi_d)
 		write(6,900,advance='no') achar(13), i_qep_pass, n_qep_passes, intensity
     900 format(a1, 1x, 'QEP pass:', i4, '/', i4, ' Intensity: ', f8.3)	
-    
-        ! ! Accumulate elastic wave function
-        ! call cuda_addition<<<blocks,threads>>>(psi_elastic_d, psi_d, psi_elastic_d, 1.0_fp_kind, nopiy, nopix)
-        
-        ! ! Accumulate exit surface intensity
-        ! call cuda_mod<<<blocks,threads>>>(psi_d, temp_image_d, 1.0_fp_kind, nopiy, nopix)
-        ! call cuda_addition<<<blocks,threads>>>(total_intensity_d, temp_image_d, total_intensity_d, 1.0_fp_kind, nopiy, nopix)
-        
-        ! ! Accumulate diffraction pattern
-        ! call cufftExec(plan, psi_d, psi_d, CUFFT_FORWARD)
-        ! call cuda_mod<<<blocks,threads>>>(psi_d, temp_image_d, normalisation, nopiy, nopix)
-        ! call cuda_addition<<<blocks,threads>>>(cbed_d, temp_image_d, cbed_d, 1.0_fp_kind, nopiy, nopix)
-        
-        ! ! Accumulate image
-        ! if (imaging) then
-              ! call cuda_multiplication<<<blocks,threads>>>(psi_d, ctf_d, psi_d, sqrt(normalisation), nopiy, nopix)
-              ! call cufftExec(plan, psi_d, psi_d, CUFFT_INVERSE)
-              ! call cuda_mod<<<blocks,threads>>>(psi_d, temp_image_d, normalisation, nopiy, nopix)
-              ! call cuda_addition<<<blocks,threads>>>(tem_image_d, temp_image_d, tem_image_d, 1.0_fp_kind, nopiy, nopix)
-        ! endif
 
 	enddo ! End loop over QEP passes
     
     cbed = cbed_d
     psi_elastic = psi_elastic_d
     total_intensity = total_intensity_d
-    if (imaging) then
-        tem_image = tem_image_d
-    endif      
+	tem_image = tem_image_d
     
     delta = secnds(t1)
     
@@ -335,9 +309,7 @@ subroutine qep_tem
     cbed = cbed / n_qep_passes
     total_intensity = total_intensity / n_qep_passes
     psi_elastic = psi_elastic / n_qep_passes
-    if (imaging) then
-        tem_image = tem_image / n_qep_passes
-    endif      
+    tem_image = tem_image / n_qep_passes
     
     length = ceiling(log10(maxval(zarray)))
 	lengthdf = ceiling(log10(maxval(abs(imaging_df))))
@@ -347,8 +319,11 @@ subroutine qep_tem
 		filename = trim(adjustl(output_prefix))
 		if(nz>1) filename=trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(i)),length)//'_A'
 		
+		if(.not.output_thermal) then
+		call binary_out_unwrap(nopiy, nopix, cbed(:,:,i), trim(filename)//'_DiffPlane')
+		call binary_out(nopiy, nopix, total_intensity(:,:,i), trim(filename)//'_ExitSurface_Intensity')
+		else
 		call binary_out_unwrap(nopiy, nopix, cbed(:,:,i), trim(filename)//'_DiffPlaneTotal')
-		
 		call fft2(nopiy, nopix, psi_elastic(:,:,i), nopiy, psi, nopiy)
 		image = abs(psi)**2
 		call binary_out_unwrap(nopiy, nopix, image, trim(filename)//'_DiffPlaneElastic')
@@ -362,26 +337,28 @@ subroutine qep_tem
 		
 		total_intensity(:,:,i) = total_intensity(:,:,i) - abs(psi_elastic(:,:,i))**2
 		call binary_out(nopiy, nopix, total_intensity(:,:,i), trim(filename)//'_ExitSurface_IntensityTDS')
-
-		if (imaging) then
-			do j=1,imaging_ndf
-				! Elastic image
-				call fft2 (nopiy, nopix, psi_elastic(:,:,i), nopiy, psi, nopiy)
-				psi = psi * ctf(:,:,j)
-				call ifft2 (nopiy, nopix, psi, nopiy, psi, nopiy)
-				image = abs(psi)**2
-				
-				if(imaging_ndf>1) fnam_df = trim(adjustl(filename))//'_Defocus_'//zero_padded_int(int(imaging_df(j)),lengthdf)//'_Ang'
-				call binary_out(nopiy, nopix, image, trim(fnam_df)//'_Image_Elastic')
-				  
-				! Inelastic image
-				image = tem_image(:,:,i,j) - image
-				call binary_out(nopiy, nopix, image, trim(fnam_df)//'_Image_TDS')
-				  
-				! Total image
-				call binary_out(nopiy, nopix, tem_image(:,:,i,j), trim(fnam_df)//'_Image_Total')
-			enddo
 		endif
+		do j=1,imaging_ndf
+			! Elastic image
+			call fft2 (nopiy, nopix, psi_elastic(:,:,i), nopiy, psi, nopiy)
+			psi = psi * ctf(:,:,j)
+			call ifft2 (nopiy, nopix, psi, nopiy, psi, nopiy)
+			image = abs(psi)**2
+				
+			if(imaging_ndf>1) fnam_df = trim(adjustl(filename))//'_Defocus_'//zero_padded_int(int(imaging_df(j)),lengthdf)//'_Ang'
+			if(output_thermal) then
+			call binary_out(nopiy, nopix, image, trim(fnam_df)//'_Image_Elastic')
+				  
+			! Inelastic image
+			image = tem_image(:,:,i,j) - image
+			call binary_out(nopiy, nopix, image, trim(fnam_df)//'_Image_TDS')
+				  
+			! Total image
+			call binary_out(nopiy, nopix, tem_image(:,:,i,j), trim(fnam_df)//'_Image_Total')
+			else
+            call binary_out(nopiy, nopix, tem_image(:,:,i,j), trim(fnam_df)//'_Image')
+            endif
+		enddo
 	
 	enddo
 end subroutine qep_tem

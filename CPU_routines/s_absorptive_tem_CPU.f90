@@ -63,11 +63,9 @@ subroutine absorptive_tem
 	write(*,*) '|----------------------------------|'
     write(*,*) 
 
-    if (imaging) then	
-		do i=1,imaging_ndf
-          call make_lens_ctf(lens_ctf(:,:,i),imaging_df(i))
-		enddo
-    endif
+	do i=1,imaging_ndf
+        call make_lens_ctf(lens_ctf(:,:,i),imaging_df(i),imaging_aberrations)
+	enddo
 	   
     call calculate_absorption_mu        
 
@@ -96,15 +94,15 @@ subroutine absorptive_tem
 	if (pw_illum) then
         psi_initial = 1.0_fp_kind/sqrt(float(nopiy*nopix))
 	else
-	    call make_stem_wfn(psi_initial,probe_df(1),probe_initial_position)
+	    call make_stem_wfn(psi_initial,probe_df(1),probe_initial_position,probe_aberrations)
     endif
     
     call tilt_wave_function(psi_initial)
-    
-   lengthdf = ceiling(log10(maxval(abs(imaging_df))))
-   if(any(imaging_df<0)) lengthdf = lengthdf+1
+   
+	lengthdf = ceiling(log10(maxval(abs(imaging_df))))
+	if(any(imaging_df<0)) lengthdf = lengthdf+1
 
-	length = ceiling(log10(maxval(zarray)))
+    length = ceiling(log10(maxval(zarray)))
     psi = psi_initial
     do i_cell = 1, maxval(ncells)
         do i_slice = 1, n_slices
@@ -128,19 +126,15 @@ subroutine absorptive_tem
 			if (nz>1) filename = trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(z_indx(1))),length)//'_A'
 			call binary_out_unwrap(nopiy, nopix, cbed, trim(adjustl(filename))//'_DiffractionPattern',write_to_screen=.false.)
 			
-			if (imaging) then
-				
-				do i=1,imaging_ndf
-					call fft2(nopiy, nopix, psi, nopiy, psi_out, nopiy)
-					psi_out = psi_out*lens_ctf(:,:,i)
-					call ifft2(nopiy, nopix, psi_out, nopiy, psi_out, nopiy)
-					tem_image = abs(psi_out)**2
-					fnam_df = trim(adjustl(filename))// '_Image'
-					if(imaging_ndf>1) fnam_df = trim(adjustl(fnam_df))//'_Defocus_'//zero_padded_int(int(imaging_df(i)),lengthdf)//'_Ang'
-					call binary_out(nopiy, nopix, tem_image, fnam_df,write_to_screen=.false.)
-				enddo
-			endif
-			
+			do i=1,imaging_ndf
+				call fft2(nopiy, nopix, psi, nopiy, psi_out, nopiy)
+				psi_out = psi_out*lens_ctf(:,:,i)
+				call ifft2(nopiy, nopix, psi_out, nopiy, psi_out, nopiy)
+				tem_image = abs(psi_out)**2
+				fnam_df = trim(adjustl(filename))// '_Image'
+				if(imaging_ndf>1) fnam_df = trim(adjustl(fnam_df))//'_Defocus_'//zero_padded_int(int(imaging_df(i)),lengthdf)//'_Ang'
+				call binary_out(nopiy, nopix, tem_image, fnam_df,write_to_screen=.false.)
+			enddo
 		endif
         intensity = sum(abs(psi)**2)
 #ifdef GPU        

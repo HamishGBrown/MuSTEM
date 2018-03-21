@@ -17,7 +17,7 @@
 !   Date:           August 2017
 !   Requirements:   PGI Fortran
 !
-!   version:        4.9  
+!   version:        5.0  
 !  
 !  Copyright (C) 2017  L. J. Allen, H. G. Brown, A. J. D’Alfonso, S.D. Findlay, B. D. Forbes
 !
@@ -38,9 +38,9 @@
 
     program MU_STEM
     
-        use m_user_input, only: init_input, get_input
-        use global_variables, only: high_accuracy, nt, atf, nat, atomf, volts, ss, qep, adf, constants, nopiy, nopix
-        use m_lens, only: pw_illum, cb_illum, setup_imaging_lens_parameters, setup_probe_lens_parameters
+        use m_user_input
+        use global_variables, only: high_accuracy, nt, atf, nat, atomf, volts, ss, qep, adf, constants, nopiy, nopix,output_thermal
+        use m_lens
         use local_ionization, only: setup_inelastic_ionization_types
 #ifdef GPU        
         use cuda_setup, only: setup_GPU
@@ -51,20 +51,17 @@
         use m_probe_scan, only: setup_probe_scan, setup_probe_scan_pacbed, place_probe, probe_initial_position
         use m_tilt, only: prompt_tilt
         use m_qep, only: setup_qep_parameters
-        use m_absorption, only: complex_absorption, prompt_include_absorption, setup_local_diffraction_plane_geometry
-        use m_potential, only: prompt_high_accuracy
+        use m_absorption, only: complex_absorption, prompt_include_absorption, setup_local_diffraction_plane_geometry,include_absorption
+        use m_potential, only: prompt_high_accuracy,precalculate_scattering_factors
         use m_multislice, only: prompt_save_load_grates, prompt_output_probe_intensity
         
         implicit none
         
-        integer :: i_illum, i_tds_model, i_cb_menu, i_cb_calc_type
+        integer :: i_illum, i_tds_model, i_cb_menu, i_cb_calc_type,ifile,nfiles,i_arg,idum
         
-        logical :: nopause = .false.
-        character(512)::command_argument      
-     
-        integer :: i_arg
-        
-		integer:: idum
+        logical :: nopause = .false.,there
+        character(512)::command_argument
+        character(120)::fnam
 
 
 108     write(6,109)
@@ -92,9 +89,9 @@
 	   &1x,'|       Software Foundation.                                                 |',/,&
        &1x,'|                                                                            |',/,&
 #ifdef GPU
-       &1x,'|       GPU Version 4.9                                                      |',/,&
+       &1x,'|       GPU Version 5.0                                                      |',/,&
 #else
-       &1x,'|       CPU only Version 4.9                                                 |',/,&
+       &1x,'|       CPU only Version 5.0                                                 |',/,&
 #endif
        &1x,'|                                                                            |',/,&
        &1x,'|       Note: pass the argument "nopause" (without quotation marks)          |',/,&
@@ -122,9 +119,22 @@
        
         
         
-        ! Set up user input routines	
-        call init_input
+        ! Set up user input routines, nfiles is the number
+        ! of user input files to play if "play all" is inputted
+        nfiles = init_input()
        
+        do ifile=1,nfiles
+            !If play or play all open relevant user input file.
+            if(input_file_number.ne.5) then
+                fnam = get_driver_file(ifile)
+                inquire(file=fnam,exist = there)
+                if (there) then
+                    open(unit=in_file_number, file=fnam, status='old')
+                else
+                    write(*,*) "Couldn't find user input file: ",trim(adjustl(fnam))
+                    cycle
+                endif
+            endif
         ! Set up CPU multithreading
         call setup_threading 
 #ifdef GPU
@@ -192,7 +202,7 @@
 
         
         ! For convergent-beam, set up the probe forming lens
-        if (cb_illum) call setup_probe_lens_parameters
+        if (cb_illum) call setup_lens_parameters('Probe',probe_aberrations,probe_cutoff)
 
         
         
@@ -201,15 +211,18 @@
         write(*,*) '|----------------------------------------|'
         write(*,*)
 112     write(*,*) '<1> Quantum Excitation of Phonons (QEP) model'
-        write(*,*) '     (includes thermal intensity component)'
+        write(*,*) '    (Accurately accounts for inelastic scattering'
+        write(*,*) '     due to phonon excitation)'
         write(*,*) '<2> Absorptive model'
-        write(*,*) '     (only includes absorption from elastic wave function)'
+        write(*,*) '     (Calculates faster than QEP but only approximates'
+        write(*,*) '      inelastic scattering due to phonon excitation)'
 
         call get_input('<1> QEP <2> ABS', i_tds_model)
         write(*,*)
         
+        
         ! Validate choice
-        if (i_tds_model.ne.1 .and. i_tds_model.ne.2) goto 112
+        if (i_tds_model.lt.1 .or. i_tds_model.gt.2) goto 112
         
         ! Set TDS model flags
         complex_absorption = (i_tds_model == 2)
@@ -217,6 +230,17 @@
         
         ! Prompt for including absorptive potential
         if (complex_absorption) call prompt_include_absorption
+        
+        if((complex_absorption.and.include_absorption).or.qep) then
+        write(*,*) ' Options for output of inelastically and elastically scattered components'
+        write(*,*) ' <1> Only output total signal (ie that measured in experiment)'
+        write(*,*) ' <2> Seperately output elastic, inelastic and total signal'
+        if(complex_absorption.and.include_absorption) write(*,*) 'Note: option <2> only applies to STEM imaging'
+        write(*,*)
+        call get_input('Elastic and inelastic scattering output choice', i_tds_model)
+        write(*,*)
+        output_thermal = i_tds_model==2
+        endif
          
 
         ! Prompt user for a tilt for either kind of illumination
@@ -238,7 +262,7 @@
         call prompt_save_load_grates
         
         ! Set up the imaging lens
-        if (pw_illum) call setup_imaging_lens_parameters
+        if (pw_illum) call setup_lens_parameters('Image',imaging_aberrations,imaging_cutoff)
         
         ! Choose the convergent-beam calculation type
         if (cb_illum) then
@@ -248,7 +272,7 @@
             write(*,*)
             write(*,*) 'Choose a calculation type:'
 115         write(*,*) '<1> CBED pattern'
-            write(*,*) '<2> PACBED pattern (can also output diffraction patterns for each probe position)'
+            write(*,*) '<2> PACBED pattern (can output diffraction patterns for each probe position)'
             write(*,*) '<3> STEM image (BF/ABF/ADF/EELS/EDX)'
             
             call get_input('<1> CBED <2> PACBED <3> STEM', i_cb_calc_type)
@@ -266,7 +290,6 @@
                     
                 case (3)
                     ! STEM images
-                    !call setup_defocus_series
                     call setup_probe_scan
                     call prompt_output_probe_intensity
 
@@ -279,7 +302,9 @@
                         call setup_local_diffraction_plane_geometry
                     
                     endif
-
+                    
+                    ! Precalculate the scattering factors on a grid
+                    call precalculate_scattering_factors()
                     call setup_inelastic_ionization_types
                     
                 case default
@@ -331,12 +356,15 @@
         endif
          
         write(*,*)
-  
+        close(in_file_number)
+        call reset_allocatable_variables
+        
+        enddo
         if (.not. nopause) then
             write(*,*) ' Press enter to exit.'
             read(*,*) 
         endif
-    end program
+    end program Mu_STEM
 
    
    
@@ -361,3 +389,43 @@
         write(*,*)
     
     end subroutine         
+	  subroutine reset_allocatable_variables()
+      
+		!The downside of using global variables... :(
+        use global_variables
+        use m_slicing
+		use m_lens
+		use local_ionization
+		if(allocated(nat)                     ) deallocate(nat)    
+		if(allocated(tau)                     ) deallocate(tau)    
+		if(allocated(atf)                     ) deallocate(atf)    
+        if(allocated(atomf)                   ) deallocate(atomf)
+		if(allocated(fx)                      ) deallocate(fx)   
+		if(allocated(zarray)                  ) deallocate(zarray)   
+		if(allocated(ncells)                  ) deallocate(ncells)   
+		if(allocated(prop  )                  ) deallocate(prop  )   
+		if(allocated(fz    )                  ) deallocate(fz)   
+		if(allocated(fz_DWF)                  ) deallocate(fz_DWF)   
+		if(allocated(sinc)                    ) deallocate(sinc)   
+		if(allocated(inverse_sinc)            ) deallocate(inverse_sinc)   
+		if(allocated(substance_atom_types    )) deallocate(substance_atom_types)   
+		if(allocated(outer                   )) deallocate(outer)   
+		if(allocated(inner                   )) deallocate(inner)   
+		if(allocated(a0_slice                )) deallocate(a0_slice          )    
+		if(allocated(nat_slice               )) deallocate(nat_slice         )    
+		if(allocated(nat_slice_unitcell      )) deallocate(nat_slice_unitcell)    
+		if(allocated(tau_slice               )) deallocate(tau_slice         )    
+		if(allocated(tau_slice_unitcell      )) deallocate(tau_slice_unitcell)    
+		if(allocated(prop_distance           )) deallocate(prop_distance     )    
+		if(allocated(depths                  )) deallocate(depths            )    
+		if(allocated(ss_slice                )) deallocate(ss_slice          )  
+		if(allocated(probe_df                )) deallocate(probe_df          )  
+		if(allocated(imaging_df              )) deallocate(imaging_df          )  
+		if(allocated(atm_indices             )) deallocate(atm_indices          )  
+		if(allocated(ion_description         )) deallocate(ion_description         )  
+		if(allocated(ionization_mu           )) deallocate(ionization_mu           )  
+		if(allocated(fz_adf                  )) deallocate(fz_adf                  )  
+		if(allocated(adf_potential           )) deallocate(adf_potential           )  
+		if(allocated(ionization_potential    )) deallocate(ionization_potential    )  
+		if(allocated(eels_correction_detector)) deallocate(eels_correction_detector)
+		end subroutine

@@ -59,14 +59,15 @@ module m_user_input
 
 
 
-    subroutine init_input()
+    function init_input()
 
         implicit none
-
+        
+        integer*4::init_input,io,i
         character(120) :: temp_string
 
         line_no = 0
-
+        init_input = 1
         open(unit=control_file_number, file="user_input.txt", status='old', err = 997)
 
         read(control_file_number, '(A120)') temp_string
@@ -90,15 +91,26 @@ module m_user_input
         elseif(trim(temp_string) .eq. "play") then
           input_file_number = in_file_number
           read(control_file_number, '(A120)') temp_string
-          open(unit=in_file_number, file=trim(temp_string), status='old', err = 998)
+          !open(unit=in_file_number, file=trim(temp_string), status='old', err = 998)
           call init_in_file(-1)
           
+          
+        elseif(trim(temp_string).eq. "play all") then
+          input_file_number = in_file_number
+          init_input = 0
+          do
+            read(control_file_number, '(A120)',iostat = io) temp_string
+            if(io==0) init_input = init_input + 1
+            if(io<0) exit
+          enddo
+          call init_in_file(-1)
         else
             write(*,*) "ERROR: The first line of user_input.txt must be one of"
             write(*,*) "    interactive"
             write(*,*) "    record"
             write(*,*) "    record overwrite"
             write(*,*) "    play"
+            write(*,*) "    play all"
             write(*,*) 
             
             pause
@@ -119,8 +131,23 @@ module m_user_input
         open(unit=in_file_number, file=trim(temp_string), status='replace')
         call init_in_file(in_file_number)
 
-    end subroutine
-
+    end function
+    
+    function get_driver_file(ifile)
+        integer*4,intent(in)::ifile
+        integer*4::i
+        character(120)::get_driver_file
+        line_no = 0
+        open(unit=control_file_number, file="user_input.txt", status='old', err = 997)
+        do i=1,ifile+1
+            read(control_file_number, '(A120)') get_driver_file
+        enddo
+        close(control_file_number)
+        return
+997     stop 'ERROR: USER_INPUT.TXT is missing '
+    
+    end function
+    
 	function get_string_from_file(input_filenumber_,line_no,formatter)
 
 		character(128)::get_string_from_file
@@ -172,7 +199,7 @@ module m_user_input
             goto 5
         endif
         
-        s = adjustl(s)
+        s = adjustl(remove_tabs(s))
         
         read(s, '(i10)', iostat=iostat) num
         
@@ -236,7 +263,7 @@ module m_user_input
             goto 5
         endif
         
-        s = adjustl(s)
+        s = adjustl(remove_tabs(s))
         
         read(s, *, iostat=iostat) num
         
@@ -279,7 +306,7 @@ module m_user_input
             goto 5
         endif
         
-        s = adjustl(s)
+        s = adjustl(remove_tabs(s))
         
         read(s, *, iostat=iostat) num1, num2
         
@@ -324,7 +351,7 @@ module m_user_input
             goto 5
         endif
         
-        s = adjustl(s)
+        s = adjustl(remove_tabs(s))
         
         read(s, *, iostat=iostat) array2
         
@@ -374,7 +401,7 @@ module m_user_input
             goto 5
         endif
         
-        s = adjustl(s)
+        s = adjustl(remove_tabs(s))
         
         read(s, *, iostat=iostat) num1, num2
         
@@ -419,7 +446,7 @@ module m_user_input
             goto 5
         endif
         
-        s = adjustl(s)
+        s = adjustl(remove_tabs(s))
         
         read(s, *, iostat=iostat) array2
         
@@ -475,8 +502,8 @@ module m_user_input
             endif
             
             !line_no = line_no + 1
-      
-            if (to_upper(trim(adjustl(temp_string))) .ne. to_upper(trim(prompt))) then
+			!Tabs can cause all sorts of strife so must be removed
+            if (to_upper(trim(adjustl(remove_tabs(temp_string)))) .ne. to_upper(trim(prompt))) then
                 write(6,*) 'Wrong input string:'
                 write(6,*) trim(adjustl(temp_string))
                 write(6,*) 'Expected:'
@@ -662,6 +689,15 @@ module m_user_input
 
     end subroutine
 	
+	function remove_tabs(string)
+		use m_string,only:reduce_blanks,replace_text
+		implicit none
+		character(*),intent(in)::string
+		character(:),allocatable :: remove_tabs
+
+		remove_tabs = reduce_blanks(Replace_Text(string,char(9),' '))
+		
+	end function
 
     end module
 

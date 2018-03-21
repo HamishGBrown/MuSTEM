@@ -75,10 +75,7 @@ subroutine absorptive_tem
     complex(fp_kind) :: lens_ctf(nopiy,nopix,imaging_ndf)
     
     !output
-    real(fp_kind) :: cbed(nopiy,nopix)
-    real(fp_kind) :: image(nopiy,nopix)
-    real(fp_kind) :: tem_image(nopiy,nopix)
-    real(fp_kind) :: temp_image(nopiy,nopix)
+    real(fp_kind),dimension(nopiy,nopix) :: cbed,image,tem_image,temp_image
     
     !diagnostic variables
     real(fp_kind) :: intensity, t1, delta
@@ -108,11 +105,10 @@ subroutine absorptive_tem
 	write(*,*) '|----------------------------------|'
     write(*,*) 
 
-    if (imaging) then	
-		do i=1,imaging_ndf
-          call make_lens_ctf(lens_ctf(:,:,i),imaging_df(i))
-		enddo
-    endif
+    	
+	do i=1,imaging_ndf
+        call make_lens_ctf(lens_ctf(:,:,i),imaging_df(i),imaging_aberrations)
+	enddo
 	   
     call calculate_absorption_mu        
 
@@ -148,7 +144,7 @@ subroutine absorptive_tem
 	if (pw_illum) then
         psi_initial = 1.0_fp_kind/sqrt(float(nopiy*nopix))
 	else
-	    call make_stem_wfn(psi_initial,probe_df(1),probe_initial_position)
+	    call make_stem_wfn(psi_initial,probe_df(1),probe_initial_position,probe_aberrations)
     endif
     
     call tilt_wave_function(psi_initial)
@@ -202,20 +198,18 @@ subroutine absorptive_tem
 			filename = trim(adjustl(output_prefix))
 			if (nz>1) filename = trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(z_indx(1))),length)//'_A'
 			call binary_out_unwrap(nopiy, nopix, cbed, trim(adjustl(filename))//'_DiffractionPattern',write_to_screen=.false.)
-			
-			if (imaging) then
 				
-				do i=1,imaging_ndf
-					psi = psi_d
-					call fft2(nopiy, nopix, psi, nopiy, psi, nopiy)
-					psi = psi*lens_ctf(:,:,i)
-					call ifft2(nopiy, nopix, psi, nopiy, psi, nopiy)
-					tem_image = abs(psi)**2
-					fnam_df = trim(adjustl(filename))// '_Image'
-					if(imaging_ndf>1) fnam_df = trim(adjustl(fnam_df))//'_Defocus_'//zero_padded_int(int(imaging_df(i)),lengthdf)//'_Ang'
-					call binary_out(nopiy, nopix, tem_image, fnam_df,write_to_screen=.false.)
-				enddo
-			endif
+			do i=1,imaging_ndf
+				psi = psi_d
+				call fft2(nopiy, nopix, psi, nopiy, psi, nopiy)
+				!call binary_out(nopiy,nopix,lens_ctf(:,:,i),'lens_ctf'//to_string(i))
+				psi = psi*lens_ctf(:,:,i)
+				call ifft2(nopiy, nopix, psi, nopiy, psi, nopiy)
+				tem_image = abs(psi)**2
+				fnam_df = trim(adjustl(filename))// '_Image'
+				if(imaging_ndf>1) fnam_df = trim(adjustl(fnam_df))//'_Defocus_'//zero_padded_int(int(imaging_df(i)),lengthdf)//'_Ang'
+				call binary_out(nopiy, nopix, tem_image, fnam_df,write_to_screen=.false.)
+			enddo
 			
 		endif
         intensity = get_sum(psi_d)

@@ -557,8 +557,7 @@ module output
       
 
     subroutine output_stem_image(stem_image,fnam_det,defoci)
-        use global_variables, only:output_nopiy,output_nopix,zarray,tiley,tilex
-        !use m_probe_scan, only: nysample, nxsample
+        use global_variables, only:output_nopiy,output_nopix,zarray,tiley,tilex,interpolation
 		use m_string, only: zero_padded_int
         
         implicit none
@@ -603,7 +602,10 @@ module output
 				 
 				if(nz>1) fnam_out = trim(adjustl(fnam_out))//'_z='//zero_padded_int(int(zarray(i_z)),length)//'_A'
 				
-                call binary_out(nysample, nxsample, stem_image(:,:,i_df,i_z), fnam_out)
+                if(.not.interpolation) then
+                    call binary_out(nysample, nxsample, stem_image(:,:,i_df,i_z), fnam_out)
+                    cycle
+                endif
                         
                 ! Output STEM image with tiling and interpolation
                 
@@ -615,14 +617,12 @@ module output
                 call interpolate_real2D(tiled_image, interpolated_image)
                 
 				if(make_montage) montage((i_df-1)*output_nopiy+1:i_df*output_nopiy,(i_z-1)*output_nopix+1:i_z*output_nopix) = interpolated_image
-				
-                fnam_out = trim(fnam_out) // '_Interpolated'
                 
                 call binary_out(output_nopiy, output_nopix, interpolated_image, fnam_out)
             enddo    
             enddo
 			
-			if(make_montage) then
+			if(make_montage.and.interpolation) then
 				fnam_out = trim(adjustl(fnam_det)) //'_defocus_thickness_montage'
 				 call binary_out(output_nopiy*n_df,output_nopix*nz, montage, fnam_out)
 			endif 

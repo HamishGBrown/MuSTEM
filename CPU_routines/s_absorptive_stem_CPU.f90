@@ -51,7 +51,7 @@ subroutine absorptive_stem
     
     use m_precision, only: fp_kind
     use global_variables, only: nopiy, nopix, normalisation, nt, n_cells, fz, fz_dwf, inverse_sinc, bwl_mat, prop, ndet, ionization, eels, adf, on_the_fly, inner, outer, ci,zarray,nz,ncells
-    use m_lens, only: probe_df, probe_ndf, make_stem_wfn
+    use m_lens, only: probe_df, probe_ndf, make_stem_wfn,probe_aberrations
     use m_absorption, only: fz_abs, transf_absorptive, calculate_absorption_mu, calculate_local_adf_mu
     use local_ionization
     use m_slicing
@@ -66,17 +66,17 @@ subroutine absorptive_stem
     implicit none
     
     !dummy variables
-    integer(4) :: i, j, k, i_df, ny, nx,z_indx(1)
+    integer(4) :: i,ii, j, k, i_df, ny, nx,z_indx(1)
 
     !probe variables
     complex(fp_kind),dimension(nopiy,nopix) :: psi,qpsi,psi_out
 
     !output/detectors
-    real(fp_kind),dimension(nopiy,nopix) :: image,ion_image,masks,temp_image,psi_intensity,&
+    real(fp_kind),dimension(nopiy,nopix) :: image,masks,temp_image,psi_intensity,&
                                             & inelastic_potential,temp
     real(fp_kind),dimension(nysample,nxsample,probe_ndf,nz) :: stem_image,stem_elastic_image,&
-                & stem_inelastic_image,stem_ion_image,eels_correction_image
-    real(fp_kind),allocatable::adf_image(:,:),probe_intensity(:,:,:)
+                & stem_inelastic_image,eels_correction_image
+    real(fp_kind),allocatable::adf_image(:,:),probe_intensity(:,:,:),ion_image(:,:,:),stem_ion_image(:,:,:,:,:)
 
     !diagnostic variables
     real(fp_kind) :: intens, t1, delta
@@ -98,11 +98,11 @@ subroutine absorptive_stem
     write(*,*) '|----------------------------------|'
     write(*,*)
 	
-    call calculate_absorption_mu        
+    
+    !call calculate_absorption_mu        
     call calculate_local_adf_mu
     
-    ! Precalculate the scattering factors on a grid
-    call precalculate_scattering_factors()
+    
     !Generally not practical for CPU calculations
     on_the_fly = .false.
     if (on_the_fly) then
@@ -110,7 +110,8 @@ subroutine absorptive_stem
         ! These make_fz_*() routines would normally be called in make_local_inelastic_potentials()
         ! But for on_the_fly we don't call that routine.
         if(adf) call make_fz_adf
-        if(ionization) call make_fz_EELS_EDX
+        !This step is now done automatically
+        !if(ionization) call make_fz_EELS_EDX
         
     else
         call make_absorptive_grates
@@ -128,8 +129,13 @@ subroutine absorptive_stem
 		allocate(adf_image(nopiy,nopix))
 		stem_inelastic_image = 0.0_fp_kind
 	endif
-    if (ionization) stem_ion_image = 0.0_fp_kind
-    if (eels) eels_correction_image = 0.0_fp_kind
+    if (ionization) then
+        allocate(ion_image(nopiy,nopix,num_ionizations))
+        allocate(stem_ion_image(nysample,nxsample,probe_ndf,nz,num_ionizations))
+        stem_ion_image = 0.0_fp_kind
+        if (.not.EDX) eels_correction_image = 0.0_fp_kind
+    endif
+    
 
     write(*,*) '|--------------------------------|'
     write(*,*) '|      Calculation running       |'
@@ -163,7 +169,7 @@ subroutine absorptive_stem
         if (adf) adf_image = 0.0_fp_kind
         if (ionization) ion_image = 0.0_fp_kind
         
-        call make_stem_wfn(psi, probe_df(i_df), probe_positions(:,ny,nx))  
+        call make_stem_wfn(psi, probe_df(i_df), probe_positions(:,ny,nx),probe_aberrations)  
         call tilt_wave_function(psi)
                    
         do i = 1,maxval(ncells)
@@ -187,13 +193,15 @@ subroutine absorptive_stem
                 endif
                 
                 if(ionization) then
-                    if(on_the_fly) then
-						call make_ion_potential(inelastic_potential,fz_mu,tau_slice(:,:,:,j),nat_slice(:,j),ss_slice(7,j))
-						temp = psi_intensity *inelastic_potential*prop_distance(j)
-                    else
-						temp = psi_intensity * ionization_potential(:,:,j) * prop_distance(j)
-                    endif
-					ion_image = temp+ion_image
+                    do ii=1,num_ionizations
+                        if(on_the_fly) then                        
+                            inelastic_potential= make_ion_potential(ionization_mu(:,:,ii),tau_slice(:,atm_indices(ii),:,j),nat_slice(atm_indices(ii),j),ss_slice(7,j))
+						    temp = psi_intensity *inelastic_potential*prop_distance(j)
+                        else
+						    temp = psi_intensity * ionization_potential(:,:,ii,j) * prop_distance(j)
+                        endif
+					    ion_image(:,:,ii) = temp+ion_image(:,:,ii)
+                    enddo
                 endif
                 
                 ! Transmit through slice potential
@@ -211,8 +219,13 @@ subroutine absorptive_stem
 					temp = abs(psi_out)**2
 					stem_elastic_image(ny,nx,i_df,z_indx(1)) = sum(masks*temp)
 					if(adf) stem_inelastic_image(ny,nx,i_df,z_indx(1)) = sum(adf_image)
-					if(ionization) stem_ion_image(ny,nx,i_df,z_indx(1)) = sum(ion_image)
-					if(eels) eels_correction_image(ny,nx,i_df,z_indx(1)) = sum(temp*eels_correction_detector)
+					if(ionization) then
+                        do ii=1,num_ionizations
+                            stem_ion_image(ny,nx,i_df,z_indx(1),ii) = sum(ion_image(:,:,ii))
+                        enddo
+                        if(.not.EDX) eels_correction_image(ny,nx,i_df,z_indx(1)) = sum(temp*eels_correction_detector)
+                    endif
+					
                 endif
     			if (output_probe_intensity) then
 					k = (i-1)*n_slices+j
@@ -253,7 +266,8 @@ subroutine absorptive_stem
         write(*,*) 'The following files were outputted (as 32-bit big-endian floating point):'
     endif
     write(*,*)
-   !call binary_out(nysample,nxsample,stem_elastic_image(:,:,1,1),'test')
+   
+    if(output_thermal) then
     filename = trim(adjustl(output_prefix)) // '_DiffPlaneElastic'
     call output_stem_image(stem_elastic_image,filename,probe_df)
     
@@ -265,26 +279,34 @@ subroutine absorptive_stem
     
         filename = trim(adjustl(output_prefix)) // '_DiffPlaneTDS'
         call output_stem_image(stem_inelastic_image,filename,probe_df)
+    endif   
+    else
+        if (adf) stem_image = stem_elastic_image + stem_inelastic_image
+        if (.not.adf) stem_image = stem_elastic_image
+        filename = trim(adjustl(output_prefix)) // '_DiffPlane'
+        call output_stem_image(stem_image,filename,probe_df)
     endif
     
+    
     if(ionization) then
-        if(EELS) then
-            filename = trim(adjustl(output_prefix)) // '_EELS'
-            call output_stem_image(stem_ion_image, filename,probe_df)
-        
+        do ii=1,num_ionizations
+        if(EDX) then
+            filename = trim(adjustl(output_prefix)) // '_'//trim(adjustl(substance_atom_types(atm_indices(ii))))//'_'//trim(adjustl(Ion_description(ii)))//'_shell_EDX'
+            call output_stem_image(stem_ion_image(:,:,:,:,ii), filename,probe_df)
+        else
+            filename = trim(adjustl(output_prefix))// '_'//trim(adjustl(substance_atom_types(atm_indices(ii))))//'_'//trim(adjustl(Ion_description(ii)))//'_orbital_EELS'
+            call output_stem_image(stem_ion_image(:,:,:,:,ii), filename,probe_df)
+            stem_ion_image(:,:,:,:,ii) = stem_ion_image(:,:,:,:,ii)*eels_correction_image
+
+            filename =  trim(adjustl(output_prefix)) //'_'//trim(adjustl(substance_atom_types(atm_indices(ii))))//'_'//trim(adjustl(Ion_description(ii)))//'_orbital_EELS_Corrected'            
+            call output_stem_image(stem_ion_image(:,:,:,:,ii), filename,probe_df)
+        endif
+        enddo
+        if(.not.EDX) then
             filename = trim(adjustl(output_prefix)) // '_EELS_CorrectionMap' 
             call output_stem_image(eels_correction_image, filename,probe_df)
-            
-            stem_ion_image = stem_ion_image*eels_correction_image
-
-            filename =  trim(adjustl(output_prefix)) // '_EELS_Corrected'            
-            call output_stem_image(stem_ion_image, filename,probe_df)
-            
-        else
-            filename = trim(adjustl(output_prefix)) // '_EDX'
-            call output_stem_image(stem_ion_image, filename,probe_df)
-        
         endif
+       
     endif
 
 end subroutine absorptive_stem

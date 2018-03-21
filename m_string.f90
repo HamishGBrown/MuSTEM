@@ -51,16 +51,26 @@ implicit none
         allocate(character(len = len_trim(adjustl(dum))) :: to_string)
         to_string = trim(adjustl(dum))
     end function
-		    
+    
+    elemental function str2int(str) result(int)
+    implicit none
+    ! Arguments
+    character(len=*),intent(in) :: str
+    integer         :: int
+    integer :: stat_
+
+    read(str,*,iostat=stat_)  int
+  end function str2int
+    
 	!Allows thickness to be read in via:
 	!Single value in  the format: [z1]
 	!List of values in the format: [z1],[z2],[z3]
 	!A sequence of values in the format: [zstart]:[zstop]:[zstep]
-	subroutine read_sequence_string(string,lstring,nz,zarray)
+	subroutine read_sequence_string(string,lstring,nz,zarray,minstep)
 		character(len=lstring), intent(in) :: string
 		integer*4,intent(in)::lstring
 		integer*4,intent(inout)::nz
-		real(fp_kind),optional::zarray(nz)
+		real(fp_kind),optional::zarray(nz),minstep
 		
 		character(len=1)::sgn
 		integer*4::i,ii,j,nsteps,zi
@@ -96,6 +106,7 @@ implicit none
 			!Read final value into array
 			if (is_numeric(string(i:))) then
 				read(string(i:),*) zseq(ii)
+				if(present(minstep)) zseq(ii) = max(minstep,zseq(ii))
 			else
 				write(*,*) "Expected numeric input of the kind [start]:[stop]:[step], got: "//string(i:)
 				stop
@@ -153,10 +164,10 @@ implicit none
 		else
 			
 			if (present(zarray)) then
-				write(*,*) 1
+				
 				read(string,*) zarray(1)
 			else
-				!write(*,*) 1
+				
 				nz = 1
 				
 			endif
@@ -226,5 +237,32 @@ implicit none
 			 end do
 
 	end function to_lower
+
+	FUNCTION Reduce_Blanks(s)  RESULT (outs)
+		CHARACTER(*)      :: s
+		CHARACTER(LEN_TRIM(s)) :: outs
+		INTEGER           :: i, k, n
+
+		n = 0  ; k = LEN_TRIM(s)          ! k=index last non-blank (may be null)
+		DO i = 1,k-1                      ! dont process last char yet
+		   n = n+1 ; outs(n:n) = s(i:i)
+		   IF (s(i:i+1) == '  ') n = n-1  ! backup/discard consecutive output blank
+		END DO
+		n = n+1  ; outs(n:n)  = s(k:k)    ! last non-blank char output (may be null)
+		IF (n < k) outs(n+1:) = ' '       ! pad trailing blanks
+		END FUNCTION Reduce_Blanks
+
+	! ------------------
+	FUNCTION Replace_Text (s,text,rep)  RESULT(outs)
+		CHARACTER(*)        :: s,text,rep
+		CHARACTER(LEN(s)+100) :: outs     ! provide outs with extra 100 char len
+		INTEGER             :: i, nt, nr
+
+		outs = s ; nt = LEN_TRIM(text) ; nr = LEN_TRIM(rep)
+		DO
+		   i = INDEX(outs,text(:nt)) ; IF (i == 0) EXIT
+		   outs = outs(:i-1) // rep(:nr) // outs(i+nt:)
+		END DO
+	END FUNCTION Replace_Text
 end module
 

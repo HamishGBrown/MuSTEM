@@ -117,7 +117,7 @@ module m_potential
 	    use m_precision, only: fp_kind
         use global_variables, only: ifactory, ifactorx, nopiy, nopix, nt, a0, atf, atomf, ak, fz, fz_dwf, sinc, inverse_sinc, tp
         use m_elsa, only: elsa_ext
-        use m_absorption, only: complex_absorption, setup_absorptive_array, max_int, delta_kstep, tdsbr, fz_abs
+        use m_absorption, only: complex_absorption, setup_absorptive_array, max_int, delta_kstep, tdsbr, fz_abs,calculate_absorption_mu
 		use m_numerical_tools, only: cubspl,ppvalu
 
 	    implicit none
@@ -143,7 +143,8 @@ module m_potential
         allocate(fz_DWF(nopiy,nopix,nt))
     
         if(complex_absorption) then
-        
+            call setup_absorptive_array
+            call calculate_absorption_mu
             ! Calculate TDS form factors
             !if(allocated(tdsbrcoeff)) deallocate(tdsbrcoeff)
             if(allocated(xdata)) deallocate(xdata)

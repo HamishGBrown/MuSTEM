@@ -53,7 +53,7 @@ subroutine qep_tem
     use m_precision, only: fp_kind
 	use m_numerical_tools
     use global_variables!, only: nopiy, nopix, ifactory, ifactorx, npixels, nopix_ucell, nopiy_ucell, normalisation, n_cells, ndet, ionization, on_the_fly, ig1, ig2, nt, prop, fz, inverse_sinc, bwl_mat
-    use m_lens, only: imaging, imaging_df, pw_illum, probe_df, make_lens_ctf, make_stem_wfn,imaging_ndf,imaging_df
+    use m_lens, only: imaging, imaging_df, pw_illum, probe_df, make_lens_ctf, make_stem_wfn,imaging_ndf,imaging_df,imaging_aberrations,probe_aberrations
     use m_qep, only: n_qep_passes, n_qep_grates, seed_rng, qep_grates, quick_shift, phase_ramp_shift, shift_arrayx, shift_arrayy, nran
 	use cufft_wrapper
     use output, only: output_prefix, binary_out, binary_out_unwrap,timing
@@ -116,13 +116,10 @@ subroutine qep_tem
     endif
     
     call setup_propagators
-    if (imaging) then
-          do i=1,imaging_ndf
-          call make_lens_ctf(ctf(:,:,i),imaging_df(i))
-		enddo
-    endif
-
     
+    do i=1,imaging_ndf
+        call make_lens_ctf(ctf(:,:,i),imaging_df(i),imaging_aberrations)
+    enddo
     
     write(*,*) '|--------------------------------|'
 	write(*,*) '|      Calculation running       |'
@@ -134,7 +131,7 @@ subroutine qep_tem
 	if (pw_illum) then
 	      psi_initial = 1.0_fp_kind / sqrt(float(npixels))
 	else
-	      call make_stem_wfn(psi_initial, probe_df(1), probe_initial_position)
+	      call make_stem_wfn(psi_initial, probe_df(1), probe_initial_position,probe_aberrations)
 	endif
     
     call tilt_wave_function(psi_initial)
@@ -198,13 +195,11 @@ subroutine qep_tem
 					cbed(:,:,z_indx(1)) = cbed(:,:,z_indx(1)) + temp
 					
 					! Accumulate image
-					if (imaging) then
-						do i=1,imaging_ndf
-						  psi_temp = ctf(:,:,i)*psi_out
-						  call ifft2(nopiy,nopix,psi_temp,nopiy,psi_temp,nopiy)
-						  tem_image(:,:,z_indx(1),i) = tem_image(:,:,z_indx(1),i)+abs(psi_temp)**2
-						enddo
-					endif
+					do i=1,imaging_ndf
+						psi_temp = ctf(:,:,i)*psi_out
+						call ifft2(nopiy,nopix,psi_temp,nopiy,psi_temp,nopiy)
+						tem_image(:,:,z_indx(1),i) = tem_image(:,:,z_indx(1),i)+abs(psi_temp)**2
+					enddo
 
 				endif
         enddo ! End loop over cells
@@ -245,9 +240,7 @@ subroutine qep_tem
     cbed = cbed / n_qep_passes
     total_intensity = total_intensity / n_qep_passes
     psi_elastic = psi_elastic / n_qep_passes
-    if (imaging) then
-        tem_image = tem_image / n_qep_passes
-    endif      
+    tem_image = tem_image / n_qep_passes
     
     length = ceiling(log10(maxval(zarray)))
 	lengthdf = ceiling(log10(maxval(abs(imaging_df))))
@@ -257,7 +250,12 @@ subroutine qep_tem
 		filename = trim(adjustl(output_prefix))
 		if(nz>1) filename=trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(i)),length)//'_A'
 		
-		call binary_out_unwrap(nopiy, nopix, cbed(:,:,i), trim(filename)//'_DiffPlaneTotal')
+        
+        if(.not.output_thermal) then
+		call binary_out_unwrap(nopiy, nopix, cbed(:,:,i), trim(filename)//'_DiffPlane')
+        call binary_out(nopiy, nopix, total_intensity(:,:,i), trim(filename)//'_ExitSurface_Intensity')
+        else
+        call binary_out_unwrap(nopiy, nopix, cbed(:,:,i), trim(filename)//'_DiffPlaneTotal')
 		
 		call fft2(nopiy, nopix, psi_elastic(:,:,i), nopiy, psi, nopiy)
 		image = abs(psi)**2
@@ -272,8 +270,7 @@ subroutine qep_tem
 		
 		total_intensity(:,:,i) = total_intensity(:,:,i) - abs(psi_elastic(:,:,i))**2
 		call binary_out(nopiy, nopix, total_intensity(:,:,i), trim(filename)//'_ExitSurface_IntensityTDS')
-
-		if (imaging) then
+        endif
 			do j=1,imaging_ndf
 				! Elastic image
 				call fft2 (nopiy, nopix, psi_elastic(:,:,i), nopiy, psi, nopiy)
@@ -282,16 +279,19 @@ subroutine qep_tem
 				image = abs(psi)**2
 				
 				if(imaging_ndf>1) fnam_df = trim(adjustl(filename))//'_Defocus_'//zero_padded_int(int(imaging_df(j)),lengthdf)//'_Ang'
+                if(output_thermal) then
 				call binary_out(nopiy, nopix, image, trim(fnam_df)//'_Image_Elastic')
 				  
 				! Inelastic image
 				image = tem_image(:,:,i,j) - image
 				call binary_out(nopiy, nopix, image, trim(fnam_df)//'_Image_TDS')
-				  
+                
 				! Total image
 				call binary_out(nopiy, nopix, tem_image(:,:,i,j), trim(fnam_df)//'_Image_Total')
+                else
+                call binary_out(nopiy, nopix, tem_image(:,:,i,j), trim(fnam_df)//'_Image')
+                endif
 			enddo
-		endif
 	
 	enddo
 end subroutine qep_tem

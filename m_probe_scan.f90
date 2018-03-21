@@ -38,7 +38,7 @@ module m_probe_scan
     
     subroutine setup_probe_scan(interp_setup)
     
-        use global_variables, only: uvw1, uvw2
+        use global_variables, only: uvw1, uvw2,tiley,tilex, output_nopiy, output_nopix,interpolation
         
         implicit none
 
@@ -55,23 +55,45 @@ module m_probe_scan
         write(*,*) '|-------------------------------|'
         write(*,*)
                 
-        write(*,*) 'Warning: changing the following parameters may '
-        write(*,*) 'result in incorrect interpolation of STEM images.'
-        write(*,*)
+        write(*,*) 'Warning: changing the following parameters will '
+        write(*,*) 'disable interpolation of STEM images.',char(10)
         
-        call setup_scan_geometry(fract, origin)
+        interpolation = .true.
         
-        call setup_sampling(fract)
+        call setup_scan_geometry(fract, origin,interpolation)
+        
+        call setup_sampling(fract,interpolation)
     
         call calculate_probe_positions(uvw1, uvw2, origin)
         
-        if(interp_) call setup_stem_image_interpolation
-
+        if(interpolation) then
+            call setup_stem_image_interpolation
+        else
+            output_nopix = nxsample
+            output_nopiy = nysample
+            tiley = 1
+            tilex = 1
+        endif
     end subroutine
 
+    subroutine reset_scan(origin,a1,a2,r1,r2,thetad2,fract,interpolation)
+        use global_variables, only: a0, deg, ss, uvw1, uvw2, thetad, izone
+        use m_crystallography, only: zone, subuvw, angle, rsd
+        
+        real(fp_kind),intent(out) :: fract, origin(3),a1, a2, r1(3), r2(3), thetad2
+        logical,intent(out)::interpolation
+        
+        origin = 0.0_fp_kind
+        a1 = rsd(uvw1, a0, deg)
+        a2 = rsd(uvw2, a0, deg)
+        r1 = uvw1
+        r2 = uvw2
+        thetad2 = thetad       
+        fract = 1.0
+        interpolation = .true.
+    end subroutine
     
-    
-    subroutine setup_scan_geometry(fract, origin)
+    subroutine setup_scan_geometry(fract, origin,interpolation)
     
         use m_user_input, only: get_input
         use global_variables, only: a0, deg, ss, uvw1, uvw2, thetad, izone
@@ -80,6 +102,7 @@ module m_probe_scan
         implicit none
 
         real(fp_kind),intent(out) :: fract, origin(3)
+        logical,intent(out)::interpolation
         
         integer(4) :: ich
         integer(4)   ig1a(3), ig2a(3)
@@ -87,105 +110,57 @@ module m_probe_scan
     
         integer :: i_scan_quarter
         
-        origin = 0.0_fp_kind
-    
-        a1 = rsd(uvw1, a0, deg)
-        a2 = rsd(uvw2, a0, deg)
-        r1 = uvw1
-        r2 = uvw2
-        thetad2 = thetad 
-                            
-        fract = 1.0                        
+        call reset_scan(origin,a1,a2,r1,r2,thetad2,fract,interpolation)
+        ich=-1
+     do while(ich.ne.1)
+         if(interpolation) write(6,103) r1, a1, char(143), r2, a2, char(143), thetad2, origin(1), origin(2),'enabled'
+            if(.not.interpolation) write(6,103) r1, a1, char(143), r2, a2, char(143), thetad2, origin(1), origin(2),'disabled'
+            103 format(' The probe scan vectors are: ', /,                  & 
+            &       ' x = ', 3g12.5, ' mag = ', g12.5, 1x, a1, /,         &
+            &       ' y = ', 3g12.5, ' mag = ', g12.5, 1x, a1, /,         &
+            &       ' The angle between these scan vectors is ', f12.2, ' degrees', /, &
+            &       ' The inital (fractional) position is ', g12.5, ', ', g12.5, /, &
+            &       ' Interpolation of STEM images is currently ',a,/, &
+            &       ' <1> Accept', /,                  &
+            &       ' <2> Change size of x and y.', /,      &
+            &       ' <3> Change orientation of x and y.', /,     & 
+            &       ' <4> Change the initial position.',/,&
+            &       ' <5> Reset')
 
-    102 write(6,103) r1, a1, char(143), r2, a2, char(143), thetad2, origin(1), origin(2)
-        103 format(' The probe scan vectors are: ', /,                  & 
-        &       ' x = ', 3g12.5, ' mag = ', g12.5, 1x, a1, /,         &
-        &       ' y = ', 3g12.5, ' mag = ', g12.5, 1x, a1, /,         &
-        &       ' The angle between these scan vectors is ', f12.2, ' degrees', /, &
-        &       ' The inital (fractional) position is ', g12.5, ', ', g12.5, /, &
-        &       ' <1> Accept', /,                  &
-        &       ' <2> Change size of x and y.', /,      &
-        &       ' <3> Change orientation of x and y.', /,     & 
-        &       ' <4> Change the initial position.' )
+            call get_input("<1>default<2>size<3>dirn<4>origin<5>reset", ich)
+        
+            write(*,*)
+        
+            if(ich.eq.2) then             !changing size of x and y vectors
+                  write(6,111)
+        111       format(' Enter fractional increase in x and y')
+                  call get_input("Enter fractional increase in x and y", fract)
 
-        call get_input("<1>default<2>size<3>dirn<4>origin", ich)
-        write(*,*)
+                  r1 = fract * r1
+                  r2 = fract * r2      
+                  a1 = fract * a1
+                  a2 = fract * a2
+                  interpolation=.false.
+            elseif(ich.eq.3) then
+        121       format( /, ' Please enter a new x-scan vector.' )
+                  write(6,121)
+                  call get_input("x-scan vector", ig1a, 3)
+                  call zone(izone, ig1a, ig2a)          !get an orthogonal vector to the zone axis and ig1
+                  call angle(ig1a, ig2a, ss, thetad2)    !calculate angle between scan vectors
+                  call subuvw(ig1a, r1, a0, deg, ss)      !calculate the real space scan vector from the 'ig1' given
+                  call subuvw(ig2a, r2, a0, deg, ss)      !calculate the real space scan length from the 'ig2' given
+                  interpolation=.false.
+            elseif(ich.eq.4) then
+                call place_probe(origin)
+                  interpolation=.false.
+            elseif(ich.eq.5) then
+                call reset_scan(origin,a1,a2,r1,r2,thetad2,fract,interpolation)
+            endif
+            enddo
+            uvw1 = r1
+            uvw2 = r2
         
-        if(ich.eq.2) then             !changing size of x and y vectors
-              write(6,111)
-    111       format(' Enter fractional increase in x and y')
-              call get_input("Enter fractional increase in x and y", fract)
-
-              r1 = fract * r1
-              r2 = fract * r2
-              
-              a1 = fract * a1
-              a2 = fract * a2
-                        
-              goto 102                !Summarise and repeat probe position choices
-          
-        elseif(ich.eq.3) then
-    121       format( /, ' Please enter a new x-scan vector.' )
-              write(6,121)
-              call get_input("x-scan vector", ig1a, 3)
-              call zone(izone, ig1a, ig2a)          !get an orthogonal vector to the zone axis and ig1
-              call angle(ig1a, ig2a, ss, thetad2)    !calculate angle between scan vectors
-              call subuvw(ig1a, r1, a0, deg, ss)      !calculate the real space scan vector from the 'ig1' given
-              call subuvw(ig2a, r2, a0, deg, ss)      !calculate the real space scan length from the 'ig2' given
-
-              goto 102
-          
-        elseif(ich.eq.4) then
-            call place_probe(origin)
-            
-            goto 102
-            
-        elseif (ich.ne.1) then
-            goto 102
-            
-        endif
-
-        uvw1 = r1
-        uvw2 = r2
-        
-    end subroutine
-
-    
-    
-    subroutine unwrap_quarter_image(image, ny, nx, image_out)
-    
-        use m_precision, only: fp_kind
-        
-        implicit none
-        
-        integer :: ny, nx
-        real(fp_kind) :: image(ny, nx), image_out(ny, nx)
-        
-        integer :: i_y, i_x
-        
-        do i_y = 1, ny
-        do i_x = 1, nx
-            image_out(i_y, i_x) = image(f(i_y, ny), f(i_x, nx))
-        enddo
-        enddo
-        
-        contains
-        
-        integer function f(i, n)
-            implicit none
-            
-            integer :: i, n
-            integer :: shift
-            
-            shift = (n-1)/2
-            
-            f = abs(mod(i-1+shift, n) - shift) + 1
-            
-        end function f
-        
-    end subroutine
-    
-    
+    end subroutine    
     
     subroutine place_probe(xyposn)
 
@@ -207,7 +182,7 @@ module m_probe_scan
     
     
     
-    subroutine setup_sampling(fract)
+    subroutine setup_sampling(fract,interpolation)
     
         use m_user_input, only: get_input
         use m_lens, only: probe_cutoff
@@ -218,18 +193,24 @@ module m_probe_scan
         real(fp_kind) :: fract
         
         real(fp_kind) :: min_step
+        logical,intent(inout)::interpolation
+        logical::interp_init
         integer :: ich
         
+        interp_init = interpolation
         min_step = nyquist_step(probe_cutoff)
         nysample = nyquist_sampling(probe_cutoff, fract*a0(2))
         nxsample = nyquist_sampling(probe_cutoff, fract*a0(1))
         
-    97  write(6,98) probe_cutoff, min_step, nxsample, nysample
-    98  format(   ' The maximum spatial frequency allowed by the probe is ', f5.2, ' A-1.', /, &
+        do while(ich.ne.1)
+        if(interpolation) write(6,98) probe_cutoff, min_step, nxsample, nysample,'enabled'
+        if(.not.interpolation) write(6,98) probe_cutoff, min_step, nxsample, nysample,'disabled'
+        98  format(   ' The maximum spatial frequency allowed by the probe is ', f5.2, ' A-1.', /, &
         &         ' The STEM image has a bandwidth limit of twice that frequency. ', /, &
         &         ' This corresponds to a minimum sampling of ', f6.2, ' positions per Angstrom,', /, &
         &         ' which is ', i4, ' x-positions and ', i4, ' y-positions per unit cell.', /, &
-        &         ' <1> Accept', /, ' <2> Change')
+        &         ' Interpolation of STEM images is currently ',a,/, &
+        &         ' <1> Accept', /, ' <2> Change',/, ' <3> Reset')
         call get_input('<1> Accept probe sampling', ich)
         write(*,*)
         
@@ -240,11 +221,13 @@ module m_probe_scan
             write(*,*) 'Enter the number of probe positions in the y direction.' 
             call get_input('nysample', nysample)
             write(*,*)
-              
-        elseif (ich.ne.1) then
-            goto 97
-            
+            interpolation = .false.
+        else if(ich.eq.3) then
+            nysample = nyquist_sampling(probe_cutoff, fract*a0(2))
+            nxsample = nyquist_sampling(probe_cutoff, fract*a0(1))
+            interpolation = interp_init    
         endif
+        enddo
         
     end subroutine
     

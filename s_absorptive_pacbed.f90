@@ -20,7 +20,7 @@
     subroutine absorptive_pacbed
       
         use global_variables, only: nopiy, nopix, n_cells, prop,zarray,nz,ncells
-        use m_lens, only: make_stem_wfn,probe_df
+        use m_lens, only: make_stem_wfn,probe_df,probe_aberrations
         use m_absorption, only: calculate_absorption_mu, transf_absorptive
         use cufft_wrapper, only: fft2, ifft2
         use m_precision, only: fp_kind
@@ -88,7 +88,7 @@
         write(6,900) ny, nysample, nx, nxsample, intensity
 900     format(1h+, 1x, 'y:', i3, '/', i3, ' x:', i3, '/', i3, ' Intensity: ', f12.6)
 #endif      
-            call make_stem_wfn(psi, probe_df(1), probe_positions(:,ny,nx))
+            call make_stem_wfn(psi, probe_df(1), probe_positions(:,ny,nx),probe_aberrations)
             
             call tilt_wave_function(psi)
             

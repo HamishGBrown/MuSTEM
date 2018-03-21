@@ -72,7 +72,32 @@ module cuda_ms
 
     end subroutine cuda_phase_shift
 
-    
+	attributes(host) subroutine cuda_accumulate_intensity(psi,intensity)
+		use cuda_array_library, only: blocks, threads
+		complex(fp_kind),device,dimension(nopiy,nopix)::psi
+		real(fp_kind),device,dimension(nopiy,nopix)::intensity,temp
+		call cuda_mod<<<blocks,threads>>>(psi, temp, 1.0_fp_kind, nopiy, nopix)
+        call cuda_addition<<<blocks,threads>>>(intensity, temp, intensity, 1.0_fp_kind, nopiy, nopix)                  
+	end subroutine
+
+	attributes(host) subroutine cuda_multislice_iteration(psi_d,transf_d,prop_d,plan)
+		use cufft
+        use cuda_array_library, only: blocks, threads
+
+		implicit none
+
+		integer,value::plan
+		complex(fp_kind),device,dimension(nopiy,nopix)::psi_d,transf_d,prop_d
+		complex(fp_kind),device::psi_out_d(nopiy,nopix)
+
+		! Transmission
+		call cuda_multiplication<<<blocks,threads>>>(psi_d, transf_d, psi_out_d, 1.0_fp_kind, nopiy, nopix)
+                
+		! Propagate
+		call cufftExec(plan, psi_out_d, psi_d, CUFFT_FORWARD)
+		call cuda_multiplication<<<blocks,threads>>>(psi_d, prop_d, psi_out_d, normalisation, nopiy, nopix)
+		call cufftExec(plan, psi_out_d, psi_d, CUFFT_INVERSE)
+	end subroutine
     
     attributes(host) function cuda_stem_detector_wavefunction(psi_d, mask_d)
     

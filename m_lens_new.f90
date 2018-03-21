@@ -36,6 +36,7 @@ module m_lens
     contains
 		procedure :: initialise
 		procedure :: set
+        procedure :: chi
     end type aberration_coefficient
     
     ! Probe forming lens
@@ -90,16 +91,18 @@ module m_lens
         implicit none
     
         real(fp_kind) :: chi
-		type(aberration_coefficient),intent(in)::ab(14)
+		class(aberration_coefficient),intent(in)::ab(:)
         real(fp_kind),intent(in) :: q,phi, df
         
 		integer*4:: naberrations,i
         real(fp_kind) :: q2
+		
+		naberrations = size(ab)
 		        
         q2 = q**2
         chi = pi*df*q2/ak1
 		
-		do i=1,14
+		do i=1,naberrations
 			chi = chi + 2*pi*ak1*(sqrt(q2)/ak1)**(ab(i)%n+1)*ab(i)%amplitude/(ab(i)%n+1)*cos(ab(i)%m*(phi-ab(i)%angle))
 		enddo
         
@@ -120,7 +123,7 @@ module m_lens
 		
 		character*(*),intent(in) :: string
         type(aberration_coefficient),intent(out)::aberrations(14)
-        real(fp_kind),intent(out):: cutoff
+        real(fp_kind):: cutoff
 		
 		real(fp_kind) :: stigmatism(2),cs_mm,c5_mm,xyposn(3),scherzer_df,cs
 		real(fp_kind),allocatable :: df(:)
@@ -177,7 +180,7 @@ module m_lens
                  &' -----------------------------------------------', /, &
 				 &'      Symbol convention|                 |             |          ',/, &
 				 &'      Krivanek  |Haider|Description      | Size (',a1,')    | Angle(rad)',/,&
-				 &' < 2> C10       | C1   |Defocus          |' g13.4,'|')
+				 &' < 2> C10       | C1    |Defocus         |' g13.4,'|')
 	 12 format(   '                                         |' g13.4,'|')			 
 	 13	format(   1x,'<',i2,'> ',a10,    '| ',a2,3x,'|',a17,          '|',g13.4,    '|',g13.4)
      14 format(   ' <16> Output lens contrast transfer function ',t40,/,&
@@ -222,7 +225,8 @@ module m_lens
             goto 10
             
         endif
-		if(to_lower(trim(adjustl(string)))=='image') then
+		
+		if(trim(adjustl(string))=='Image') then
 			imaging_ndf=ndf
 			allocate(imaging_df(imaging_ndf))
 			call read_sequence_string(set_defocus,120,imaging_ndf,imaging_df)
@@ -231,7 +235,11 @@ module m_lens
 			allocate(probe_df(probe_ndf))
 			call read_sequence_string(set_defocus,120,probe_ndf,probe_df)
 		endif
-    end  subroutine
+    end  subroutine 
+	
+        ! call setup_lens_parameters('Probe',probe_aberrations)
+	
+		! call setup_lens_parameters('Image',imaging_aberrations)
 
     function set_cutoff(cstemp)
     
@@ -296,7 +304,7 @@ module m_lens
 
                     if (akr.le.cutoff) then
 						  phi = atan2(kr(2),kr(1))
-                          ctf(ny,nx) = exp(cmplx(0.0_fp_kind, -1*chi(aberrations,akr,phi,df), fp_kind))
+                          ctf(ny,nx) = exp(cmplx(0.0_fp_kind, -1*aberrations%chi(akr,phi,df), fp_kind))
 						  ctf(ny,nx) = ctf(ny,nx) * exp(cmplx(0.0_fp_kind, -2*pi*dot_product(kr, xyposn), fp_kind))
                     else
                           ctf(ny,nx) = 0.0_fp_kind

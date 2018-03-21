@@ -78,7 +78,7 @@ subroutine qep_stem
     implicit none
     
     !dummy variables
-    integer(4) ::  i,j,l,m,i_qep_pass,iz,k
+    integer(4) ::  i,j,l,m,i_qep_pass,iz,k,ii
     integer(4) ::  count
     integer(4) ::  shifty,shiftx
     integer(4) ::  ny,nx,i_df,idet
@@ -99,12 +99,11 @@ subroutine qep_stem
     
     !STEM image variables
     real(fp_kind) :: masks(nopiy,nopix,ndet)                       !detector masks
-    real(fp_kind) :: stem_image(nysample,nxsample,probe_ndf,ndet,nz)
-    real(fp_kind) :: stem_elastic_image(nysample,nxsample,probe_ndf,ndet,nz)
-    real(fp_kind) :: stem_inelastic_image(nysample,nxsample,probe_ndf,nz)
-    real(fp_kind) :: stem_ion_image(nysample,nxsample,probe_ndf,nz)
-    real(fp_kind) :: eels_correction_image(nysample,nxsample,probe_ndf,nz)
+    real(fp_kind),dimension(nysample,nxsample,probe_ndf,ndet,nz) :: stem_image,stem_elastic_image&
+																  &,stem_inelastic_image
+	real(fp_kind),dimension(nysample,nxsample,probe_ndf,nz) :: eels_correction_image
     real(fp_kind) :: temp_image(nopiy,nopix)
+    real(fp_kind),allocatable :: stem_ion_image(:,:,:,:,:)
     
     !diagnostic variables
     real(fp_kind) :: intensity
@@ -119,13 +118,13 @@ subroutine qep_stem
 	complex(fp_kind),device,dimension(nopiy,nopix,nz)::psi_elastic_d
     real(fp_kind),device :: cbed_d(nopiy,nopix,nz),temp_d(nopiy,nopix)
 	complex(fp_kind),device,allocatable :: prop_d(:,:,:),transf_d(:,:,:,:)
-	complex(fp_kind),device,allocatable :: trans_d(:,:), shift_arrayx_d(:,:),shift_arrayy_d(:,:),shift_array_d(:,:)
-    real(fp_kind),device,allocatable :: masks_d(:,:,:),ion_potential_d(:,:,:)
-    real(fp_kind),device,allocatable :: ion_image_d(:,:),eels_correction_detector_d(:,:)
+	complex(fp_kind),device,allocatable,dimension(:,:) :: trans_d, shift_arrayx_d,shift_arrayy_d,shift_array_d
+    real(fp_kind),device,allocatable,dimension(:,:,:) :: masks_d,ion_image_d
+    real(fp_kind),device,allocatable :: eels_correction_detector_d(:,:),ion_potential_d(:,:,:,:)
     
     !device variables for on the fly potentials
-    complex(fp_kind),device,allocatable,dimension(:,:) :: bwl_mat_d,inverse_sinc_d,fz_mu_d,fz_dwf_d
-    complex(fp_kind),device,allocatable,dimension(:,:,:) :: fz_d
+    complex(fp_kind),device,allocatable,dimension(:,:) :: bwl_mat_d,inverse_sinc_d,fz_dwf_d
+    complex(fp_kind),device,allocatable,dimension(:,:,:) :: fz_d,fz_mu_d
     real(fp_kind),device,allocatable :: inelastic_potential_d(:,:)
 
 	!Probe depth output
@@ -148,13 +147,12 @@ subroutine qep_stem
             
     ! Precalculate the scattering factors on a grid
     call precalculate_scattering_factors()
-    
+    idum = seed_rng()
     if (on_the_fly) then
         call cuda_setup_many_phasegrate()               !setup the atom co-ordinate for on the fly potentials (the arguments are simply so that
-        if(ionization) call make_fz_EELS_EDX()          !setup the scattering factor grid for ionization
         
     else
-        idum = seed_rng()
+		
         call make_qep_grates(idum)
         call make_local_inelastic_potentials()          !setup the REAL space inelastic potential (ionization and adf) for QUEP ADF is disabled
     
@@ -190,12 +188,17 @@ subroutine qep_stem
         masks_d = masks
     endif
     
-    if (ionization) allocate(ion_image_d(nopiy,nopix))
-    
-    if(EELS) then
-        allocate(eels_correction_detector_d(nopiy,nopix))
-        eels_correction_detector_d=eels_correction_detector
+    if (ionization) then
+		allocate(ion_image_d(nopiy,nopix,num_ionizations))
+		allocate(stem_ion_image(nysample,nxsample,probe_ndf,nz,num_ionizations))
+        stem_ion_image = 0.0_fp_kind
+		if(.not.EDX) then
+			allocate(eels_correction_detector_d(nopiy,nopix))
+			eels_correction_detector_d=eels_correction_detector
+		endif
     endif
+    
+    
     
     allocate(prop_d(nopiy,nopix,n_slices))
     prop_d = prop
@@ -207,10 +210,8 @@ subroutine qep_stem
         fz_d = fz 
         if(ionization) then
             allocate(inelastic_potential_d(nopiy,nopix))
-            allocate(fz_mu_d(nopiy,nopix))
-            allocate(fz_dwf_d(nopiy,nopix))
-            fz_mu_d = fz_mu
-            fz_dwf_d = fz_dwf(:,:,kval)
+            allocate(fz_mu_d(nopiy,nopix,num_ionizations))
+            fz_mu_d = ionization_mu
         endif
         inverse_sinc_d = inverse_sinc
         bwl_mat_d = bwl_mat
@@ -218,7 +219,12 @@ subroutine qep_stem
         allocate(transf_d(nopiy,nopix,n_qep_grates,n_slices))
   	    transf_d = qep_grates
         if (ionization) then
-            allocate(ion_potential_d(nopiy,nopix,n_slices))
+			!do i=1,num_ionizations
+			!do j=1,n_slices
+			!call binary_out(nopiy,nopix,ionization_potential(:,:,i,j),'ionization_potential_slice_'//to_string(j)//'_ionization_'//to_string(i))
+			!enddo
+			!enddo
+            allocate(ion_potential_d(nopiy,nopix,num_ionizations,n_slices))
             ion_potential_d = ionization_potential
         endif
     
@@ -237,8 +243,10 @@ subroutine qep_stem
     
     stem_image = 0.0_fp_kind
     stem_elastic_image = 0.0_fp_kind
-    if (ionization) stem_ion_image = 0.0_fp_kind
-    if (eels) eels_correction_image = 0.0_fp_kind
+    if (ionization) then
+		stem_ion_image = 0.0_fp_kind
+		if (.not.EDX) eels_correction_image = 0.0_fp_kind
+	endif
     
     intensity = 1.0d0
     
@@ -255,7 +263,7 @@ subroutine qep_stem
 
         cbed_d=0.0_fp_kind
         psi_elastic_d=0.0_fp_kind
-        call make_stem_wfn(psi_initial,probe_df(i_df),probe_positions(:,ny,nx))
+        call make_stem_wfn(psi_initial,probe_df(i_df),probe_positions(:,ny,nx),probe_aberrations)
         
         call tilt_wave_function(psi_initial)
         
@@ -275,15 +283,19 @@ subroutine qep_stem
 	            do j = 1, n_slices
                     ! Accumulate ionization cross section
                     if(ionization) then
-                        call cuda_mod<<<blocks,threads>>>(psi_d,temp_d,1.0_fp_kind,nopiy,nopix)
-                        if(on_the_fly) then
-                            call cuda_make_ion_potential(inelastic_potential_d,tau_slice(:,:,:,j),nat_slice(:,j),plan,fz_mu_d,fz_dwf_d,inverse_sinc_d,Volume_array(j),kval)
-                            call cuda_multiplication<<<blocks,threads>>>(temp_d,inelastic_potential_d, temp_d,prop_distance(j),nopiy,nopix)
-                        else
-                            call cuda_multiplication<<<blocks,threads>>>(temp_d,ion_potential_d(:,:,j), temp_d,prop_distance(j),nopiy,nopix)
-                        endif
-                        call cuda_addition<<<blocks,threads>>>(temp_d,ion_image_d,ion_image_d,1.0_fp_kind,nopiy,nopix)
-                    endif
+                        
+						 do ii=1,num_ionizations
+						 call cuda_mod<<<blocks,threads>>>(psi_d,temp_d,1.0_fp_kind,nopiy,nopix) 
+						if(on_the_fly) then
+							call cuda_make_ion_potential(inelastic_potential_d,tau_slice(:,atm_indices(ii),:,j),nat_slice(atm_indices(ii),j),plan,&
+															&fz_mu_d(:,:,ii),inverse_sinc_d,Volume_array(j))
+							call cuda_multiplication<<<blocks,threads>>>(temp_d,inelastic_potential_d, temp_d,prop_distance(j),nopiy,nopix)
+						else
+							call cuda_multiplication<<<blocks,threads>>>(temp_d,ion_potential_d(:,:,ii,j), temp_d,prop_distance(j),nopiy,nopix)     !overlap
+						endif
+						call cuda_addition<<<blocks,threads>>>(temp_d,ion_image_d(:,:,ii),ion_image_d(:,:,ii),1.0_fp_kind,nopiy,nopix)                          !depth sum
+					enddo
+                endif
                     
                     ! Phase grate
 				    nran = floor(n_qep_grates*ran1(idum)) + 1
@@ -321,19 +333,23 @@ subroutine qep_stem
 		        enddo ! End loop over slices
                 !If this thickness corresponds to any of the output values then accumulate diffration pattern
 				if (any(i==ncells)) then
+					
 					call cufftExec(plan,psi_d,psi_out_d,CUFFT_FORWARD)
 					call cuda_mod<<<blocks,threads>>>(psi_out_d,temp_d,normalisation,nopiy,nopix)
 					z_indx = minloc(abs(ncells-i))
-
+					
 					! Accumulate elastic wave function
 					call cuda_addition<<<blocks,threads>>>(psi_elastic_d(:,:,z_indx(1)),psi_d,psi_elastic_d(:,:,z_indx(1)),1.0_fp_kind,nopiy,nopix)
-            
+					
 
 					! Accumulate diffaction pattern
 					call cufftExec(plan,psi_d,psi_out_d,CUFFT_FORWARD)
 					call cuda_addition<<<blocks,threads>>>(cbed_d(:,:,z_indx(1)),temp_d,cbed_d(:,:,z_indx(1)),1.0_fp_kind,nopiy,nopix)
-
-					if(ionization) stem_ion_image(ny,nx,i_df,z_indx(1)) = stem_ion_image(ny,nx,i_df,z_indx(1))+ get_sum(ion_image_d)
+					
+					do ii=1,num_ionizations
+						
+						if(ionization) stem_ion_image(ny,nx,i_df,z_indx(1),ii) = stem_ion_image(ny,nx,i_df,z_indx(1),ii)+get_sum(ion_image_d(:,:,ii))
+					enddo
 				endif
                 
                 
@@ -350,7 +366,7 @@ subroutine qep_stem
 			enddo
         
         
-			if (eels) eels_correction_image(ny,nx,i_df,iz) = cuda_stem_detector(cbed_d(:,:,iz),eels_correction_detector_d)
+			if (ionization.and.(.not.EDX)) eels_correction_image(ny,nx,i_df,iz) = cuda_stem_detector(cbed_d(:,:,iz),eels_correction_detector_d)
         
 			! Integrate the elastic diffraction pattern
 			call cufftExec(plan,psi_elastic_d(:,:,iz),psi_out_d,CUFFT_FORWARD)
@@ -367,9 +383,10 @@ subroutine qep_stem
 	
     ! QEP normalisation
     
-    if(ionization) stem_ion_image = stem_ion_image/float(n_qep_passes)
-    
-    if(EELS) eels_correction_image = eels_correction_image/float(n_qep_passes)
+    if(ionization) then
+		stem_ion_image = stem_ion_image/float(n_qep_passes)
+		if(.not.EDX) eels_correction_image = eels_correction_image/float(n_qep_passes)
+	endif
 
     if (ndet.gt.0) then
 	    stem_image = stem_image/float(n_qep_passes)
@@ -399,42 +416,48 @@ subroutine qep_stem
 	endif
     
     write(*,*)
-    
+    stem_inelastic_image = stem_image - stem_elastic_image
     do idet = 1, ndet
-        fnam_temp = trim(adjustl(output_prefix)) // '_DiffPlaneTotal_Detector'
+        
+        if(output_thermal) then
+			fnam_temp = trim(adjustl(output_prefix)) // '_DiffPlaneElastic_Detector'
+			call add_zero_padded_int(fnam_temp, fnam_det, idet, 2)
+			call output_stem_image(stem_elastic_image(:,:,:,idet,:),fnam_det,probe_df)
+        
+			
+			fnam_temp = trim(adjustl(output_prefix)) // '_DiffPlaneTDS_Detector'
+			call add_zero_padded_int(fnam_temp, fnam_det, idet, 2)
+			call output_stem_image(stem_inelastic_image(:,:,:,idet,:),fnam_det,probe_df)
+        
+			fnam_temp = trim(adjustl(output_prefix)) // '_DiffPlaneTotal_Detector'
+		else
+			fnam_temp = trim(adjustl(output_prefix)) // '_DiffPlane_Detector'
+		endif
+
         call add_zero_padded_int(fnam_temp, fnam_det, idet, 2)
         call output_stem_image(stem_image(:,:,:,idet,:),fnam_det,probe_df)
-        
-        fnam_temp = trim(adjustl(output_prefix)) // '_DiffPlaneElastic_Detector'
-        call add_zero_padded_int(fnam_temp, fnam_det, idet, 2)
-        call output_stem_image(stem_elastic_image(:,:,:,idet,:),fnam_det,probe_df)
-        
-        stem_inelastic_image = stem_image(:,:,:,idet,:) - stem_elastic_image(:,:,:,idet,:)
-        fnam_temp = trim(adjustl(output_prefix)) // '_DiffPlaneTDS_Detector'
-        call add_zero_padded_int(fnam_temp, fnam_det, idet, 2)
-        call output_stem_image(stem_inelastic_image,fnam_det,probe_df)
-        
-
     enddo
 
     !ionization
-    if (ionization) then
-        if (EELS) then
-            fnam = trim(adjustl(output_prefix)) // '_EELS'
-            call output_stem_image(stem_ion_image,fnam,probe_df)
-            
-            fnam = trim(adjustl(output_prefix)) // '_EELS_CorrectionMap'
-            call output_stem_image(eels_correction_image,fnam,probe_df)
-            
-            stem_ion_image = stem_ion_image*eels_correction_image
-            fnam = trim(adjustl(output_prefix)) // '_EELS_Corrected'
-            call output_stem_image(stem_ion_image,fnam,probe_df)
-            
-        else 
-            fnam = trim(adjustl(output_prefix)) // '_EDX'
-            call output_stem_image(stem_ion_image,fnam,probe_df)
-        
+    if(ionization) then
+        do ii=1,num_ionizations
+        if(EDX) then
+            filename = trim(adjustl(output_prefix)) // '_'//trim(adjustl(substance_atom_types(atm_indices(ii))))//'_'//trim(adjustl(Ion_description(ii)))//'_shell_EDX'
+            call output_stem_image(stem_ion_image(:,:,:,:,ii), filename,probe_df)
+        else
+            filename = trim(adjustl(output_prefix))// '_'//trim(adjustl(substance_atom_types(atm_indices(ii))))//'_'//trim(adjustl(Ion_description(ii)))//'_orbital_EELS'
+            call output_stem_image(stem_ion_image(:,:,:,:,ii), filename,probe_df)
+            stem_ion_image(:,:,:,:,ii) = stem_ion_image(:,:,:,:,ii)*eels_correction_image
+
+            filename =  trim(adjustl(output_prefix)) //'_'//trim(adjustl(substance_atom_types(atm_indices(ii))))//'_'//trim(adjustl(Ion_description(ii)))//'_orbital_EELS_Corrected'            
+            call output_stem_image(stem_ion_image(:,:,:,:,ii), filename,probe_df)
         endif
+        enddo
+        if(.not.EDX) then
+            filename = trim(adjustl(output_prefix)) // '_EELS_CorrectionMap' 
+            call output_stem_image(eels_correction_image, filename,probe_df)
+        endif
+       
     endif
 
 end subroutine qep_stem

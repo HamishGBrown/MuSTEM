@@ -32,7 +32,7 @@
     
     real(fp_kind), allocatable :: bwl_mat(:,:)            !bandwidth limiting matrix
                                           
-    integer(4), allocatable :: nat(:)                     !number of each atom type in the unit cell
+    integer(4), allocatable    :: nat(:)                     !number of each atom type in the unit cell
     real(fp_kind), allocatable :: tau(:,:,:)              !position of the atoms in the unit cell
     real(fp_kind), allocatable :: atf(:,:)                !atomic number, occupancy and DWF (urms)
     real(fp_kind), allocatable :: atomf(:,:),fx(:)        !electron scattering factor parameterisation from elsa
@@ -93,7 +93,7 @@
     logical :: EELS = .false.
 
     
-    logical :: qep
+    logical :: qep,output_thermal,interpolation
     
     logical :: on_the_fly = .false.
     logical :: high_accuracy
@@ -137,5 +137,5 @@
 
       end subroutine 
       
-    
+
       end module global_variables

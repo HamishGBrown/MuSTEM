@@ -16,7 +16,7 @@ Ultramicroscopy, Vol. 151, pp. 11-22, (2015).](http://www.sciencedirect.com/scie
 
 ### Installing
 
-MuSTEM is built using the [PGI Fortran compiler and Microsoft Visual Studio 2015](https://www.pgroup.com/products/pvf.htm), please make sure that this software is correctly installed before proceeding. Create a new Visual Studio project and add the source code contained this this repository. Modify the project properties so that Microsoft Visual Studio passes the following commands to the PGI compiler:
+MuSTEM is built using the [PGI Fortran compiler and Microsoft Visual Studio 2015](https://www.pgroup.com/products/pvf.htm), please make sure that this software is correctly installed before proceeding. Create a new Visual Studio project and add the source code (all .f90 files) contained in this repository. Modify the project properties so that Microsoft Visual Studio passes the following commands to the PGI compiler:
 
 Build commands:
 

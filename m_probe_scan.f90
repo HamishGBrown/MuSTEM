@@ -201,7 +201,8 @@ module m_probe_scan
         min_step = nyquist_step(probe_cutoff)
         nysample = nyquist_sampling(probe_cutoff, fract*a0(2))
         nxsample = nyquist_sampling(probe_cutoff, fract*a0(1))
-        
+        ich=-1
+	
         do while(ich.ne.1)
         if(interpolation) write(6,98) probe_cutoff, min_step, nxsample, nysample,'enabled'
         if(.not.interpolation) write(6,98) probe_cutoff, min_step, nxsample, nysample,'disabled'

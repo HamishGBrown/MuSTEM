@@ -1,22 +1,40 @@
-# MuSTEM
+# μSTEM
 
-MuSTEM is a transmission electron microscopy (TEM) simulation suite, in particular for scanning transmission electron microscopy (STEM) images, that was developed mainly at the University of Melbourne. The computing suite is based on the multislice
+μSTEM is a transmission electron microscopy (TEM) simulation suite, in particular for scanning transmission electron microscopy (STEM) images, that was developed mainly at the University of Melbourne. The computing suite is based on the multislice
 method. More detail can be found in the [manual](muSTEM_manual.pdf) and the following scientific paper:
 
 [Modelling the inelastic scattering of fast electrons,
 L.J. Allen, A.J. D'Alfonso and S.D. Findlay,
 Ultramicroscopy, Vol. 151, pp. 11-22, (2015).](http://www.sciencedirect.com/science/article/pii/S0304399114002034)
 
-## Getting Started
 
-### Prerequisites
+## Prerequisites
 
-GPU version
-A CUDA enabled GPU with compute class 3.0 or greater
-[PGI Visual Fortran and Microsoft Visual Studio](https://www.pgroup.com/products/pvf.htm)
+### GPU version
 
-CPU version
-Any Fortran 90 compiler and MKL libraries (for fast Fourier transform routines)
+* 64 bit windows OS
+* A CUDA enabled GPU with compute class 3.0 or greater
+* The [Nvidia CUDA toolkit](https://developer.nvidia.com/cuda-downloads), this installs the .dll files necessary to run the GPU versions of μSTEM.
+
+#### To compile source code
+
+* [PGI Visual Fortran and Microsoft Visual Studio](https://www.pgroup.com/products/pvf.htm)
+
+### CPU version
+
+* 64 bit Windows OS
+
+#### To compile source code
+
+* Any Fortran 90 compiler and FFTW libraries
+
+## Precompiled executables
+
+* [**CPU** single precision](https://github.com/HamishGBrown/MuSTEM/raw/master/Executables/CPU_muSTEM_x64_v5.1_single_precision.zip)
+* [**CPU** double precision](https://github.com/HamishGBrown/MuSTEM/raw/master/Executables/CPU_muSTEM_x64_v5.1_double_precision.zip)
+* [**GPU** single precision](https://github.com/HamishGBrown/MuSTEM/raw/master/Executables/CUDA_muSTEM_x64_v5.1_single_precision.zip)
+* [**GPU** single precision for legacy graphics cards](https://github.com/HamishGBrown/MuSTEM/raw/master/Executables/CUDA_muSTEM_x64_v5.1_single_precision_legacy.zip)
+* [**GPU** double precision](https://github.com/HamishGBrown/MuSTEM/raw/master/Executables/CUDA_muSTEM_x64_v5.1_double_precision.zip)
 
 ### Compiling source code
 

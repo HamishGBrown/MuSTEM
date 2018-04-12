@@ -9,10 +9,10 @@ Ultramicroscopy, Vol. 151, pp. 11-22, (2015).](http://www.sciencedirect.com/scie
 
 ## Getting Started
 
-
 ### Prerequisites
 
 GPU version
+A CUDA enabled GPU with compute class 3.0 or greater
 [PGI Visual Fortran and Microsoft Visual Studio](https://www.pgroup.com/products/pvf.htm)
 
 CPU version

@@ -9,16 +9,17 @@ Ultramicroscopy, Vol. 151, pp. 11-22, (2015).](http://www.sciencedirect.com/scie
 
 ## Getting Started
 
-
 ### Prerequisites
 
 GPU version
+A CUDA enabled GPU with compute class 3.0 or greater
 [PGI Visual Fortran and Microsoft Visual Studio](https://www.pgroup.com/products/pvf.htm)
 
 CPU version
 Any Fortran 90 compiler and MKL libraries (for fast Fourier transform routines)
 
-### Installing
+### Compiling source code
+
 
 MuSTEM is built using the [PGI Fortran compiler and Microsoft Visual Studio 2015](https://www.pgroup.com/products/pvf.htm), please make sure that this software is correctly installed before proceeding. Create a new Visual Studio project and add the source code contained in this repository. The GPU version of the code requires the source files in the GPU_routines folder and the CPU only version of the code requires the source files in the CPU_routines folder. Modify the project properties so that Microsoft Visual Studio passes the following commands to the PGI compiler:
 

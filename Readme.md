@@ -18,13 +18,10 @@ GPU version
 CPU version
 Any Fortran 90 compiler and MKL libraries (for fast Fourier transform routines)
 
-### Installing
+### Compiling source code
 
-<<<<<<< HEAD
-MuSTEM is built using the [PGI Fortran compiler and Microsoft Visual Studio 2015](https://www.pgroup.com/products/pvf.htm), please make sure that this software is correctly installed before proceeding. Create a new Visual Studio project and add the source code (all .f90 files) contained in this repository. Modify the project properties so that Microsoft Visual Studio passes the following commands to the PGI compiler:
-=======
+
 MuSTEM is built using the [PGI Fortran compiler and Microsoft Visual Studio 2015](https://www.pgroup.com/products/pvf.htm), please make sure that this software is correctly installed before proceeding. Create a new Visual Studio project and add the source code contained in this repository. The GPU version of the code requires the source files in the GPU_routines folder and the CPU only version of the code requires the source files in the CPU_routines folder. Modify the project properties so that Microsoft Visual Studio passes the following commands to the PGI compiler:
->>>>>>> ac5e79459831b613bf2ae10ceac423c70be45b81
 
 Build commands:
 

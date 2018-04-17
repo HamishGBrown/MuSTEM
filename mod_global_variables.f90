@@ -113,9 +113,9 @@
           real(fp_kind) con1,c2,delk
           data con1, c2 / 510.9989461_fp_kind, 1.956951198e-03_fp_kind /
 
-          relm = ( con1 + ekv + 0.001_fp_kind * volts ) * c2
+          relm = ( con1 + ekv) * c2
           
-    ! ak is the incident wave vector in the solid corrected for refraction
+    ! ak is the incident wave vector in the solid corrected for refraction (mean inner potential)
           ak   = wavev( ekv * 1000_fp_kind + volts)
           
     ! ak1 is the incident wave vector without corrections for refraction

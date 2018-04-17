@@ -132,16 +132,19 @@ subroutine qep_tem
         call make_qep_grates(idum)
         
     endif
-    
     call setup_propagators
-    do i=1,imaging_ndf
-		call make_lens_ctf(ctf(:,:,i),imaging_df(i),imaging_aberrations)
-	enddo
-    allocate(ctf_d(nopiy,nopix,imaging_ndf))
-    ctf_d = ctf
-          
-    allocate(tem_image_d(nopiy,nopix,nz,imaging_ndf))
-    tem_image_d = 0.0_fp_kind
+
+	if(pw_illum) then
+		do i=1,imaging_ndf
+			call make_lens_ctf(ctf(:,:,i),imaging_df(i),imaging_aberrations)
+		enddo
+		allocate(ctf_d(nopiy,nopix,imaging_ndf))
+		ctf_d = ctf
+	    allocate(tem_image_d(nopiy,nopix,nz,imaging_ndf))
+		tem_image_d = 0.0_fp_kind
+	endif
+
+
 
     
     
@@ -195,7 +198,7 @@ subroutine qep_tem
 	endif
     
     call tilt_wave_function(psi_initial)
-    
+
     psi_initial_d = psi_initial
         
 	! Set accumulators to zero
@@ -261,6 +264,7 @@ subroutine qep_tem
 					call cuda_mod<<<blocks,threads>>>(psi_out_d,temp_d,normalisation,nopiy,nopix)
 					call cuda_addition<<<blocks,threads>>>(cbed_d(:,:,z_indx(1)),temp_d,cbed_d(:,:,z_indx(1)),1.0_fp_kind,nopiy,nopix)
 					
+					if(pw_illum) then
 					! Accumulate image
 					do i=1,imaging_ndf
 						psi_temp = psi_out_d
@@ -269,6 +273,7 @@ subroutine qep_tem
 						call cuda_mod<<<blocks,threads>>>(psi_temp, temp_image_d, normalisation, nopiy, nopix)
 						call cuda_addition<<<blocks,threads>>>(tem_image_d(:,:,z_indx(1),i), temp_image_d, tem_image_d(:,:,z_indx(1),i), 1.0_fp_kind, nopiy, nopix)
 					enddo
+					endif
 
 				endif
         enddo ! End loop over cells
@@ -331,13 +336,14 @@ subroutine qep_tem
 		image = cbed(:,:,i) - image
 		call binary_out_unwrap(nopiy, nopix, image, trim(filename)//'_DiffPlaneTDS')
 		
-		call binary_out(nopiy, nopix, abs(psi_elastic(:,:,i))**2, trim(filename)//'_ExitSurface_IntensityElastic')
-		call binary_out(nopiy, nopix, atan2(imag(psi_elastic(:,:,i)), real(psi_elastic(:,:,i))), trim(filename)//'_ExitSurface_PhaseElastic')
-		call binary_out(nopiy, nopix, total_intensity(:,:,i), trim(filename)//'_ExitSurface_IntensityTotal')
+		if(pw_illum) call binary_out(nopiy, nopix, abs(psi_elastic(:,:,i))**2, trim(filename)//'_ExitSurface_IntensityElastic')
+		if(pw_illum) call binary_out(nopiy, nopix, atan2(imag(psi_elastic(:,:,i)), real(psi_elastic(:,:,i))), trim(filename)//'_ExitSurface_PhaseElastic')
+		if(pw_illum) call binary_out(nopiy, nopix, total_intensity(:,:,i), trim(filename)//'_ExitSurface_IntensityTotal')
 		
 		total_intensity(:,:,i) = total_intensity(:,:,i) - abs(psi_elastic(:,:,i))**2
-		call binary_out(nopiy, nopix, total_intensity(:,:,i), trim(filename)//'_ExitSurface_IntensityTDS')
+		if(pw_illum) call binary_out(nopiy, nopix, total_intensity(:,:,i), trim(filename)//'_ExitSurface_IntensityTDS')
 		endif
+		if(pw_illum) then
 		do j=1,imaging_ndf
 			! Elastic image
 			call fft2 (nopiy, nopix, psi_elastic(:,:,i), nopiy, psi, nopiy)
@@ -359,6 +365,7 @@ subroutine qep_tem
             call binary_out(nopiy, nopix, tem_image(:,:,i,j), trim(fnam_df)//'_Image')
             endif
 		enddo
+		endif
 	
 	enddo
 end subroutine qep_tem

@@ -117,9 +117,11 @@ subroutine qep_tem
     
     call setup_propagators
     
+    if(pw_illum) then
     do i=1,imaging_ndf
         call make_lens_ctf(ctf(:,:,i),imaging_df(i),imaging_aberrations)
     enddo
+    endif
     
     write(*,*) '|--------------------------------|'
 	write(*,*) '|      Calculation running       |'
@@ -195,11 +197,13 @@ subroutine qep_tem
 					cbed(:,:,z_indx(1)) = cbed(:,:,z_indx(1)) + temp
 					
 					! Accumulate image
+                    if(pw_illum) then
 					do i=1,imaging_ndf
 						psi_temp = ctf(:,:,i)*psi_out
 						call ifft2(nopiy,nopix,psi_temp,nopiy,psi_temp,nopiy)
 						tem_image(:,:,z_indx(1),i) = tem_image(:,:,z_indx(1),i)+abs(psi_temp)**2
-					enddo
+                    enddo
+                    endif
 
 				endif
         enddo ! End loop over cells
@@ -271,6 +275,7 @@ subroutine qep_tem
 		total_intensity(:,:,i) = total_intensity(:,:,i) - abs(psi_elastic(:,:,i))**2
 		call binary_out(nopiy, nopix, total_intensity(:,:,i), trim(filename)//'_ExitSurface_IntensityTDS')
         endif
+            if (pw_illum) then
 			do j=1,imaging_ndf
 				! Elastic image
 				call fft2 (nopiy, nopix, psi_elastic(:,:,i), nopiy, psi, nopiy)
@@ -291,7 +296,8 @@ subroutine qep_tem
                 else
                 call binary_out(nopiy, nopix, tem_image(:,:,i,j), trim(fnam_df)//'_Image')
                 endif
-			enddo
+            enddo
+            endif
 	
 	enddo
 end subroutine qep_tem

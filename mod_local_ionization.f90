@@ -158,6 +158,7 @@
 		
 		return
 970 	write(*,*) ' Cannot access data file EELS_EDX_'//shell//'.dat'
+		stop
 	end function
 	
       !********************************************************************************
@@ -210,8 +211,11 @@
 !Count available orbitals
 	ii=0
 	do i = 1, nt
-		if( 5<ATF(1,i) .and. ATF(1,i)<51) ii = ii +1
-		if(19<ATF(1,i) .and. ATF(1,i)<61) ii = ii +2
+		if( 5<ATF(1,i) .and. ATF(1,i)<51) ii = ii +1 !K shell
+		if(19<ATF(1,i) .and. ATF(1,i)<87) then
+			if(EDX) ii = ii +1 !L shell
+			if(.not.EDX) ii = ii+2 !2s and 2p orbitals
+		endif
 	enddo
 	nchoices = ii
 	allocate(choices(ii),DE(ii))
@@ -232,7 +236,7 @@
       do i = 1, nt
 		ZZ = ATF(1,i)
 		K_shell = 5<ATF(1,i) .and. ATF(1,i)<51
-		L_shell = 19<ATF(1,i) .and. ATF(1,i)<61
+		L_shell = 19<ATF(1,i) .and. ATF(1,i)<87
         if(K_shell) then
 			if(EDX) write(*,110) ii,trim(adjustl(substance_atom_types(i))),int(ZZ),'K',' ',logical_to_yn(choices(ii))
 			if(.not.EDX) write(*,110) ii,trim(adjustl(substance_atom_types(i))),int(ZZ),'1s',to_string(DE(ii))//'          ',logical_to_yn(choices(ii))
@@ -295,7 +299,7 @@
 			ii=ii+1
 		endif
 		
-		if(19<ATF(1,i) .and. ATF(1,i)<61) then
+		if(19<ATF(1,i) .and. ATF(1,i)<87) then
 			if(EDX) then
 				if(choices(ii))	then
                     atm_indices(iii) = i

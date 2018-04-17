@@ -54,7 +54,7 @@ module m_elsa
         implicit none
       
         integer(4) nt,m,n,k
-        real(8) atomf(13,nt),s2,deltak,alpha,total,xbs,deltak1,deltak2
+        real(8) atomf(13,nt),s2,deltak,alpha,total,xbs
 	    real(8) c1,fxray,s2l,a2
         real(8) double_elsa_ext
         data c1/2.393367d-02/
@@ -69,15 +69,16 @@ module m_elsa
                       total=total+atomf(n,k)
                 enddo
                 ! if deltak = 0 then we have a neutral atom else deltak = Z - sum a_i - c      
-				deltak=atomf(12,k)-total
-				deltak1=float(nint(deltak)) !integer part for handling the ionic case
-				deltak2=deltak-deltak1 !fractional part for correction of approximation in parameterization
+                deltak=float(nint(atomf(12,k)-total))
+
+
                 total = 0.0d0
                 do n= 1, 5
 	                m = n + 5
 	                total = total + atomf(n,k) * atomf(m,k)* (1.0 - atomf(m,k)/2.0d0*s2)
                 enddo
-               total=total+deltak1/(s2+alpha**2d0) + deltak2/1.0d-03 ! the last term resolves an inconsistency in the parameterization
+
+                total=total+deltak/(s2+alpha**2d0)
                 double_elsa_ext = c1 * total
         else
                 if (s2.gt.36.0d0) then
@@ -107,7 +108,7 @@ module m_elsa
         implicit none
       
         integer(4) nt,m,n,k
-        real(4) atomf(13,nt),s2,deltak,alpha,total,xbs,deltak1,deltak2
+        real(4) atomf(13,nt),s2,deltak,alpha,total,xbs
 	    real(4) c1,fxray,s2l,a2
         real(4) single_elsa_ext
         data c1/2.393367e-02/
@@ -122,15 +123,16 @@ module m_elsa
                       total=total+atomf(n,k)
                 enddo
                 ! if deltak = 0 then we have a neutral atom else deltak = Z - sum a_i - c      
-                deltak=atomf(12,k)-total
-				deltak1=float(nint(deltak)) !integer part for handling the ionic case
-				deltak2=deltak-deltak1 !fractional part for correction of approximation in parameterization
+                deltak=float(nint(atomf(12,k)-total))
+
+
                 total = 0.0
                 do n= 1, 5
 	                m = n + 5
 	                total = total + atomf(n,k) * atomf(m,k)* (1.0 - atomf(m,k)/2.0*s2)
                 enddo
-                total=total+deltak/(s2+alpha**2) + deltak2/1.0d-03 ! the last term resolves an inconsistency in the parameterization
+
+                total=total+deltak/(s2+alpha**2)
                 single_elsa_ext = c1 * total
         else
                 if (s2.gt.36.0) then
@@ -153,6 +155,7 @@ module m_elsa
 
     end function single_elsa_ext
     
-    
-    
+
+
+ 
 end module m_elsa

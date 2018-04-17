@@ -86,19 +86,21 @@ module cuda_potential
     
         if (ix <= input_nat_layer) then
             !the -1 is to fix a pixel offset
-            xpos = tau_ss_in(1,ix)*float(m) 
-            ypos = tau_ss_in(2,ix)*float(n) 
-            if(ceiling(xpos).gt.m) then
-                xpos = xpos - float(m)
-            elseif(floor(xpos).lt.1.0_fp_kind) then
-                xpos = xpos + float(m)
-            endif
-            
-            if(ceiling(ypos).gt.n) then
-                ypos = ypos - float(n)
-            elseif(floor(ypos).lt.1.0_fp_kind) then
-                ypos = ypos + float(n)
-            endif
+            ypos = tau_ss_in(2,ix)*float(n)
+			xpos = tau_ss_in(1,ix)*float(m) 
+            xpos = mod(xpos-1,float(m) )+1
+			ypos = mod(ypos-1,float(n) )+1
+            !if(ceiling(xpos).gt.m) then
+            !    xpos = xpos - float(m)
+            !elseif(floor(xpos).lt.1.0_fp_kind) then
+            !    xpos = xpos + float(m)
+            !endif
+            !
+            !if(ceiling(ypos).gt.n) then
+            !    ypos = ypos - float(n)
+            !elseif(floor(ypos).lt.1.0_fp_kind) then
+            !    ypos = ypos + float(n)
+            !endif
             
             !fraction of the pixel top right
             xpixel = ceiling(xpos)
@@ -106,10 +108,7 @@ module cuda_potential
             fracx = mod(xpos,1.0_fp_kind)
             fracy = mod(ypos,1.0_fp_kind)
             
-            if(xpixel.eq.0) xpixel = m
-            if(xpixel.eq.n+1) xpixel = 1
-            if(ypixel.eq.0) ypixel = n
-            if(ypixel.eq.m+1) ypixel = 1
+            call check_pixel_wrapping(ypixel,xpixel,n,m)
             atom_mask_d(ypixel,xpixel)=fracx*fracy
             
             !fraction of the pixel top left
@@ -118,10 +117,7 @@ module cuda_potential
             fracx = 1.0_fp_kind - mod(xpos,1.0_fp_kind)
             fracy = mod(ypos,1.0_fp_kind)
             
-            if(xpixel.eq.0) xpixel = m
-            if(xpixel.eq.n+1) xpixel = 1
-            if(ypixel.eq.0) ypixel = n
-            if(ypixel.eq.m+1) ypixel = 1
+            call check_pixel_wrapping(ypixel,xpixel,n,m)
             atom_mask_d(ypixel,xpixel)=fracx*fracy
             
             !fraction of the pixel bottom right
@@ -130,10 +126,7 @@ module cuda_potential
             fracx = mod(xpos,1.0_fp_kind)
             fracy = 1.0_fp_kind - mod(ypos,1.0_fp_kind)
             
-            if(xpixel.eq.0) xpixel = m
-            if(xpixel.eq.n+1) xpixel = 1
-            if(ypixel.eq.0) ypixel = n
-            if(ypixel.eq.m+1) ypixel = 1
+            call check_pixel_wrapping(ypixel,xpixel,n,m)
             atom_mask_d(ypixel,xpixel)=fracx*fracy
             
             !fraction of the pixel bottom left
@@ -142,10 +135,7 @@ module cuda_potential
             fracx = 1.0_fp_kind - mod(xpos,1.0_fp_kind)
             fracy = 1.0_fp_kind - mod(ypos,1.0_fp_kind)
             
-            if(xpixel.eq.0) xpixel = m
-            if(xpixel.eq.n+1) xpixel = 1
-            if(ypixel.eq.0) ypixel = n
-            if(ypixel.eq.m+1) ypixel = 1
+            call check_pixel_wrapping(ypixel,xpixel,n,m)
             atom_mask_d(ypixel,xpixel)=fracx*fracy
         endif
         
@@ -175,18 +165,21 @@ module cuda_potential
         if (ix <= input_nat_layer) then
             !the -1 is to fix a pixel offset
             xpos = tau_ss_in(1,ix)*float(m) 
-            ypos = tau_ss_in(2,ix)*float(n) 
-            if(ceiling(xpos).gt.m) then
-                xpos = xpos - float(m)
-            elseif(floor(xpos).lt.1.0_fp_kind) then
-                xpos = xpos + float(m)
-            endif
-            
-            if(ceiling(ypos).gt.n) then
-                ypos = ypos - float(n)
-            elseif(floor(ypos).lt.1.0_fp_kind) then
-                ypos = ypos + float(n)
-            endif
+            ypos = tau_ss_in(2,ix)*float(n)
+			
+			xpos = mod(xpos-1,float(m) )+1
+			ypos = mod(ypos-1,float(n) )+1
+            !if(ceiling(xpos).gt.m) then
+            !    xpos = xpos - float(m)
+            !elseif(floor(xpos).lt.1.0_fp_kind) then
+            !    xpos = xpos + float(m)
+            !endif
+            !
+            !if(ceiling(ypos).gt.n) then
+            !    ypos = ypos - float(n)
+            !elseif(floor(ypos).lt.1.0_fp_kind) then
+            !    ypos = ypos + float(n)
+            !endif
             
             !fraction of the pixel top right
             xpixel = ceiling(xpos)
@@ -194,10 +187,7 @@ module cuda_potential
             fracx = mod(xpos,1.0_fp_kind)
             fracy = mod(ypos,1.0_fp_kind)
             
-            if(xpixel.eq.0) xpixel = m
-            if(xpixel.eq.n+1) xpixel = 1
-            if(ypixel.eq.0) ypixel = n
-            if(ypixel.eq.m+1) ypixel = 1
+            call check_pixel_wrapping(ypixel,xpixel,n,m)
             istat = atomicAdd(atom_mask_real_d(ypixel,xpixel), fracx*fracy)
             
             !fraction of the pixel top left
@@ -206,10 +196,7 @@ module cuda_potential
             fracx = 1.0_fp_kind - mod(xpos,1.0_fp_kind)
             fracy = mod(ypos,1.0_fp_kind)
             
-            if(xpixel.eq.0) xpixel = m
-            if(xpixel.eq.n+1) xpixel = 1
-            if(ypixel.eq.0) ypixel = n
-            if(ypixel.eq.m+1) ypixel = 1
+            call check_pixel_wrapping(ypixel,xpixel,n,m)
             istat = atomicAdd(atom_mask_real_d(ypixel,xpixel), fracx*fracy)
             
             !fraction of the pixel bottom right
@@ -218,10 +205,7 @@ module cuda_potential
             fracx = mod(xpos,1.0_fp_kind)
             fracy = 1.0_fp_kind - mod(ypos,1.0_fp_kind)
             
-            if(xpixel.eq.0) xpixel = m
-            if(xpixel.eq.n+1) xpixel = 1
-            if(ypixel.eq.0) ypixel = n
-            if(ypixel.eq.m+1) ypixel = 1
+            call check_pixel_wrapping(ypixel,xpixel,n,m)
             istat = atomicAdd(atom_mask_real_d(ypixel,xpixel), fracx*fracy)
             
             !fraction of the pixel bottom left
@@ -230,16 +214,18 @@ module cuda_potential
             fracx = 1.0_fp_kind - mod(xpos,1.0_fp_kind)
             fracy = 1.0_fp_kind - mod(ypos,1.0_fp_kind)
             
-            if(xpixel.eq.0) xpixel = m
-            if(xpixel.eq.n+1) xpixel = 1
-            if(ypixel.eq.0) ypixel = n
-            if(ypixel.eq.m+1) ypixel = 1
+            call check_pixel_wrapping(ypixel,xpixel,n,m)
             istat = atomicAdd(atom_mask_real_d(ypixel,xpixel), fracx*fracy)
         endif
         
     end subroutine cuda_make_atom_mask_real
 
-    
+	attributes(device) subroutine check_pixel_wrapping(ypixel,xpixel,n,m)
+			integer,intent(in)::n,m
+			integer,intent(inout)::ypixel,xpixel
+			xpixel = mod(ypixel-1,n)+1
+			ypixel = mod(xpixel-1,m)+1
+	end subroutine
     
     subroutine cuda_fph_make_potential(transf_d,ccd_slice,tau_ss,nat_layer,n_sub_slice,thickness,idum,plan,fz_d,inverse_sinc_d,bwl_mat_d)
     

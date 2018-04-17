@@ -105,10 +105,11 @@ subroutine absorptive_tem
 	write(*,*) '|----------------------------------|'
     write(*,*) 
 
-    	
+    if(pw_illum) then
 	do i=1,imaging_ndf
         call make_lens_ctf(lens_ctf(:,:,i),imaging_df(i),imaging_aberrations)
 	enddo
+	endif
 	   
     call calculate_absorption_mu        
 
@@ -199,6 +200,7 @@ subroutine absorptive_tem
 			if (nz>1) filename = trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(z_indx(1))),length)//'_A'
 			call binary_out_unwrap(nopiy, nopix, cbed, trim(adjustl(filename))//'_DiffractionPattern',write_to_screen=.false.)
 				
+			if(pw_illum) then
 			do i=1,imaging_ndf
 				psi = psi_d
 				call fft2(nopiy, nopix, psi, nopiy, psi, nopiy)
@@ -210,7 +212,7 @@ subroutine absorptive_tem
 				if(imaging_ndf>1) fnam_df = trim(adjustl(fnam_df))//'_Defocus_'//zero_padded_int(int(imaging_df(i)),lengthdf)//'_Ang'
 				call binary_out(nopiy, nopix, tem_image, fnam_df,write_to_screen=.false.)
 			enddo
-			
+			endif
 		endif
         intensity = get_sum(psi_d)
 	    write(6,900,advance='no') achar(13), i_cell, intensity

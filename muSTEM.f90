@@ -17,7 +17,7 @@
 !   Date:           August 2017
 !   Requirements:   PGI Fortran
 !
-!   version:        5.0  
+!   version:        5.1  
 !  
 !  Copyright (C) 2017  L. J. Allen, H. G. Brown, A. J. D’Alfonso, S.D. Findlay, B. D. Forbes
 !
@@ -89,9 +89,9 @@
 	   &1x,'|       Software Foundation.                                                 |',/,&
        &1x,'|                                                                            |',/,&
 #ifdef GPU
-       &1x,'|       GPU Version 5.0                                                      |',/,&
+       &1x,'|       GPU Version 5.1                                                      |',/,&
 #else
-       &1x,'|       CPU only Version 5.0                                                 |',/,&
+       &1x,'|       CPU only Version 5.1                                                 |',/,&
 #endif
        &1x,'|                                                                            |',/,&
        &1x,'|       Note: pass the argument "nopause" (without quotation marks)          |',/,&
@@ -262,7 +262,11 @@
         call prompt_save_load_grates
         
         ! Set up the imaging lens
-        if (pw_illum) call setup_lens_parameters('Image',imaging_aberrations,imaging_cutoff)
+        if (pw_illum) then
+			 call setup_lens_parameters('Image',imaging_aberrations,imaging_cutoff)
+		else
+			imaging_ndf = 1
+		endif
         
         ! Choose the convergent-beam calculation type
         if (cb_illum) then

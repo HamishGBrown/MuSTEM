@@ -64,7 +64,7 @@ subroutine absorptive_tem
     write(*,*) 
 
 	do i=1,imaging_ndf
-        call make_lens_ctf(lens_ctf(:,:,i),imaging_df(i),imaging_aberrations)
+        if(pw_illum) call make_lens_ctf(lens_ctf(:,:,i),imaging_df(i),imaging_aberrations)
 	enddo
 	   
     call calculate_absorption_mu        
@@ -125,7 +125,8 @@ subroutine absorptive_tem
 			filename = trim(adjustl(output_prefix))
 			if (nz>1) filename = trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(z_indx(1))),length)//'_A'
 			call binary_out_unwrap(nopiy, nopix, cbed, trim(adjustl(filename))//'_DiffractionPattern',write_to_screen=.false.)
-			
+            
+			if(pw_illum) then
 			do i=1,imaging_ndf
 				call fft2(nopiy, nopix, psi, nopiy, psi_out, nopiy)
 				psi_out = psi_out*lens_ctf(:,:,i)
@@ -134,7 +135,8 @@ subroutine absorptive_tem
 				fnam_df = trim(adjustl(filename))// '_Image'
 				if(imaging_ndf>1) fnam_df = trim(adjustl(fnam_df))//'_Defocus_'//zero_padded_int(int(imaging_df(i)),lengthdf)//'_Ang'
 				call binary_out(nopiy, nopix, tem_image, fnam_df,write_to_screen=.false.)
-			enddo
+            enddo
+            endif
 		endif
         intensity = sum(abs(psi)**2)
 #ifdef GPU        

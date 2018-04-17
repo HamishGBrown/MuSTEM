@@ -134,19 +134,19 @@ module m_lens
         write(*,*) '|------------------------------------------|'
         write(*,*)
         
-		call aberrations(1 )%initialise('C12'      ,'A1','2-Fold astig.    ',0.0,0.0,1,2)
-		call aberrations(2 )%initialise('C21'      ,'B2','Axial coma       ',0.0,0.0,2,1)
-		call aberrations(3 )%initialise('C23'      ,'A2','3-Fold astig.    ',0.0,0.0,2,3)
-		call aberrations(4 )%initialise('C30 = CS' ,'C3','3rd order spher. ',0.0,0.0,3,0)
-		call aberrations(5 )%initialise('C32'      ,'S3','Axial star aber. ',0.0,0.0,3,2)
-		call aberrations(6 )%initialise('C34'      ,'A3','4-Fold astig.    ',0.0,0.0,3,4)
-		call aberrations(7 )%initialise('C41'      ,'B4','4th order coma   ',0.0,0.0,4,1)
-		call aberrations(8 )%initialise('C43'      ,'D4','3-Lobe aberr.    ',0.0,0.0,4,3)
-		call aberrations(9 )%initialise('C45'      ,'A4','5-Fold astig     ',0.0,0.0,4,5)
-		call aberrations(10)%initialise('C50 = CS5','C5','5th order spher. ',0.0,0.0,5,0)
-		call aberrations(11)%initialise('C52'      ,'S5','5th order star   ',0.0,0.0,5,2)
-		call aberrations(12)%initialise('C54'      ,'R5','5th order rosette',0.0,0.0,5,4)
-		call aberrations(13)%initialise('C56'      ,'A5','6-Fold astig.    ',0.0,0.0,5,6)
+		call aberrations(1 )%initialise('C12'      ,'A1','2-Fold astig.    ',0.0_fp_kind,0.0_fp_kind,1,2)
+		call aberrations(2 )%initialise('C21'      ,'B2','Axial coma       ',0.0_fp_kind,0.0_fp_kind,2,1)
+		call aberrations(3 )%initialise('C23'      ,'A2','3-Fold astig.    ',0.0_fp_kind,0.0_fp_kind,2,3)
+		call aberrations(4 )%initialise('C30 = CS' ,'C3','3rd order spher. ',0.0_fp_kind,0.0_fp_kind,3,0)
+		call aberrations(5 )%initialise('C32'      ,'S3','Axial star aber. ',0.0_fp_kind,0.0_fp_kind,3,2)
+		call aberrations(6 )%initialise('C34'      ,'A3','4-Fold astig.    ',0.0_fp_kind,0.0_fp_kind,3,4)
+		call aberrations(7 )%initialise('C41'      ,'B4','4th order coma   ',0.0_fp_kind,0.0_fp_kind,4,1)
+		call aberrations(8 )%initialise('C43'      ,'D4','3-Lobe aberr.    ',0.0_fp_kind,0.0_fp_kind,4,3)
+		call aberrations(9 )%initialise('C45'      ,'A4','5-Fold astig     ',0.0_fp_kind,0.0_fp_kind,4,5)
+		call aberrations(10)%initialise('C50 = CS5','C5','5th order spher. ',0.0_fp_kind,0.0_fp_kind,5,0)
+		call aberrations(11)%initialise('C52'      ,'S5','5th order star   ',0.0_fp_kind,0.0_fp_kind,5,2)
+		call aberrations(12)%initialise('C54'      ,'R5','5th order rosette',0.0_fp_kind,0.0_fp_kind,5,4)
+		call aberrations(13)%initialise('C56'      ,'A5','6-Fold astig.    ',0.0_fp_kind,0.0_fp_kind,5,6)
                    
         cutoff = set_cutoff(0.0_fp_kind)
 		
@@ -199,6 +199,7 @@ module m_lens
 			call get_input('Defocus', set_defocus)
 			call read_sequence_string(set_defocus,120,ndf)
 			
+            if(allocated(df)) deallocate(df)
 			allocate(df(ndf))
 			call read_sequence_string(set_defocus,120,ndf,df)
             goto 10
@@ -224,9 +225,11 @@ module m_lens
         endif
 		if(to_lower(trim(adjustl(string)))=='image') then
 			imaging_ndf=ndf
+            if(allocated(imaging_df)) deallocate(imaging_df)
 			allocate(imaging_df(imaging_ndf))
 			call read_sequence_string(set_defocus,120,imaging_ndf,imaging_df)
 		else
+            if(allocated(probe_df)) deallocate(probe_df)
 			probe_ndf=ndf
 			allocate(probe_df(probe_ndf))
 			call read_sequence_string(set_defocus,120,probe_ndf,probe_df)

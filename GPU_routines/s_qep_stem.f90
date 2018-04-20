@@ -202,7 +202,6 @@ subroutine qep_stem
     
     allocate(prop_d(nopiy,nopix,n_slices))
     prop_d = prop
-    
     if (on_the_fly) then
         allocate(bwl_mat_d(nopiy,nopix))
         allocate(inverse_sinc_d(nopiy,nopix))
@@ -219,11 +218,6 @@ subroutine qep_stem
         allocate(transf_d(nopiy,nopix,n_qep_grates,n_slices))
   	    transf_d = qep_grates
         if (ionization) then
-			!do i=1,num_ionizations
-			!do j=1,n_slices
-			!call binary_out(nopiy,nopix,ionization_potential(:,:,i,j),'ionization_potential_slice_'//to_string(j)//'_ionization_'//to_string(i))
-			!enddo
-			!enddo
             allocate(ion_potential_d(nopiy,nopix,num_ionizations,n_slices))
             ion_potential_d = ionization_potential
         endif

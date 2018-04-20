@@ -85,22 +85,10 @@ module cuda_potential
         ix = (blockIdx%x-1)*blockDim%x + threadIdx%x
     
         if (ix <= input_nat_layer) then
-            !the -1 is to fix a pixel offset
             ypos = tau_ss_in(2,ix)*float(n)
 			xpos = tau_ss_in(1,ix)*float(m) 
             xpos = mod(xpos-1,float(m) )+1
 			ypos = mod(ypos-1,float(n) )+1
-            !if(ceiling(xpos).gt.m) then
-            !    xpos = xpos - float(m)
-            !elseif(floor(xpos).lt.1.0_fp_kind) then
-            !    xpos = xpos + float(m)
-            !endif
-            !
-            !if(ceiling(ypos).gt.n) then
-            !    ypos = ypos - float(n)
-            !elseif(floor(ypos).lt.1.0_fp_kind) then
-            !    ypos = ypos + float(n)
-            !endif
             
             !fraction of the pixel top right
             xpixel = ceiling(xpos)
@@ -163,30 +151,19 @@ module cuda_potential
         ix = (blockIdx%x-1)*blockDim%x + threadIdx%x
     
         if (ix <= input_nat_layer) then
+		
             !the -1 is to fix a pixel offset
             xpos = tau_ss_in(1,ix)*float(m) 
             ypos = tau_ss_in(2,ix)*float(n)
 			
 			xpos = mod(xpos-1,float(m) )+1
 			ypos = mod(ypos-1,float(n) )+1
-            !if(ceiling(xpos).gt.m) then
-            !    xpos = xpos - float(m)
-            !elseif(floor(xpos).lt.1.0_fp_kind) then
-            !    xpos = xpos + float(m)
-            !endif
-            !
-            !if(ceiling(ypos).gt.n) then
-            !    ypos = ypos - float(n)
-            !elseif(floor(ypos).lt.1.0_fp_kind) then
-            !    ypos = ypos + float(n)
-            !endif
             
             !fraction of the pixel top right
             xpixel = ceiling(xpos)
             ypixel = ceiling(ypos)
             fracx = mod(xpos,1.0_fp_kind)
             fracy = mod(ypos,1.0_fp_kind)
-            
             call check_pixel_wrapping(ypixel,xpixel,n,m)
             istat = atomicAdd(atom_mask_real_d(ypixel,xpixel), fracx*fracy)
             
@@ -195,7 +172,6 @@ module cuda_potential
             ypixel = ceiling(ypos)
             fracx = 1.0_fp_kind - mod(xpos,1.0_fp_kind)
             fracy = mod(ypos,1.0_fp_kind)
-            
             call check_pixel_wrapping(ypixel,xpixel,n,m)
             istat = atomicAdd(atom_mask_real_d(ypixel,xpixel), fracx*fracy)
             
@@ -204,7 +180,6 @@ module cuda_potential
             ypixel = floor(ypos)
             fracx = mod(xpos,1.0_fp_kind)
             fracy = 1.0_fp_kind - mod(ypos,1.0_fp_kind)
-            
             call check_pixel_wrapping(ypixel,xpixel,n,m)
             istat = atomicAdd(atom_mask_real_d(ypixel,xpixel), fracx*fracy)
             
@@ -213,7 +188,6 @@ module cuda_potential
             ypixel = floor(ypos)
             fracx = 1.0_fp_kind - mod(xpos,1.0_fp_kind)
             fracy = 1.0_fp_kind - mod(ypos,1.0_fp_kind)
-            
             call check_pixel_wrapping(ypixel,xpixel,n,m)
             istat = atomicAdd(atom_mask_real_d(ypixel,xpixel), fracx*fracy)
         endif
@@ -223,8 +197,8 @@ module cuda_potential
 	attributes(device) subroutine check_pixel_wrapping(ypixel,xpixel,n,m)
 			integer,intent(in)::n,m
 			integer,intent(inout)::ypixel,xpixel
-			xpixel = mod(ypixel-1,n)+1
-			ypixel = mod(xpixel-1,m)+1
+			xpixel = mod(xpixel-1,n)+1
+			ypixel = mod(ypixel-1,m)+1
 	end subroutine
     
     subroutine cuda_fph_make_potential(transf_d,ccd_slice,tau_ss,nat_layer,n_sub_slice,thickness,idum,plan,fz_d,inverse_sinc_d,bwl_mat_d)
@@ -263,7 +237,7 @@ module cuda_potential
                 call displace(tau_ss(1:3,i,j,n_sub_slice),tau_displace(1:3,i,j),sqrt(atf(3,i)),a0_slice,idum)
             enddo
         enddo
-  
+
         slice_potential_d = 0.0_fp_kind
         
         threads_nat = dim3(1024, 1, 1)
@@ -278,7 +252,7 @@ module cuda_potential
             
             atom_mask_real_d = 0.0_fp_kind
             call cuda_make_atom_mask_real<<<blocks_nat,threads_nat>>>(tau_displace_d,nat_layer(i),atom_mask_real_d,nopiy,nopix)
-            
+
             call cuda_cshift_real<<<blocks,threads>>>(atom_mask_real_d, temp_d, nopiy, nopix, -1, -1)
             
             call cuda_copy_real_to_cmplx<<<blocks,threads>>>(temp_d, atom_mask_d, nopiy, nopix)           

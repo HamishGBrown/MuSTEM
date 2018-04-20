@@ -639,7 +639,6 @@ module m_multislice
         do i = 1, n_slices
 	        call make_propagator(nopiy,nopix,prop(:,:,i),prop_distance(i),Kz,ss,ig1,ig2,claue,ifactorx,ifactory)
 	        prop(:,:,i) = prop(:,:,i) * bwl_mat
-            !call binary_out_unwrap(nopiy,nopix, atan2(real(prop(:,:,i)),imag(prop(:,:,i)))* bwl_mat,'Propagator')
         enddo
 
     end subroutine
@@ -689,7 +688,61 @@ module m_multislice
 
 	end subroutine
     
-    
+
+	function make_detector(nopiy,nopix,kmin,kmax,deltaky,deltakx,phi,delphi) result(detector)
+		!makes a detector on an array nopiy x nopix with Fourier space pixel size deltaky x deltakx
+		!which measures from kmin to kmax, supplying phi and delphi (detector orientation 
+		!and angular range in radians) will create a detector segment
+		integer*4,intent(in)::nopiy,nopix
+		real(fp_kind),intent(in)::kmin,kmax,deltaky,deltakx,phi,delphi
+		optional::phi,delphi
+
+		real(fp_kind)::detector(nopiy,nopix)
+
+		real(fp_kind)::ky(nopiy),kx(nopix),vec(2)
+		real(fp_kind),dimension(nopiy,nopix)::phigrid,kabs
+		integer*4::y,x
+		logical::segment
+
+		!If the phi and delphi variables are present, then make a segmented detector
+		segment = present(phi).and.present(delphi)
+		detector = 0
+
+		!Generate k space arrays
+		ky = kspace_array(nopiy)*deltaky
+		kx = kspace_array(nopix)*deltakx
+
+		!Generate the radial part of the detector
+		kabs = sqrt(real(spread(ky**2,dim=2,ncopies = nopix)&
+		               &+spread(kx**2,dim=1,ncopies = nopiy),kind=fp_kind))
+		detector = merge(1,0,(kabs>kmin) .and. (kabs<kmax))
+
+		!If not a segmented detector then return at this point
+		if(.not.segment) return
+
+		!Generate phi an array describing the angle of each pixel
+		phigrid = atan2(real(spread(ky,dim = 2,ncopies = nopix)),real(spread(kx,dim = 1,ncopies = nopiy)))
+
+		vec = [sin(phi),cos(phi)]
+
+		do y =1,nopiy
+		do x =1,nopix
+			if(.not.(dot_product(vec,[ky(y),kx(x)]/sqrt(ky(y)**2+kx(y)**2))>cos(delphi))) detector(y,x) = 0
+		enddo
+		enddo
+
+		return
+	end function   
+
+	function kspace_array(nopiy) result(karray)
+
+		integer*4,intent(in)::nopiy
+		integer*4::karray(nopiy)
+	
+		integer*4::i
+	
+		karray = [((i - nopiy/2),i=0,nopiy-1)]
+	end function 
 	    
 end module
 

@@ -420,9 +420,9 @@ module m_absorption
     
     function tds_calc_phi(phi)
   
-        use global_variables, only: ss, nt, atomf, atf, ak
+        use global_variables, only: ss, nt, atomf, atf, ak,ionic,dz
         use m_crystallography, only: trimr        
-        use m_elsa, only: elsa_ext
+        use m_elsa, only: elsa_ext,peng_ionic_ff
         
         implicit none
     
@@ -444,9 +444,14 @@ module m_absorption
         q1_sq = trimr(q1,ss)**2
     
         q2_sq = trimr(q2,ss)**2
-    
-        f1 = elsa_ext(nt,i_species,dble(atomf),q1_sq/4)
-        f2 = elsa_ext(nt,i_species,dble(atomf),q2_sq/4)
+		
+		if(ionic) then
+			f1 = Peng_ionic_FF(real(q1_sq/4,kind = fp_kind),nint(atf(1,i_species)),dZ(i_species))
+			f2 = Peng_ionic_FF(real(q2_sq/4,kind = fp_kind),nint(atf(1,i_species)),dZ(i_species))
+        else
+			f1 = elsa_ext(nt,i_species,dble(atomf),q1_sq/4)
+			f2 = elsa_ext(nt,i_species,dble(atomf),q2_sq/4)
+		endif
         
     
         dwf1 = exp( - tp2 * atf(3,i_species) * (q1_sq + q2_sq) )

@@ -32,7 +32,8 @@
     
     real(fp_kind), allocatable :: bwl_mat(:,:)            !bandwidth limiting matrix
                                           
-    integer(4), allocatable    :: nat(:)                     !number of each atom type in the unit cell
+    integer(4), allocatable    :: nat(:)                     !number of each atom type in the unit celll
+	integer(4),allocatable	:: dz(:)					  !ionicity of each atom type
     real(fp_kind), allocatable :: tau(:,:,:)              !position of the atoms in the unit cell
     real(fp_kind), allocatable :: atf(:,:)                !atomic number, occupancy and DWF (urms)
     real(fp_kind), allocatable :: atomf(:,:),fx(:)        !electron scattering factor parameterisation from elsa
@@ -66,7 +67,8 @@
     character*10, allocatable :: substance_atom_types(:)
 
     !output variables
-    integer(4) :: ndet                                    !number of integrating detectors
+    integer(4) :: ndet,nseg                            !number of integrating detectors
+	logical::segments
     real(fp_kind), allocatable :: outer(:),inner(:)       !detector ranges (in inverse angstrom)
     
     !interpolation variables
@@ -97,6 +99,7 @@
     
     logical :: on_the_fly = .false.
     logical :: high_accuracy
+	logical :: ionic = .false.
     
 	contains
      

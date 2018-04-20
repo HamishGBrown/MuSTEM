@@ -154,8 +154,42 @@ module m_elsa
         endif
 
     end function single_elsa_ext
-    
+   
 
+function Peng_ionic_FF(s2,Z,dZ,cutoff) result(fe)
+	use m_xray_factors
+	use m_precision	
+	
+	real(fp_kind),intent(in)::s2,cutoff
+	integer*4,intent(in):: Z,dZ
+	optional:: cutoff
+
+	real(fp_kind)::fe,cutoff_
+
+	integer*4::i,j
+	
+	!First find atom
+	do i=1,114
+		if (i==114) then
+			write(*,*) 'A parametrization of Z = ',Z,' DeltaZ = ',dZ,'does not seem to be included in Peng (1998).'
+			write(*,*) 'Please try an alternative parametrization of electron scattering factors.'
+			stop
+		endif 
+		if (ionicFF_Peng(i)%Z==Z.and.ionicFF_Peng(i)%dZ==dZ) exit
+	enddo
+
+	cutoff_ = 1e-4
+	if (present(cutoff)) cutoff_=cutoff
+
+	if (s2<cutoff_) then
+		fe = 0
+	else
+		fe = 0.023934*dZ/s2
+	endif
+
+	fe = sum(ionicFF_Peng(i)%a(1:5)*exp(-ionicFF_Peng(i)%b(1:5)*s2))
+
+end function
 
  
 end module m_elsa

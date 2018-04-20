@@ -79,7 +79,7 @@
       enddo
       rewind(iunit)
       
-      allocate(atf(3,nt),tau(3,nt,nm),nat(nt),atomf(13,nt),substance_atom_types(nt),fx(nt))
+      allocate(atf(3,nt),tau(3,nt,nm),nat(nt),atomf(13,nt),substance_atom_types(nt),fx(nt),dz(nt))
 
 
 102   format( a20 )
@@ -105,7 +105,11 @@
 
       do i = 1, nt
             read(iunit,*) substance_atom_types(i)
-            read(iunit,*) nat(i), atf(1:3,i)
+            if (ionic) then
+				read(iunit,*) nat(i), atf(1:3,i),dz(i)
+			else
+				read(iunit,*) nat(i), atf(1:3,i)
+			endif
             if(nat(i).gt.nm.or.nat(i).lt.0) then
                   write(6,171) i,nat(i)
 171               format(' Type ',i3,2x,' nat = ',i5,' this is wrong - EXIT')
@@ -318,16 +322,6 @@
         write(*,*) '|      Unit cell tiling and grid size      |'
         write(*,*) '|------------------------------------------|'
         write(*,*)
-        
-    !    write(6,100)
-    !100 format(/,&
-    !           &' You will now be asked how the unit cell should be tiled in each direction, ', /, &
-    !           &' as well as the number of pixels in each direction. The number of pixels ', /, &
-    !           &' should preferably be a product of powers of small primes, in order to speed ', / &
-    !           &' up the calculations which employ the Fast Fourier Transform. If possible also ', / &
-    !           &' try to ensure that the number of pixels per unit cell is an integer, ', /, &
-    !           &' as this may further speed up calculations.                        ', /, &
-    !           )
                    
     131 format( ' Enter the integer by which to tile the unit cell in the ', a1,' direction:')
     110 write(6,131) 'x'
@@ -373,10 +367,8 @@
         
     165 continue
         if (mod(nopiy,ifactory).eq.0 .and. mod(nopix, ifactorx).eq.0) then
-            write(6,161) nopix_ucell, nopiy_ucell, &
-                         ifactorx, ifactory, &
-                         nopix, nopiy, &
-                         max_qx, char(143), max_qy, char(143), &
+            write(6,161) nopix_ucell, nopiy_ucell, ifactorx, ifactory, &
+                         nopix, nopiy, max_qx, char(143), max_qy, char(143), &
                          max_mradx, max_mrady
         161 format(  '                                x               y', /, &
             &        ' ---------------------------------------------------------', /, &
@@ -445,9 +437,16 @@
     
         use m_precision, only: fp_kind
         use m_user_input, only: get_input
-        use global_variables, only: ak1, inner, outer, ndet
+        use global_variables
+		use m_crystallography, only: trimi
+		use m_string
+		use output
+		use m_multislice
         
         implicit none
+		character*100::dstring
+		integer*4::comaindex,i,j
+		logical::detectors,outputdetectors
     
         write(*,*) '|-----------------------------------------|'
 	    write(*,*) '|      Diffraction plane detectors        |'
@@ -456,8 +455,32 @@
     
         write(6,*) 'Enter the number of detectors in the diffraction plane:'
         write(6,*) '(e.g. 3 if you wish to simulate BF/ABF/ADF simultaneously.)'
-        call get_input('Number of detectors', ndet)
+		write(6,*) "To segment detectors input a comma ',' and then the number"
+		write(6,*) "of angular segments (eg. for 4 rings and 4 quadrants input '4,4')."
+		write(6,*) 'To output the detectors for inspection end the input with a '
+		write(6,*) "question mark ('?'), ie '4,4?'."
+        call get_input('Number of detectors', dstring)
         write(*,*)
+
+		!Check if there is a ',' which indicates the user
+		!wants segmented detectors
+		comaindex = index(dstring,',')
+		segments = (comaindex.ne.0)
+
+		!Check if there is a ?, which indicates the user would
+		!like to output the detectors
+		outputdetectors = (index(dstring,'?').ne.0)
+		!Remove the ? so that it doesn't cause problems later
+		if (outputdetectors) dstring = dstring(:index(dstring,'?')-1)
+
+		!Read detector string
+		if(segments) then
+			read(dstring(:comaindex),*) ndet
+			read(dstring(comaindex+1:),*) nseg
+		else
+			read(dstring,*) ndet
+			nseg = 1
+		endif
     
         if(allocated(outer)) deallocate(outer)
         if(allocated(inner)) deallocate(inner)
@@ -466,6 +489,15 @@
         if (ndet.eq.0) return
         
         call get_cbed_detector_info(outer,inner,ndet,ak1)
+
+		if(outputdetectors) then
+			do i=1,ndet
+			do j=1,nseg
+				if(nseg>1) call binary_out(nopiy,nopix,make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx,2*pi*i/nseg,2*pi/nseg),'detector_'//to_string((i-1)*nseg+j))
+				call binary_out(nopiy,nopix,make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx),'detector_'//to_string((i-1)*nseg+j))
+			enddo
+			enddo
+		endif
     
     end
     
@@ -479,7 +511,8 @@
         
         implicit none
     
-        integer(4)   ndet,ichoice,i,mrad
+        integer(4)   ndet,ichoice,i
+		integer*4:: mrad=-1
         real(fp_kind)      outer(ndet),inner(ndet),k,dummy
     
         real(fp_kind) :: inner_mrad(ndet), outer_mrad(ndet)
@@ -489,79 +522,55 @@
     
         call get_input("manual detector <1> auto <2>",ichoice)
         write(*,*)
-    
-        write(*,*) 'Select how angles will be specified:'
-        write(*,*) '<1> mrad',char(10),'<2> inverse Angstroms'
-        call get_input("<1> mrad <2> inv A", mrad)
-        write(*,*)
+
+		do while(.not.((mrad==1).or.(mrad==2)))
+			write(*,*) 'Select how angles will be specified:'
+			write(*,*) '<1> mrad',char(10),'<2> inverse Angstroms'
+			call get_input("<1> mrad <2> inv A", mrad)
+			write(*,*)
+		enddo
     
         if(ichoice.eq.1) then
               do i = 1, ndet
                     write(*,*) 'Detector ', to_string(i),char(10),'Inner angle:'
                     call get_input("inner",dummy)
-                    if(mrad.eq.1) then 
-                          inner(i) = k*tan(dummy/1000.0_fp_kind)
-                          inner_mrad(i) = dummy
-                    else
-                          inner(i) = dummy
-                          inner_mrad(i) = 1000*atan(dummy/k)
-                    endif
-                
-                    write(*,*) "Outer angle:"
+                    if(mrad.eq.1) inner_mrad(i) = dummy
+					if(mrad.eq.2) inner(i) =  dummy
+					write(*,*) "Outer angle:"
                     call get_input("outer",dummy)
-                    if(mrad.eq.1) then 
-                          outer(i) = k*tan(dummy/1000.0_fp_kind)
-                          outer_mrad(i) = dummy
-                    else
-                          outer(i) = dummy
-                          outer_mrad(i) = 1000*atan(dummy/k)
-                    endif
-                    
-                    write(*,*)
-                    
+                    if(mrad.eq.1) outer_mrad(i) = dummy
+					if(mrad.eq.2) outer(i) =  dummy 
               enddo
         else
               write(*,*) "Initial inner angle:"
               call get_input("initial inner angle", dummy)
-              if(mrad.eq.1) then
-                    inner(1) = k*tan(dummy/1000.0_fp_kind)
-                    inner_mrad(1) = dummy
-              else
-                    inner(1) = dummy
-                    inner_mrad(1) = 1000*atan(dummy/k)
-              endif
-              
+			  if(mrad.eq.1) inner_mrad(1) = dummy
+			  if(mrad.eq.2) inner(1) = dummy
               write(*,*) "Initial outer angle:"
               call get_input("initial outer angle", dummy)
-              if(mrad.eq.1) then
-                    outer(1) = k*tan(dummy/1000.0_fp_kind)
-                    outer_mrad(1) = dummy
-              else
-                    outer(1) = dummy
-                    outer_mrad(1) = 1000*atan(dummy/k)
-              endif
-              
+			  if(mrad.eq.1) outer_mrad(1) = dummy
+			  if(mrad.eq.2) outer(1) = dummy
+			  
               write(*,*) "Increment (both angles incremented by this amount):"
               call get_input("increment", dummy)
-              do i = 1, ndet-1
-                    if(mrad.eq.1) then
-                          inner(1+i) = inner(i) + k*tan(i * dummy/1000.0_fp_kind)
-                          outer(1+i) = outer(i) + k*tan(i * dummy/1000.0_fp_kind)
-                          
-                          inner_mrad(1+i) = inner_mrad(i) + i * dummy
-                          outer_mrad(1+i) = outer_mrad(i) + i * dummy
-                    else
-                          inner(1+i) = inner(i) + i * dummy
-                          outer(1+i) = outer(i) + i * dummy
-                          
-                          inner_mrad(1+i) = inner_mrad(i) + i * 1000 * atan(dummy/k)
-                          outer_mrad(1+i) = outer_mrad(i) + i * 1000 * atan(dummy/k)
-                         
-                    endif
-              enddo
-              
               write(*,*)
+
+			  if(mrad.eq.1) then
+				inner_mrad(2:) = (/((i-1)*dummy+inner_mrad(1), i=2,ndet,1)/)
+				outer_mrad(2:) = (/((i-1)*dummy+outer_mrad(1), i=2,ndet)/)
+			  else
+				inner(2:) = (/((i-1)*dummy+inner(1), i=2,ndet)/)
+				outer(2:) = (/((i-1)*dummy+outer(1), i=2,ndet)/)
+			  endif
+
         endif
+		if(mrad.eq.2) then
+			outer_mrad = 1000*atan(outer/k)
+			inner_mrad = 1000*atan(inner/k)
+		else
+			inner = k*tan(inner_mrad/1000.0_fp_kind)
+			outer = k*tan(outer_mrad/1000.0_fp_kind)
+		endif
         
         write(*,*) 'Summary of diffraction plane detectors:'
         write(*,*)
@@ -570,13 +579,12 @@
         write(*,*) '  --------------------------------'
         do i = 1, ndet
             write(*,50) i, inner_mrad(i), outer_mrad(i)
-50          format(1x, i5, ' | ', f6.2, ' | ', f6.2, '   (mrad)')
             write(*,55) inner(i), outer(i), char(143)
-55          format(1x, 5x, ' | ', f6.2, ' | ', f6.2, '   (', a1, '^-1)')
             write(*,60) 
-60          format(1x, 5x, ' | ', 6x, ' | ')
         enddo
-        
+50          format(1x, i5, ' | ', f6.2, ' | ', f6.2, '   (mrad)')
+55          format(1x, 5x, ' | ', f6.2, ' | ', f6.2, '   (', a1, '^-1)')        
+60          format(1x, 5x, ' | ', 6x, ' | ')
         write(*,*)
         
     end subroutine
@@ -723,6 +731,7 @@
     enddo
 
     end
+	
 
 
     

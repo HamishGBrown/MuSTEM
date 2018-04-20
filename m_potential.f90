@@ -115,8 +115,8 @@ module m_potential
     subroutine precalculate_scattering_factors
     
 	    use m_precision, only: fp_kind
-        use global_variables, only: ifactory, ifactorx, nopiy, nopix, nt, a0, atf, atomf, ak, fz, fz_dwf, sinc, inverse_sinc, tp
-        use m_elsa, only: elsa_ext
+        use global_variables!, only: ifactory, ifactorx, nopiy, nopix, nt, a0, atf, atomf, ak, fz, fz_dwf, sinc, inverse_sinc, tp
+        use m_elsa, only: elsa_ext,peng_ionic_ff
         use m_absorption, only: complex_absorption, setup_absorptive_array, max_int, delta_kstep, tdsbr, fz_abs,calculate_absorption_mu
 		use m_numerical_tools, only: cubspl,ppvalu
 
@@ -199,7 +199,8 @@ module m_potential
                 
                 do k = 1, nt
                     ! Multiply by fractional occupancy
-                    el_scat = elsa_ext(nt,k,atomf,s2) * atf(2,k)    
+                    if (.not. ionic) el_scat = elsa_ext(nt,k,atomf,s2) * atf(2,k)   
+					if(ionic) el_scat = Peng_ionic_FF(s2,nint(atf(1,k)),dZ(k)) * atf(2,k)        
                     
                 
 	                ! Fill the potential matrix. Note: these are U(g)/2K

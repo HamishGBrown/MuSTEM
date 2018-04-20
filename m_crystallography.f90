@@ -337,7 +337,7 @@
       end subroutine
 
 !--------------------------------------------------------------------------------------      
-      function trimr(A,SS)
+      pure function trimr(A,SS)
 
       !  This function returns the magnitude of a NON INTEGER
       !  reciprocal lattice vector
@@ -346,25 +346,15 @@
       use m_precision
       implicit none
 
-      real(fp_kind) A(3), SS(7), X1, X2, X3
-      real(fp_kind) Y1, Y2, Y3, XX, YY
+      real(fp_kind),intent(in):: A(3), SS(7)
       real(fp_kind) trimr
 
-      X1 = SS(1) * A(1) * A(1)
-      X2 = SS(2) * A(2) * A(2)
-      X3 = SS(3) * A(3) * A(3)
-     
-      Y1 = 2 * SS(4) * A(1) * A(2)
-      Y2 = 2 * SS(5) * A(2) * A(3)
-      Y3 = 2 * SS(6) * A(1) * A(3)
-      XX = X1 + X2 + X3
-      YY = Y1 + Y2 + Y3
-      trimr = sqrt( abs( XX + YY ))/ SS(7)
+      trimr = sqrt( abs( sum(ss(1:3)*a(1:3)*a(1:3)) + sum(ss(4:6)*a(1:3)*cshift(a(1:3),shift=1 ))))/ SS(7)
       RETURN
       END function
 
 !--------------------------------------------------------------------------------------
-      function trimi(A,SS)
+     pure function trimi(A,SS)
 
       !  This function returns the magnitude of an INTEGER
       !  reciprocal lattice vector
@@ -373,22 +363,11 @@
       use m_precision
       implicit none
 
-      real(fp_kind) SS(7), X1, X2, X3
-      real(fp_kind) Y1, Y2, Y3, XX, YY
+      real(fp_kind),intent(in):: SS(7)
+      integer(4),intent(in):: A(3)
       real(fp_kind) trimi
-      integer(4) A(3)
 
-      X1 = SS(1) * dble(A(1)) * dble(A(1))
-      X2 = SS(2) * dble(A(2)) * dble(A(2))
-      X3 = SS(3) * dble(A(3)) * dble(A(3))
-
-      Y1 = 2 * SS(4) * dble(A(1) * A(2))
-      Y2 = 2 * SS(5) * dble(A(2) * A(3))
-      Y3 = 2 * SS(6) * dble(A(1) * A(3))
-      XX = X1 + X2 + X3
-      YY = Y1 + Y2 + Y3
-      trimi = sqrt( abs( XX + YY ))/ SS(7)
-      RETURN
+      trimi = sqrt( abs( sum(ss(1:3)*a(1:3)*a(1:3)) + sum(ss(4:6)*a(1:3)*cshift(a(1:3),shift=1 ))))/ SS(7)
       END function
 
 !--------------------------------------------------------------------------------------

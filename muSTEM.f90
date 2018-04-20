@@ -39,7 +39,7 @@
     program MU_STEM
     
         use m_user_input
-        use global_variables, only: high_accuracy, nt, atf, nat, atomf, volts, ss, qep, adf, constants, nopiy, nopix,output_thermal
+        use global_variables, only: high_accuracy, nt, atf, nat, atomf, volts, ss, qep, adf, constants, nopiy, nopix,output_thermal,ionic
         use m_lens
         use local_ionization, only: setup_inelastic_ionization_types
 #ifdef GPU        
@@ -109,6 +109,8 @@
                 nopause = .true.
 			case ('timing')
 				timing = .true.
+			case ('ionic')
+				ionic = .true.
             end select
         enddo
        
@@ -289,8 +291,8 @@
                     
                 case (2)
                     ! PACBED pattern
-                    call setup_probe_scan_pacbed
-					!call setup_probe_scan(.false.)
+                    !call setup_probe_scan_pacbed
+					call setup_probe_scan(.false.)
                     
                 case (3)
                     ! STEM images

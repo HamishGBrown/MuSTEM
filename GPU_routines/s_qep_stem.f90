@@ -231,9 +231,7 @@ subroutine qep_stem
         endif
     endif
     
-    if (output_probe_intensity) then
-        allocate(probe_intensity(nopiy,nopix,size(output_thickness_list)))
-    endif
+    if (output_probe_intensity) allocate(probe_intensity(nopiy,nopix,size(output_thickness_list)))
     
     stem_image = 0.0_fp_kind
     stem_elastic_image = 0.0_fp_kind
@@ -263,9 +261,7 @@ subroutine qep_stem
         
         psi_initial_d = psi_initial
         
-        if (output_probe_intensity) then
-            probe_intensity = 0.0_fp_kind
-        endif
+        if (output_probe_intensity) probe_intensity = 0.0_fp_kind
         
         do i_qep_pass = 1, n_qep_passes 
 			if (ionization) ion_image_d=0.0_fp_kind

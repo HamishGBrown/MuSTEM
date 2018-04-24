@@ -221,9 +221,7 @@ subroutine absorptive_stem
     
     intens = 1.0_fp_kind
 
-    if (output_probe_intensity) then
-        allocate(probe_intensity(nopiy,nopix,size(output_thickness_list)))
-    endif
+    if (output_probe_intensity) allocate(probe_intensity(nopiy,nopix,size(output_thickness_list)))
 
     do ny = 1, nysample
     do nx = 1, nxsample
@@ -239,7 +237,8 @@ subroutine absorptive_stem
     
         if (adf) adf_image_d = 0.0_fp_kind
         if (ionization) ion_image_d = 0.0_fp_kind
-        
+        if (output_probe_intensity) probe_intensity = 0_fp_kind
+
         call make_stem_wfn(psi, probe_df(i_df), probe_positions(:,ny,nx),probe_aberrations) 
 		
         call tilt_wave_function(psi)

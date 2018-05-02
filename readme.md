@@ -15,7 +15,7 @@ Ultramicroscopy, Vol. 151, pp. 11-22, (2015).](http://www.sciencedirect.com/scie
 
 * 64 bit windows OS
 * A CUDA enabled GPU with compute class 3.0 or greater
-* The [Nvidia CUDA toolkit](https://developer.nvidia.com/cuda-downloads), this installs the .dll files necessary to run the GPU versions of μSTEM.
+* Version 8.0 of the [Nvidia CUDA toolkit](https://developer.nvidia.com/cuda-toolkit-archive), this installs the .dll files necessary to run the GPU versions of μSTEM. Future versions of μSTEM will likely use later versions (9.0 and above) of the CUDA toolkit so this is a site you might have to revisit in future.
 
 #### To compile source code
 

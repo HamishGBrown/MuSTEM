@@ -89,20 +89,14 @@ module m_absorption
         implicit none
         
         real(8),parameter :: pi = 4.0d0*atan(1.0d0)
-		!real(fp_kind),parameter :: pi = 4.0d0*atan(1.0d0)
-        
+
         call setup_absorptive_array
         
         if (allocated(tdsbr)) deallocate(tdsbr)
         allocate(tdsbr(max_int,nt))
-          
-        if(include_absorption) then
-            call get_inelffs(tdsbr, max_int, kstep, ss, atf, nat, ak, relm, orthog, 0.0_8, pi)
-          
-        else
-            tdsbr = 0.0_fp_kind
-       
-        endif
+        
+        tdsbr = 0.0_fp_kind
+        if(include_absorption) call get_inelffs(tdsbr, max_int, kstep, ss, atf, nat, ak, relm, orthog, 0.0_8, pi)
     
     end subroutine
     
@@ -422,7 +416,7 @@ module m_absorption
   
         use global_variables, only: ss, nt, atomf, atf, ak,ionic,dz
         use m_crystallography, only: trimr        
-        use m_elsa, only: elsa_ext,peng_ionic_ff
+        use m_electron, only: elsa_ext,peng_ionic_ff
         
         implicit none
     

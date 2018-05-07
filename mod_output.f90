@@ -22,9 +22,9 @@ module output
     use m_precision, only: fp_kind
      implicit none
 
-	interface crop
-	    module procedure truncate_integer_2d,truncate_complex_2d,truncate_complex_1d,truncate_real_2d
-	end interface
+!interface crop
+!    module procedure truncate_integer_2d,truncate_complex_2d,truncate_complex_1d,truncate_real_2d
+!end interface
 
 	interface array_from_txt_file
 		module procedure array_from_txt_real_1d,array_from_txt_real
@@ -89,86 +89,86 @@ module output
 	end function
 
 
-	function truncate_index(pin,pout)
-        integer*4,intent(in)::pin,pout
-        logical::ineven,outeven
-        integer*4::truncate_index(2)
-        
-        ineven = mod(pin,2)==0
-        outeven = mod(pout,2)==0
-        
-        truncate_index(1)= (pin-pout)/2+1
-        if(ineven.and.outeven) truncate_index(1) = truncate_index(1)+1
-        
-        truncate_index(2) = truncate_index(1)+pout-1
-        
-        
-    end function
-	    function truncate_integer_2d(matrix,yout,xout)
-        
-        integer*4,intent(in)::yout,xout
-        integer*4,intent(in)::matrix(:,:)
-    
-        integer*4::truncate_integer_2d(yout,xout)
-        integer*4::y(2),x(2),sze(2)
-
-        sze = shape(matrix)
-
-        y = truncate_index(sze(1),yout)
-        x = truncate_index(sze(2),xout)
-        
-        truncate_integer_2d = matrix(y(1):y(2),x(1):x(2))
-           
-    end function
-    
-    function truncate_complex_2d(matrix,yout,xout)
-        
-        integer*4,intent(in)::yout,xout
-        complex*16,intent(in)::matrix(:,:)
-    
-        complex*16::truncate_complex_2d(yout,xout)
-        integer*4::yin,xin,y(2),x(2),sze(2)
-
-        sze = shape(matrix)
-
-		y = truncate_index(sze(1),yout)
-        x = truncate_index(sze(2),xout)
-        
-        truncate_complex_2d = matrix(y(1):y(2),x(1):x(2))
-           
-    end function
-
-    function truncate_complex_1d(vector,xout)
-        
-        integer*4,intent(in)::xout
-        complex*16,intent(in)::vector(:)
-    
-        complex*16::truncate_complex_1d(xout)
-        integer*4::xin,x(2)
-        
-		xin = size(vector)
-        x = truncate_index(xin,xout)
-        
-        truncate_complex_1d = vector(x(1):x(2))
-           
-    end function
-
-	function truncate_real_2d(array_in,npiy,npix)
-		real(fp_kind),intent(in)::array_in(:,:)
-		integer*4,intent(in)::npiy,npix
-
-		real(fp_kind)::truncate_real_2d(npiy,npix)
-
-		integer*4::sze(2),y(2),x(2)
-
-		sze = shape(array_in)
-
-		y = truncate_index(sze(1),npiy)
-        x = truncate_index(sze(2),npix)
-        
-        truncate_real_2d = array_in(y(1):y(2),x(1):x(2))
-
-	end function
+!function truncate_index(pin,pout)
+!    integer*4,intent(in)::pin,pout
+!    logical::ineven,outeven
+!    integer*4::truncate_index(2)
+!    
+!    ineven = mod(pin,2)==0
+!    outeven = mod(pout,2)==0
+!    
+!    truncate_index(1)= (pin-pout)/2+1
+!    !if(ineven.and.outeven) truncate_index(1) = truncate_index(1)+1
+!    
+!    truncate_index(2) = truncate_index(1)+pout-1
+!    
+!    
+!end function
+!    function truncate_integer_2d(matrix,yout,xout)
+!    
+!    integer*4,intent(in)::yout,xout
+!    integer*4,intent(in)::matrix(:,:)
+!
+!    integer*4::truncate_integer_2d(yout,xout)
+!    integer*4::y(2),x(2),sze(2)
+!
+!    sze = shape(matrix)
+!
+!    y = truncate_index(sze(1),yout)
+!    x = truncate_index(sze(2),xout)
+!    
+!    truncate_integer_2d = matrix(y(1):y(2),x(1):x(2))
+!       
+!end function
+!
+!function truncate_complex_2d(matrix,yout,xout)
+!    
+!    integer*4,intent(in)::yout,xout
+!    complex*16,intent(in)::matrix(:,:)
+!
+!    complex*16::truncate_complex_2d(yout,xout)
+!    integer*4::yin,xin,y(2),x(2),sze(2)
+!
+!    sze = shape(matrix)
+!
+!	y = truncate_index(sze(1),yout)
+!    x = truncate_index(sze(2),xout)
+!    
+!    truncate_complex_2d = matrix(y(1):y(2),x(1):x(2))
+!       
+!end function
+!
+!function truncate_complex_1d(vector,xout)
+!    
+!    integer*4,intent(in)::xout
+!    complex*16,intent(in)::vector(:)
+!
+!    complex*16::truncate_complex_1d(xout)
+!    integer*4::xin,x(2)
+!    
+!	xin = size(vector)
+!    x = truncate_index(xin,xout)
+!    
+!    truncate_complex_1d = vector(x(1):x(2))
+!       
+!end function
+!
+!function truncate_real_2d(array_in,npiy,npix)
+!	real(fp_kind),intent(in)::array_in(:,:)
+!	integer*4,intent(in)::npiy,npix
+!
+!	real(fp_kind)::truncate_real_2d(npiy,npix)
+!
+!	integer*4::sze(2),y(2),x(2)
+!
+!	sze = shape(array_in)
+!
+!	y = truncate_index(sze(1),npiy)
+!    x = truncate_index(sze(2),npix)
+!    
+!    truncate_real_2d = array_in(y(1):y(2),x(1):x(2))
+!
+!end function
       
     subroutine setup_output_prefix
       
@@ -264,15 +264,17 @@ module output
     
         implicit none
       
-        integer(4) :: nopiy, nopix
+        integer(4) :: nopiy, nopix,nopiy_cbedout,nopix_cbedout
         real(fp_kind) :: array(nopiy,nopix)
         character(*) :: filename
         real(fp_kind) :: array_unwrapped(nopiy,nopix)
 		logical,optional,intent(in)::write_to_screen,to_bandlimit
 		logical:: write_to_screen_,to_bandlimit_
 	  
-	    array_unwrapped = quad_shift(array,nopiy,nopix)
-		
+	    !array_unwrapped = quad_shift(array,nopiy,nopix)
+        nopiy_cbedout = nopiy*2/3
+        nopix_cbedout = nopix*2/3
+
 		if(present(write_to_screen)) then
 			write_to_screen_ = write_to_screen
 		else
@@ -286,9 +288,11 @@ module output
 		endif
 
 		if(to_bandlimit_) then
-			call binary_out(nopiy*2/3, nopix*2/3, crop(array_unwrapped,nopiy*2/3, nopix*2/3), filename,write_to_screen_)
-			!call binary_out(nopiy, nopix, array_unwrapped, filename,write_to_screen_)
-		else
+            array_unwrapped = cshift(cshift(array, -nopix_cbedout/2,dim = 2),-nopiy_cbedout/2,dim = 1)
+            call binary_out(nopiy_cbedout,nopix_cbedout,array_unwrapped(1:nopiy_cbedout,1:nopix_cbedout),filename,write_to_screen_)
+			!call binary_out(nopiy*2/3, nopix*2/3, crop(array_unwrapped,nopiy*2/3, nopix*2/3), filename,write_to_screen_)
+        else
+            array_unwrapped = cshift(cshift(array, -nopix/2,dim = 2),-nopiy/2,dim = 1)
 			call binary_out(nopiy, nopix, array_unwrapped, filename,write_to_screen_)
 		endif
       

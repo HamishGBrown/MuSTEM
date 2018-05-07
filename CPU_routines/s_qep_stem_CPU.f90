@@ -61,7 +61,6 @@ subroutine qep_stem
     use m_precision
     use output
 	use cufft_wrapper
-    use local_ionization
     use m_slicing
     use m_probe_scan, only: nysample, nxsample, probe_positions, scan_quarter
     use m_tilt, only: tilt_wave_function

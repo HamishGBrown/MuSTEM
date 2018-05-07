@@ -649,42 +649,24 @@ module m_multislice
 
         use m_precision, only: fp_kind
         use m_crystallography, only: trimr
+        use m_potential, only: make_g_vec_array
             
         implicit none
 
         integer(4) :: nopiy,nopix
         complex(fp_kind) :: prop(nopiy,nopix)        
-        real(fp_kind) :: ak1, ss(7), claue(3), dz
+        real(fp_kind) :: ak1, ss(7), claue(3), dz, g_vec_array(3,nopiy,nopix)
         integer(4) :: ifactorx, ifactory, ig1(3), ig2(3)
-        
-        integer(4) :: m1, m2, kx(3), ky(3), shifty, shiftx
-        real(fp_kind) :: kr(3), q_sq
 
         real(fp_kind),parameter :: pi = atan(1.0d0)*4.0d0
         integer(4) :: ny, nx
         
-        shifty = (nopiy-1)/2-1
-        shiftx = (nopix-1)/2-1
+        
+        call make_g_vec_array(g_vec_array,ifactory,ifactorx)
 
-        do ny = 1, nopiy
-
-	        m2 = mod( ny+shifty, nopiy) - shifty -1
-		
-	        ky = m2 * ig2	
-	  
-	        do nx = 1, nopix
-
-	            m1 = mod( nx+shiftx, nopix) - shiftx -1
-	 
-	            kx = m1 * ig1
-                
-	            kr = kx/float(ifactorx) + ky/float(ifactory) - claue
-	            q_sq = trimr(kr,ss)**2
-
-	            prop(ny,nx) = exp(cmplx(0.0d0, -pi*dz*q_sq/ak1, fp_kind ))
-
-	        enddo
-        enddo
+        do ny = 1, nopiy;do nx = 1, nopix
+            prop(ny,nx) = exp(cmplx(0.0d0, -pi*dz*trimr(g_vec_array(:,ny,nx)-claue,ss)**2/ak1, fp_kind ))
+        enddo;enddo
 
 	end subroutine
     

@@ -21,7 +21,7 @@
       subroutine set_xtl_global_params()
       use m_precision
       use global_variables
-      use m_xray_factors
+      use m_electron
       use m_user_input
       use m_string, only:is_numeric
       use m_crystallography, only: cryst, zone, subuvw, subhkl, rshkl, angle, trimr, trimi, rsd
@@ -261,7 +261,7 @@
     subroutine set_volts(nt, atf, nat, atomf, volts, ss)
 
         use m_precision, only: fp_kind
-        use m_elsa, only:elsa_ext
+        use m_electron, only:elsa_ext
 
         implicit none
 
@@ -702,29 +702,21 @@
     use global_variables
     use m_precision
     use m_crystallography, only: trimr
+    use m_potential, only: make_g_vec_array
         
     implicit none
     integer(4)   m1,m2,ny,nx,shifty,shiftx
     
-    real(fp_kind)      akr,inner_rad,outer_rad,kx(3),ky(3),kr(3)
-    real(fp_kind)      ig1_temp(3),ig2_temp(3)
+    real(fp_kind)      akr,inner_rad,outer_rad,kx(3),ky(3),kr(3),g_vec_array(3,nopiy,nopix)
     real(fp_kind)      mask(nopiy,nopix)
        
     mask=0.0_fp_kind
-
-    shifty = (nopiy-1)/2-1
-    shiftx = (nopix-1)/2-1
-    ig1_temp=float(ig1)/float(ifactorx)
-    ig2_temp=float(ig2)/float(ifactory)
+    
+    call make_g_vec_array(g_vec_array,ifactory,ifactorx)
     do nx=1,nopix
-          m1 = float(mod( nx+shiftx, nopix) - shiftx -1)
-          kx = m1 * ig1_temp
           !$OMP PARALLEL PRIVATE(m2,ky,kr,akr), SHARED(mask) 
           do ny=1,nopiy
-                m2 = float(mod( ny+shifty, nopiy) - shifty -1)
-                ky = m2 * ig2_temp
-                kr = kx + ky 
-                akr = trimr(kr,ss)
+                akr = trimr(g_vec_array(:,ny,nx),ss)
                 if ( (akr.le.outer_rad).and.(akr.ge.inner_rad)) mask(ny,nx)=1.0_fp_kind
            enddo
            !$OMP END PARALLEL
@@ -742,6 +734,7 @@
     
         use m_precision, only: fp_kind
         use global_variables, only: pi
+        use m_potential, only: make_g_vec_array
     
         implicit none
     
@@ -752,7 +745,6 @@
         complex(fp_kind),dimension(dim_shift),intent(out) :: shift
     
         half_shift = (dim_shift-1)/2-1
-        
         do i = 1, dim_shift
             q = float(mod( i+half_shift, dim_shift) - half_shift -1)
             shift(i) = exp(cmplx(0.0_fp_kind, -2.0_fp_kind*pi*q*coord))

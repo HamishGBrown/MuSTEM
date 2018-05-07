@@ -56,7 +56,6 @@ subroutine qep_pacbed
     use m_precision
     use output
 	use cufft_wrapper
-    use local_ionization
     use m_slicing
 	use m_string
     use m_probe_scan, only: nysample, nxsample, probe_positions

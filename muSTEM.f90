@@ -41,7 +41,6 @@
         use m_user_input
         use global_variables, only: high_accuracy, nt, atf, nat, atomf, volts, ss, qep, adf, constants, nopiy, nopix,output_thermal,ionic
         use m_lens
-        use local_ionization, only: setup_inelastic_ionization_types
 #ifdef GPU        
         use cuda_setup, only: setup_GPU
         use cuda_array_library, only: set_blocks
@@ -52,7 +51,7 @@
         use m_tilt, only: prompt_tilt
         use m_qep, only: setup_qep_parameters
         use m_absorption, only: complex_absorption, prompt_include_absorption, setup_local_diffraction_plane_geometry,include_absorption
-        use m_potential, only: prompt_high_accuracy,precalculate_scattering_factors
+        use m_potential
         use m_multislice, only: prompt_save_load_grates, prompt_output_probe_intensity
         
         implicit none
@@ -291,8 +290,8 @@
                     
                 case (2)
                     ! PACBED pattern
-                    !call setup_probe_scan_pacbed
-					call setup_probe_scan(.false.)
+                    call setup_probe_scan_pacbed
+					!call setup_probe_scan(.false.)
                     
                 case (3)
                     ! STEM images
@@ -401,7 +400,7 @@
         use global_variables
         use m_slicing
 		use m_lens
-		use local_ionization
+        use m_potential
 		if(allocated(nat)                     ) deallocate(nat)    
 		if(allocated(tau)                     ) deallocate(tau)    
 		if(allocated(atf)                     ) deallocate(atf)    

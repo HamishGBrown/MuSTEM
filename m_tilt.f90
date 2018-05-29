@@ -95,8 +95,8 @@ module m_tilt
 		!second array dimension and y with the first dimension
 		!whilst remaining true to the description of the direction of the 
 		!azimuth
-		bt_x = ak1*sin(tilt_theta)*cos(-tilt_phi)/trimi(ig1,ss)
-		bt_y = ak1*sin(tilt_theta)*sin(-tilt_phi)/trimi(ig2,ss)
+		bt_x = ak1*sin(tilt_theta)*cos(tilt_phi)/trimi(ig1,ss)
+		bt_y = ak1*sin(tilt_theta)*sin(tilt_phi)/trimi(ig2,ss)
 		
 		!Round tilt vector to an integer number of pixels
 		!This avoids a boundary discontinuity in the tilted beam
@@ -169,12 +169,9 @@ module m_tilt
         bvec_ = bvec/[nopiy,nopix,1]*[ifactory,ifactorx,0]
         
         !$OMP PARALLEL DO PRIVATE(nx, ny)
-        do nx = 1, nopix
-        do ny = 1, nopiy
-                
+        do nx = 1, nopix;do ny = 1, nopiy
             psi(ny,nx) = psi(ny,nx) * exp(cmplx(0.0_fp_kind, 2*pi*dot_product([ny-1, nx-1, 0], bvec_), fp_kind))
-        enddo
-        enddo
+        enddo;enddo
         !$OMP END PARALLEL DO
     end subroutine
 

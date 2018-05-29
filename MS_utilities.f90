@@ -149,7 +149,6 @@
             enddo
       enddo
       call cryst(a0,deg,ss)   !Establish the triclinic information
-      read(iunit,*) junk
       icount = 0
 
       ! Force to 001 convention
@@ -714,7 +713,7 @@
     
     call make_g_vec_array(g_vec_array,ifactory,ifactorx)
     do nx=1,nopix
-          !$OMP PARALLEL PRIVATE(m2,ky,kr,akr), SHARED(mask) 
+          !$OMP PARALLEL PRIVATE(ny,akr), SHARED(mask,ss,nopiy,nx,outer_rad,inner_rad) 
           do ny=1,nopiy
                 akr = trimr(g_vec_array(:,ny,nx),ss)
                 if ( (akr.le.outer_rad).and.(akr.ge.inner_rad)) mask(ny,nx)=1.0_fp_kind

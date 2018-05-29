@@ -39,7 +39,7 @@
     program MU_STEM
     
         use m_user_input
-        use global_variables, only: high_accuracy, nt, atf, nat, atomf, volts, ss, qep, adf, constants, nopiy, nopix,output_thermal,ionic
+        use global_variables!, only: high_accuracy, nt, atf, nat, atomf, volts, ss, qep, adf, constants, nopiy, nopix,output_thermal,ionic
         use m_lens
 #ifdef GPU        
         use cuda_setup, only: setup_GPU
@@ -56,13 +56,13 @@
         
         implicit none
         
-        integer :: i_illum, i_tds_model, i_cb_menu, i_cb_calc_type,ifile,nfiles,i_arg,idum
+        integer :: i_illum, i_tds_model, i_cb_menu, i_cb_calc_type,ifile,nfiles,i_arg,idum,i
         
         logical :: nopause = .false.,there
         character(512)::command_argument
         character(120)::fnam
-
-
+        character(2):: symb
+        
 108     write(6,109)
         109     format(&
        &1x,'|----------------------------------------------------------------------------|',/,&
@@ -88,9 +88,9 @@
 	   &1x,'|       Software Foundation.                                                 |',/,&
        &1x,'|                                                                            |',/,&
 #ifdef GPU
-       &1x,'|       GPU Version 5.1                                                      |',/,&
+       &1x,'|       GPU Version 5.2                                                      |',/,&
 #else
-       &1x,'|       CPU only Version 5.1                                                 |',/,&
+       &1x,'|       CPU only Version 5.2                                                 |',/,&
 #endif
        &1x,'|                                                                            |',/,&
        &1x,'|       Note: pass the argument "nopause" (without quotation marks)          |',/,&

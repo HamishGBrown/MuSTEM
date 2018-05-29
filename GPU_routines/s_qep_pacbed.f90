@@ -60,7 +60,6 @@ subroutine qep_pacbed
     use cuda_ms
     use CUFFT
 	use cufft_wrapper
-    use local_ionization
     use cuda_potential
     use m_slicing
     use cuda_setup
@@ -68,7 +67,7 @@ subroutine qep_pacbed
     use m_probe_scan, only: nysample, nxsample, probe_positions
     use m_tilt, only: tilt_wave_function
     use m_multislice, only: make_qep_grates, setup_propagators
-    use m_potential, only: precalculate_scattering_factors
+    use m_potential
     
     implicit none
     

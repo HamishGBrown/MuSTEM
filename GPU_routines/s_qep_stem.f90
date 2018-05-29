@@ -65,7 +65,6 @@ subroutine qep_stem
     use cuda_ms
     use CUFFT
 	use cufft_wrapper
-    use local_ionization
     use cuda_potential
     use m_slicing
     use cuda_setup
@@ -73,7 +72,7 @@ subroutine qep_stem
     use m_tilt, only: tilt_wave_function
     use m_string, only: to_string
     use m_multislice!, only: make_qep_grates, output_probe_intensity, output_cell_list, cell_map, output_thickness_list, setup_propagators
-    use m_potential, only: precalculate_scattering_factors
+    use m_potential
     
     implicit none
     

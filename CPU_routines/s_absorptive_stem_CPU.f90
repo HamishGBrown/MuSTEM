@@ -181,24 +181,14 @@ subroutine absorptive_stem
                 
                 if(adf) then
 					!Multiply wave function intensity by ADF potential
-                    if(on_the_fly) then
-						call make_adf_potential(inelastic_potential,fz_adf,tau_slice(:,:,:,j),nat_slice(:,j),ss_slice(7,j))
-						temp = psi_intensity* inelastic_potential*prop_distance(j)
-                    else
-						temp = psi_intensity*adf_potential(:,:,j)*prop_distance(j)
-                    endif
+                    temp = psi_intensity*adf_potential(:,:,j)*prop_distance(j)
 					!Depth sum
 					adf_image = temp + adf_image
                 endif
                 
                 if(ionization) then
                     do ii=1,num_ionizations
-                        if(on_the_fly) then                        
-                            inelastic_potential= make_ion_potential(ionization_mu(:,:,ii),tau_slice(:,atm_indices(ii),:,j),nat_slice(atm_indices(ii),j),ss_slice(7,j))
-						    temp = psi_intensity *inelastic_potential*prop_distance(j)
-                        else
-						    temp = psi_intensity * ionization_potential(:,:,ii,j) * prop_distance(j)
-                        endif
+    				    temp = psi_intensity * ionization_potential(:,:,ii,j) * prop_distance(j)
 					    ion_image(:,:,ii) = temp+ion_image(:,:,ii)
                     enddo
                 endif

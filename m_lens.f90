@@ -282,7 +282,7 @@ module m_lens
         
         call make_g_vec_array(g_vec_array,ifactory,ifactorx)
         ctf=0.0_fp_kind
-        !$OMP PARALLEL DO PRIVATE(nx, m1, kx, ny, m2, ky, kr, akr,phi)
+        !$OMP PARALLEL DO PRIVATE(nx, m1, ny, m2, kr, akr,phi)
         do nx = 1, nopix;do ny = 1, nopiy
             kr = g_vec_array(:,ny,nx)
             akr = trimr(kr,ss)

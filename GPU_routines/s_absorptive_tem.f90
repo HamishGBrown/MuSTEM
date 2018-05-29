@@ -111,8 +111,6 @@ subroutine absorptive_tem
 	enddo
 	endif
 	   
-    call calculate_absorption_mu        
-
     ! Precalculate the scattering factors on a grid
     call precalculate_scattering_factors()
                 

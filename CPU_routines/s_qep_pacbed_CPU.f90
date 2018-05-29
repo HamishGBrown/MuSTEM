@@ -166,8 +166,8 @@ subroutine qep_pacbed
                     ! Phase grate
 				    nran = floor(n_qep_grates*ran1(idum)) + 1
                     if(on_the_fly) then
-						call make_qep_potential(trans, tau_slice, nat_slice, ss_slice(7,j))
-						psi_out = psi*trans
+						!call make_qep_potential(trans, tau_slice, nat_slice, ss_slice(7,j))
+						!psi_out = psi*trans
                     elseif(quick_shift) then
                         shiftx = floor(ifactorx*ran1(idum)) * nopix_ucell
                         shifty = floor(ifactory*ran1(idum)) * nopiy_ucell

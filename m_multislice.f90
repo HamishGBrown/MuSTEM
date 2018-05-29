@@ -40,7 +40,7 @@ module m_multislice
     
         use m_user_input, only: get_input
         use global_variables, only: thickness, nopiy, nopix
-        use output, only: output_prefix
+        use output, only: output_prefix,split_filepath
         use m_string, only: to_string
         
         implicit none
@@ -76,17 +76,7 @@ module m_multislice
                     write(*,*) 'ERROR: invalid thickness.'
                     goto 20
                 endif
-                
-                j = index(output_prefix,'/',back=.true.)
-                j = max(j,index(output_prefix,'\',back=.true.))
-        
-                if(j>0) then
-                    dir = trim(adjustl(output_prefix(:j)))
-                    fnam = trim(adjustl(output_prefix(j:)))
-                else
-                    dir = ''
-                    fnam = trim(adjustl(output_prefix))
-                endif 
+                call split_filepath(output_prefix,dir,fnam)
                 
                 call system('mkdir '//trim(adjustl(dir))//'Probe_intensity')
                 
@@ -342,7 +332,7 @@ module m_multislice
     
         use m_precision, only: fp_kind
 	    use cufft_wrapper, only: fft2, ifft2
-        use global_variables, only: nopiy, nopix, nt, relm, tp, ak, ak1, atf, high_accuracy, ci, pi, bwl_mat,Kz
+        use global_variables, only: nopiy, nopix, nt, relm, tp, ak, ak1, atf, high_accuracy, ci, pi, bwl_mat,Kz,fz
         use m_qep, only: displace, qep_grates,phase_ramp_shift, n_qep_grates
         use m_slicing, only: n_slices, nat_slice, a0_slice, tau_slice, maxnat_slice, ss_slice
         use m_string, only: to_string
@@ -400,16 +390,6 @@ module m_multislice
         endif
         
         t1 = secnds(0.0_fp_kind)
-        
-        if (high_accuracy) then
-#ifdef GPU
-            make_site_factor => make_site_factor_cuda
-#else
-            make_site_factor => make_site_factor_matmul
-#endif            
-        else
-            make_site_factor => make_site_factor_hybrid
-        endif
 
         do j = 1, n_slices
 	        write(*,'(1x, a, a, a, a, a)') 'Calculating transmission functions for slice ', to_string(j), '/', to_string(n_slices), '...'
@@ -469,10 +449,11 @@ module m_multislice
 					 deallocate( handled )
 				endif
 				
-                call make_qep_potential(projected_potential, mod_tau(:,:,:,j,i), nat_slice(:,j), ccd_slice, make_site_factor)
-
-                projected_potential = real(projected_potential)
-                
+				projected_potential = 0
+				do m = 1, nt
+					projected_potential = projected_potential+real(potential_from_scattering_factors(CCD_slice*fz(:,:,m)&
+												&,mod_tau(:,m,1:nat_slice(m,j),j,i),nat_slice(m,j),nopiy,nopix,high_accuracy))
+                enddo
                 qep_grates(:,:,i,j) = exp(ci*pi*a0_slice(3,j)/Kz*projected_potential)
             
                 ! Bandwith limit the phase grate
@@ -507,7 +488,6 @@ module m_multislice
             write(*,*)
             open(unit=3984, file=grates_filename, form='binary', convert='big_endian')
             write(3984) qep_grates
-			!write(3984) atan2(imag(qep_grates),real(qep_grates))
             close(3984)
         endif        
     
@@ -537,20 +517,18 @@ module m_multislice
     
         use m_precision, only: fp_kind
 	    use cufft_wrapper, only: fft2, ifft2
-        use global_variables, only: nopiy, nopix, nt, relm, tp, ak, Kz, atf, high_accuracy, ci, pi, bwl_mat
-        use m_absorption, only: transf_absorptive
+        use global_variables, only: nopiy, nopix, nt, relm, tp, ak, Kz, atf, high_accuracy, ci, pi, bwl_mat,fz,fz_DWF,ss
+        use m_absorption, only: transf_absorptive,fz_abs
         use m_slicing, only: n_slices, nat_slice, a0_slice, tau_slice, maxnat_slice, ss_slice
         use m_string, only: to_string
-        use output, only: output_prefix,timing
-        use m_potential!, only: make_absorptive_potential, make_site_factor_generic, make_site_factor_cuda, make_site_factor_hybrid
+        use output
+        use m_potential
         
         implicit none
     
-        integer(4) :: j, m, n
-        complex(fp_kind) :: projected_potential(nopiy,nopix)
-        complex(fp_kind) :: temp(nopiy,nopix)
-        real(fp_kind) :: ccd_slice
-        complex(fp_kind) :: scattering_pot(nopiy,nopix,nt)
+        integer(4) :: j, m, n,nat_layer
+        real(fp_kind) :: ccd_slice,V_corr
+        complex(fp_kind),dimension(nopiy,nopix) :: scattering_pot,projected_potential,temp,effective_scat_fact
     
         real(fp_kind) :: t1, delta
     
@@ -569,17 +547,6 @@ module m_multislice
         endif
         
         t1 = secnds(0.0_fp_kind)
-        
-        if (high_accuracy) then
-#ifdef GPU
-            make_site_factor => make_site_factor_cuda
-#else
-            make_site_factor => make_site_factor_matmul
-#endif
-        else
-            make_site_factor => make_site_factor_hybrid
-        endif
-
         do j = 1, n_slices
 	        write(*,'(1x, a, a, a, a, a)') 'Calculating transmission functions for slice ', to_string(j), '/', to_string(n_slices), '...'
         
@@ -587,11 +554,16 @@ module m_multislice
     199     format(1x, 'Number of atoms in this slice: ', a, /) 
 
 		    ccd_slice = relm / (tp * ak * ss_slice(7,j))
-
-            call make_absorptive_potential(projected_potential, tau_slice(:,:,:,j), nat_slice(:,j), ccd_slice, ss_slice(7,j), make_site_factor)
-
+            projected_potential = 0
+            V_corr = ss(7)/ss_slice(7,j)
+            do m=1,nt
+                nat_layer = nat_slice(m,j)
+                effective_scat_fact = CCD_slice*fz(:,:,m)*fz_DWF(:,:,m)+cmplx(0,1)*fz_abs(:,:,m)*V_corr
+                projected_potential = projected_potential+potential_from_scattering_factors(effective_scat_fact,tau_slice(:,m,:nat_layer,j),nat_layer,nopiy,nopix,high_accuracy)
+                
+            enddo
+            
             transf_absorptive(:,:,j) = exp(ci*pi*a0_slice(3,j)/Kz*projected_potential)
-
             ! Bandwith limit the phase grate
             call fft2(nopiy, nopix, transf_absorptive(:,:,j), nopiy, temp, nopiy)
             temp = temp * bwl_mat
@@ -697,7 +669,7 @@ module m_multislice
 		!Generate the radial part of the detector
 		kabs = sqrt(real(spread(ky**2,dim=2,ncopies = nopix)&
 		               &+spread(kx**2,dim=1,ncopies = nopiy),kind=fp_kind))
-		detector = merge(1,0,(kabs>kmin) .and. (kabs<kmax))
+		detector = merge(1,0,(kabs.ge.kmin) .and. (kabs.le.kmax))
 
 		!If not a segmented detector then return at this point
 		if(.not.segment) return

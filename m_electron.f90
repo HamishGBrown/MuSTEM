@@ -1002,21 +1002,6 @@ data ionicFF_Peng(106)/t_ionicFF_peng('U ', 92,  +6, [0.687E+0, 0.114E+1, 0.183E
     
     
     
-      function wavev(e)
-      !  this function returns the wavevector in one over lambda, in a-1,
-      !  for an input electron energy e in ev.
-      
-      use m_precision
-      
-      implicit none
-      
-      real(fp_kind) c1,c2,e
-      real(fp_kind) wavev
-      data c1, c2 / 9.78475598e-07_fp_kind, 12.2642596_fp_kind /
-      
-      wavev = sqrt( e + c1 *e ** 2.0_fp_kind ) / c2
-      
-      end function 
    
     !--------------------------------------------------------------------------------------
 !     This function returns the electron scattering factors in
@@ -1144,7 +1129,6 @@ data ionicFF_Peng(106)/t_ionicFF_peng('U ', 92,  +6, [0.687E+0, 0.114E+1, 0.183E
    
 
     function Peng_ionic_FF(s2,Z,dZ,cutoff) result(fe)
-	    use m_xray_factors
 	    use m_precision	
 	
 	    real(fp_kind),intent(in)::s2,cutoff

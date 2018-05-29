@@ -175,18 +175,38 @@ module output
         use m_user_input, only: get_input
           
         implicit none
+        character(120)::dir,fnam
    
 10      write(6,*) 'Enter the prefix for all outputted filenames:'
         call get_input("Output filename", output_prefix)
         write(*,*)
       
         if (len_trim(output_prefix).eq.0) goto 10
-        
+        call split_filepath(trim(adjustl(output_prefix)),dir,fnam)
+                
+        call system('mkdir '//trim(adjustl(dir)))
         output_prefix = trim(adjustl(output_prefix))
       
     end subroutine
 
+	subroutine split_filepath(filepath,dir,fnam)
+			  character(len=*), intent(in) :: filepath
+			  character(len=*), intent(out):: dir,fnam
 
+			  integer*4::j
+
+	
+                j = index(filepath,'/',back=.true.)
+                j = max(j,index(filepath,'\',back=.true.))
+        
+                if(j>0) then
+                    dir = trim(adjustl(filepath(:j)))
+                    fnam = trim(adjustl(filepath(j:)))
+                else
+                    dir = ''
+                    fnam = trim(adjustl(filepath))
+                endif 
+	end subroutine
       
     subroutine binary_in(nopiy, nopix, array, filename)
         implicit none
@@ -271,7 +291,6 @@ module output
 		logical,optional,intent(in)::write_to_screen,to_bandlimit
 		logical:: write_to_screen_,to_bandlimit_
 	  
-	    !array_unwrapped = quad_shift(array,nopiy,nopix)
         nopiy_cbedout = nopiy*2/3
         nopix_cbedout = nopix*2/3
 
@@ -290,7 +309,6 @@ module output
 		if(to_bandlimit_) then
             array_unwrapped = cshift(cshift(array, -nopix_cbedout/2,dim = 2),-nopiy_cbedout/2,dim = 1)
             call binary_out(nopiy_cbedout,nopix_cbedout,array_unwrapped(1:nopiy_cbedout,1:nopix_cbedout),filename,write_to_screen_)
-			!call binary_out(nopiy*2/3, nopix*2/3, crop(array_unwrapped,nopiy*2/3, nopix*2/3), filename,write_to_screen_)
         else
             array_unwrapped = cshift(cshift(array, -nopix/2,dim = 2),-nopiy/2,dim = 1)
 			call binary_out(nopiy, nopix, array_unwrapped, filename,write_to_screen_)
@@ -508,7 +526,6 @@ module output
             endif
       enddo
       
-      !fnam_out=trim(fnam_temp)//trim(fnam_temp3)//'_'
       fnam_out=trim(fnam_temp)//trim(fnam_temp3)
       
       return

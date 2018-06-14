@@ -39,7 +39,7 @@ module m_tilt
         integer :: i_tilt, i_cshift
         
 10      write(*,*) 'The illumination can be tilted off the beam axis.'
-        write(*,*) '<1> No beam tilt',char(10),'<2> Beam tilt'
+        write(*,*) '<1> No beam tilt',char(10),' <2> Beam tilt'
         call get_input('<1> No beam tilt <2> Beam tilt', i_tilt)
         write(*,*)
         
@@ -58,7 +58,7 @@ module m_tilt
         endif
 
 20      write(*,*) 'The specimen can be tilted off the specimen axis.'
-        write(*,*) '<1> No specimen tilt',char(10),'<2> Specimen tilt'
+        write(*,*) '<1> No specimen tilt',char(10),' <2> Specimen tilt'
         call get_input('<1> No specimen tilt <2> Specimen tilt', i_tilt)
         write(*,*)
         

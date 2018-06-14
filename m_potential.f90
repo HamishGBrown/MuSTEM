@@ -839,7 +839,6 @@ module m_potential
 	      if(ionization) then
               
 				do i=1,num_ionizations
-					!ionization_potential(:,:,i,j)= make_ion_potential(ionization_mu(:,:,i),tau_slice(:,atm_indices(i),:,j),nat_slice(atm_indices(i),j),ss_slice(7,j))
                     nat = nat_slice(atm_indices(i),j)
                     ionization_potential(:,:,i,j) = real(potential_from_scattering_factors(ionization_mu(:,:,i),tau_slice(:,atm_indices(i),:nat,j),nat,nopiy,nopix,high_accuracy)/vol)
 				enddo
@@ -848,9 +847,8 @@ module m_potential
 	      !calculate the ADF potential    
             if(adf) then
                   do i=1,nt
-                  !call make_adf_potential(potential_matrix_complex,fz_adf,tau_slice(:,:,:,j),nat_slice(:,j),ss_slice(7,j))
                       nat = nat_slice(i,j)
-                  adf_potential(:,:,j)= adf_potential(:,:,j) + real(potential_from_scattering_factors(fz_adf(:,:,i),tau_slice(:,i,:nat,j),nat,nopiy,nopix,high_accuracy)/vol*ss(7))
+                      adf_potential(:,:,j)= adf_potential(:,:,j) + real(potential_from_scattering_factors(fz_adf(:,:,i),tau_slice(:,i,:nat,j),nat,nopiy,nopix,high_accuracy)/vol*ss(7))
                   enddo
             endif
       enddo	!ends loop over the number of potential subslices

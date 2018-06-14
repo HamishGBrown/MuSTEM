@@ -36,7 +36,7 @@
         implicit none
       
         !dummy variables
-        integer(4) ::  i_cell, i_slice, ny, nx, idum,i,z_indx(1),length
+        integer(4) ::  i_cell, i_slice, ny, nx, idum,i,z_indx(1),length,nopiyout,nopixout
 
         !probe variables
         complex(fp_kind),dimension(nopiy,nopix) :: psi,psi_
@@ -54,17 +54,14 @@
         write(*,*) '|----------------------------------|'
 	    write(*,*) '|      Pre-calculation setup       |'
 	    write(*,*) '|----------------------------------|'
-        write(*,*)
-
-
-        call calculate_absorption_mu        
+        write(*,*)    
 
         call precalculate_scattering_factors()
     
         call make_absorptive_grates
         
         call setup_propagators()
-
+        call fourD_STEM_options(fourdSTEM,nopiyout,nopixout,nopiy,nopix)
 		
         write(*,*) '|--------------------------------|'
 	    write(*,*) '|      Calculation running       |'
@@ -72,13 +69,11 @@
         write(*,*)
       
         t1 = secnds(0.0)
-      
+        
         pacbed_pattern = 0.0_fp_kind
 
         intensity = 1.0_fp_kind
-        write(*,*) 'Output diffraction patterns for each scan position?'
-		call get_input('<1> Diffraction pattern for each probe position',idum)
-		fourDSTEM = idum == 1
+        
         do ny = 1, nysample
         do nx = 1, nxsample
 #ifdef GPU                    
@@ -113,7 +108,7 @@
 							filename = trim(adjustl(output_prefix))
 							if (nz>1) filename = trim(adjustl(filename))//'_z='//to_string(int(zarray(z_indx(1))))//'_A'
 							filename = trim(adjustl(filename))//'_pp_'//to_string(nx)//'_'//to_string(ny)//'_abs_Diffraction_pattern'
-							call binary_out_unwrap(nopiy, nopix, fourDSTEM_pattern, filename,write_to_screen=.false.)
+							call binary_out_unwrap(nopiy, nopix, fourDSTEM_pattern, filename,write_to_screen=.false.,nopiyout=nopiyout,nopixout=nopixout)
 					endif			
 				endif
             enddo

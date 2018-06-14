@@ -62,6 +62,7 @@ subroutine qep_stem
     use output
 	use cufft_wrapper
     use m_slicing
+    use m_crystallography
     use m_probe_scan, only: nysample, nxsample, probe_positions, scan_quarter
     use m_tilt, only: tilt_wave_function
     use m_string, only: to_string
@@ -126,9 +127,16 @@ subroutine qep_stem
     
  	call setup_propagators
     
-    do i = 1, ndet
-        call make_detector_mask(inner(i),outer(i),masks(:,:,i))
-    enddo
+    do i=1,ndet/nseg
+	do j=1,nseg
+		if (nseg>1) masks(:,:,(i-1)*nseg+j) = make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx,2*pi*j/nseg-seg_det_offset,2*pi/nseg)
+		if(nseg==1) masks(:,:,(i-1)*nseg+j) = make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx)
+	enddo
+	enddo
+    
+    !do i = 1, ndet
+    !    call make_detector_mask(inner(i),outer(i),masks(:,:,i))
+    !enddo
 
     
 	t1 = secnds(0.0)

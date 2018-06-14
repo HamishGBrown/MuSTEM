@@ -16,7 +16,39 @@
 !  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 !                       
 !--------------------------------------------------------------------------------
-
+    
+    !Checks the list of atom labels and will append 2,3,4 etc. if there are duplicates
+    !Note that this method is not robust to cases where there are three labels of the form
+    !eg. Sr, Sr2, Sr
+    subroutine correct_duplicate_atom_labels(substance_atom_types,nt)
+    use m_string
+    implicit none
+    character*10::substance_atom_types(nt)    
+    integer*4,intent(in)::nt
+    
+    integer*4:: unique_list(nt),j,i,ii
+    logical::unique
+    
+    
+    j=1
+    do i=1,nt
+        unique = .true.
+        
+        do ii=1,i-1
+            unique = .not.(trim(adjustl(substance_atom_types(ii)))==trim(adjustl(substance_atom_types(i))))
+            if(.not.unique) then
+                unique_list(i)=unique_list(ii)+1
+                exit
+            endif
+        enddo
+        
+        if(unique) unique_list(i) = 1
+    enddo
+    
+    do i=1,nt
+        if(unique_list(i)>1) substance_atom_types(i)=trim(adjustl(substance_atom_types(i)))//to_string(unique_list(i))
+    enddo
+    end subroutine
 
       subroutine set_xtl_global_params()
       use m_precision
@@ -148,6 +180,7 @@
                   !endif
             enddo
       enddo
+      call correct_duplicate_atom_labels(substance_atom_types,nt)
       call cryst(a0,deg,ss)   !Establish the triclinic information
       icount = 0
 
@@ -381,7 +414,7 @@
             &        ' <2> Change')
             
         else
-            write(6,162) float(nopiy)/ifactory, float(nopix)/ifactorx, &
+            write(6,162) float(nopix)/ifactorx, float(nopiy)/ifactory, &
                          ifactorx, ifactory, &
                          nopix, nopiy, &
                          max_qx, char(143), max_qy, char(143), &
@@ -476,6 +509,10 @@
 		if(segments) then
 			read(dstring(:comaindex),*) ndet
 			read(dstring(comaindex+1:),*) nseg
+            ndet = ndet*nseg
+            write(*,*) 'Please input orientation offset for segmented detectors in degrees'
+            call get_input('Segment orientation offset (degrees)', seg_det_offset)
+            seg_det_offset = seg_det_offset/180*pi !Convert from degrees to mrad
 		else
 			read(dstring,*) ndet
 			nseg = 1
@@ -483,17 +520,17 @@
     
         if(allocated(outer)) deallocate(outer)
         if(allocated(inner)) deallocate(inner)
-        allocate(inner(ndet),outer(ndet))
+        allocate(inner(ndet/nseg),outer(ndet/nseg))
         
         if (ndet.eq.0) return
         
-        call get_cbed_detector_info(outer,inner,ndet,ak1)
+        call get_cbed_detector_info(outer,inner,ndet/nseg,ak1)
 
 		if(outputdetectors) then
-			do i=1,ndet
+			do i=1,ndet/nseg
 			do j=1,nseg
-				if(nseg>1) call binary_out(nopiy,nopix,make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx,2*pi*i/nseg,2*pi/nseg),'detector_'//to_string((i-1)*nseg+j))
-				call binary_out(nopiy,nopix,make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx),'detector_'//to_string((i-1)*nseg+j))
+				if(nseg>1) call binary_out_unwrap(nopiy,nopix,make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx,2*pi*j/nseg-seg_det_offset,2*pi/nseg),'detector_'//to_string((i-1)*nseg+j))
+				if(nseg==1) call binary_out_unwrap(nopiy,nopix,make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx),'detector_'//to_string((i-1)*nseg+j))
 			enddo
 			enddo
 		endif
@@ -630,6 +667,29 @@
 
     end subroutine
     
+    subroutine fourD_STEM_options(fourdSTEM,nopiyout,nopixout,nopiy,nopix)
+		use m_user_input 
+        integer*4,intent(in)::nopiy,nopix
+        integer*4,intent(out)::nopiyout,nopixout
+        logical,intent(out)::fourdSTEM
+        
+        integer*4::idum
+        
+        write(*,*) 'Output diffraction patterns for each scan position?'
+        write(*,*) '<1> Yes',char(10),' <2> Output cropped diffraction patterns (saves memory)',char(10),' <3> No'
+		call get_input('<1> Diffraction pattern for each probe position',idum)
+		fourDSTEM = (idum == 1).or.(idum ==2)
+        if(idum==2) then
+            write(*,*) 'Please input number of y pixels in diffration pattern output'
+            call get_input('diffraction pattern y pixels',nopiyout)
+            
+            write(*,*) 'Please input number of x pixels in diffration pattern output'
+            call get_input('diffraction pattern x pixels',nopixout)
+        else
+            nopiyout = nopiy
+            nopixout = nopix
+        endif
+    end subroutine
 
     
     !--------------------------------------------------------------------------------------

@@ -68,6 +68,7 @@ subroutine qep_stem
     use cuda_potential
     use m_slicing
     use cuda_setup
+	use m_crystallography
     use m_probe_scan, only: nysample, nxsample, probe_positions, scan_quarter
     use m_tilt, only: tilt_wave_function
     use m_string, only: to_string
@@ -159,9 +160,12 @@ subroutine qep_stem
     
  	call setup_propagators
     
-    do i = 1, ndet
-        call make_detector_mask(inner(i),outer(i),masks(:,:,i))
-    enddo
+    do i=1,ndet/nseg
+	do j=1,nseg
+		if(nseg>1) masks(:,:,(i-1)*nseg+j) = make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx,2*pi*j/nseg-seg_det_offset,2*pi/nseg)
+		if(nseg==1) masks(:,:,(i-1)*nseg+j) = make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx)
+	enddo
+	enddo
 
     if (on_the_fly.or.quick_shift.or.phase_ramp_shift) then
         allocate(trans_d(nopiy,nopix))
@@ -218,11 +222,6 @@ subroutine qep_stem
         allocate(transf_d(nopiy,nopix,n_qep_grates,n_slices))
   	    transf_d = qep_grates
         if (ionization) then
-			!do i=1,num_ionizations
-			!do j=1,n_slices
-			!call binary_out(nopiy,nopix,ionization_potential(:,:,i,j),'ionization_potential_slice_'//to_string(j)//'_ionization_'//to_string(i))
-			!enddo
-			!enddo
             allocate(ion_potential_d(nopiy,nopix,num_ionizations,n_slices))
             ion_potential_d = ionization_potential
         endif

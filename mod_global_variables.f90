@@ -68,6 +68,7 @@
 
     !output variables
     integer(4) :: ndet,nseg                            !number of integrating detectors
+    real(fp_kind) :: seg_det_offset
 	logical::segments
     real(fp_kind), allocatable :: outer(:),inner(:)       !detector ranges (in inverse angstrom)
     

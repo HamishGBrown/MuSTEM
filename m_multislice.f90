@@ -27,10 +27,13 @@ module m_multislice
     logical :: load_grates = .false.
     character(1024) :: grates_filename
     
-    logical :: output_probe_intensity = .false.
+    logical :: output_probe_intensity = .false.,additional_transmission_function = .false.,pure_phase
     logical,allocatable :: output_cell_list(:)
     real(fp_kind),allocatable :: output_thickness_list(:)
     integer,allocatable :: cell_map(:)
+    
+    character*200,allocatable::amplitude_fnam(:),phase_fnam(:)
+    
     
     contains
     
@@ -239,21 +242,27 @@ module m_multislice
     
         use m_user_input, only: get_input
         use output, only: output_prefix
+        use m_slicing, only: n_slices
         
         implicit none
         
-        integer :: i_save_load, i_retry
+        integer :: i_save_load, i_retry,i
         logical :: exists
         
+        i_save_load = -1
+        do while(i_save_load<0.or.i_save_load>2)
+            
         write(*,*) '|---------------------------------------------|'
         write(*,*) '|      Save/load transmission functions       |'
         write(*,*) '|---------------------------------------------|'
         write(*,*)
         write(*,*) 'Warning: the files outputted when saving may be very large.'
         write(*,*)
-1       write(*,*) '<0> Proceed without saving or loading'
+        write(*,*) '<0> Proceed without saving or loading'
         write(*,*) '<1> Save transmission functions'
         write(*,*) '<2> Load transmission functions'
+        write(*,*) '<3> Add additional transmission function '
+        write(*,*) '    (eg. from magnetic structure) from file'
         call get_input('<0> continue <1> save <2> load', i_save_load)
         write(*,*)
         
@@ -319,11 +328,30 @@ module m_multislice
                 endif
                 
                 load_grates = .true.
-            case default
-                goto 1
+            case (3)
+                additional_transmission_function=.true.
+                pure_phase=.false.
+                
+                if(.not.allocated(amplitude_fnam)) allocate(amplitude_fnam(n_slices),phase_fnam(n_slices))
+                do i=1,n_slices
+                    if(.not.pure_phase) then
+                        write(*,*) char(10),' Please input filename of amplitude of additional transmission function for slice ',i
+                        if(i==1) then
+                            write(*,*) 'If your intended transmission function is a pure phase object (ie. the amplitude of the'
+                            write(*,*) 'additional transmission function is everywhere 1), input -1 and no amplitude file will'
+                            write(*,*) 'be loaded nor will you be prompted for the amplitude for the remaining slices'
+                        endif
+                        call get_input('Amplitude of additional transmission function',amplitude_fnam(i))
+                        pure_phase = trim(adjustl(amplitude_fnam(i)))=='-1'
+                    endif
+                    write(*,*) char(10),' Please input filename of phase of additional transmission function for slice ',i
+                    call get_input('Phase of additional transmission function',phase_fnam(i))
+                enddo
+                
+                
                 
         end select
-        
+        enddo
     end subroutine
     
     
@@ -336,7 +364,7 @@ module m_multislice
         use m_qep, only: displace, qep_grates,phase_ramp_shift, n_qep_grates
         use m_slicing, only: n_slices, nat_slice, a0_slice, tau_slice, maxnat_slice, ss_slice
         use m_string, only: to_string
-        use output, only: output_prefix,timing
+        use output, only: output_prefix,timing,binary_in
         use m_potential!, only: make_qep_potential, make_site_factor_generic, make_site_factor_cuda, make_site_factor_hybrid
         
         implicit none
@@ -344,13 +372,10 @@ module m_multislice
         integer(4) :: idum
     
         integer(4) :: i, j, m, n,i_fracocc,ii,jj,jjj,kk,iii
-        complex(fp_kind) :: projected_potential(nopiy,nopix)
-        complex(fp_kind) :: temp(nopiy,nopix)
+        complex(fp_kind) :: projected_potential(nopiy,nopix),temp(nopiy,nopix),scattering_pot(nopiy,nopix,nt)
 		integer(4), allocatable :: handled(:,:)
-		real(fp_kind) tau_holder(3),tau_holder2(3)
-        real(fp_kind) :: ccd_slice,ums
+		real(fp_kind) tau_holder(3),tau_holder2(3),ccd_slice,ums,amplitude(nopiy,nopix),phase(nopiy,nopix)
 		integer(4):: save_list(2,nt),match_count
-        complex(fp_kind) :: scattering_pot(nopiy,nopix,nt)
         real(fp_kind),allocatable :: mod_tau(:,:,:,:,:)
     
         real(fp_kind) :: t1, delta
@@ -481,14 +506,22 @@ module m_multislice
 			open(unit=9834, file=trim(adjustl(output_prefix))//'_timing.txt', access='append')
 			write(9834, '(a, g, a, /)') 'The calculation of transmission functions for the QEP model took ', delta, 'seconds.'
 			close(9834)
-		endif
+        endif
+        
+        if(additional_transmission_function) then
+            write(*,*) 'Adding addition transmission function to file...'
+            amplitude = 1
+            do j=1,n_slices
+                if(.not.pure_phase) call binary_in(nopiy,nopix,amplitude,amplitude_fnam(j))
+                call binary_in(nopiy,nopix,phase,phase_fnam(j))
+                qep_grates(:,:,:,j) = qep_grates(:,:,:,j)*spread(transpose(amplitude)*exp( cmplx(0,1)*transpose(phase)),dim=3,ncopies=n_qep_grates)
+            enddo
+        endif
         
         if (save_grates) then
-            write(*,*) 'Saving transmission functions to file...'
-            write(*,*)
+            write(*,*) 'Saving transmission functions to file...',char(10)
             open(unit=3984, file=grates_filename, form='binary', convert='big_endian')
-            write(3984) qep_grates
-            close(3984)
+            write(3984) qep_grates;close(3984)
         endif        
     
     end subroutine make_qep_grates
@@ -530,7 +563,7 @@ module m_multislice
         real(fp_kind) :: ccd_slice,V_corr
         complex(fp_kind),dimension(nopiy,nopix) :: scattering_pot,projected_potential,temp,effective_scat_fact
     
-        real(fp_kind) :: t1, delta
+        real(fp_kind) :: t1, delta,amplitude(nopiy,nopix),phase(nopiy,nopix)
     
         procedure(make_site_factor_generic),pointer :: make_site_factor
         	
@@ -580,7 +613,17 @@ module m_multislice
 			open(unit=9834, file=trim(adjustl(output_prefix))//'_timing.txt', access='append')
 			write(9834, '(a, g, a, /)') 'The calculation of transmission functions for the absorptive model took ', delta, 'seconds.'
 			close(9834)
-		endif
+        endif
+        
+        if(additional_transmission_function) then
+            write(*,*) 'Adding addition transmission function to file...'
+            amplitude = 1
+            do j=1,n_slices
+                if(.not.pure_phase) call binary_in(nopiy,nopix,amplitude,amplitude_fnam(j))
+                call binary_in(nopiy,nopix,phase,phase_fnam(j))
+                transf_absorptive(:,:,j) = transf_absorptive(:,:,j)*transpose(amplitude)*exp( cmplx(0,1)*transpose(phase))
+            enddo
+        endif
     
         if (save_grates) then
             write(*,*) 'Saving transmission functions to file...'
@@ -644,6 +687,7 @@ module m_multislice
     
 
 	function make_detector(nopiy,nopix,kmin,kmax,deltaky,deltakx,phi,delphi) result(detector)
+        use global_variables,only:pi
 		!makes a detector on an array nopiy x nopix with Fourier space pixel size deltaky x deltakx
 		!which measures from kmin to kmax, supplying phi and delphi (detector orientation 
 		!and angular range in radians) will create a detector segment
@@ -653,9 +697,9 @@ module m_multislice
 
 		real(fp_kind)::detector(nopiy,nopix)
 
-		real(fp_kind)::ky(nopiy),kx(nopix),vec(2)
-		real(fp_kind),dimension(nopiy,nopix)::phigrid,kabs
-		integer*4::y,x
+		real(fp_kind)::ky(nopiy),kx(nopix),vec(2),phi_(2)
+		real(fp_kind),dimension(nopiy,nopix)::phigrid,kabs,phiarray
+		integer*4::y,x,i,lower(nopiy,nopix),upper(nopiy,nopix)
 		logical::segment
 
 		!If the phi and delphi variables are present, then make a segmented detector
@@ -670,22 +714,35 @@ module m_multislice
 		kabs = sqrt(real(spread(ky**2,dim=2,ncopies = nopix)&
 		               &+spread(kx**2,dim=1,ncopies = nopiy),kind=fp_kind))
 		detector = merge(1,0,(kabs.ge.kmin) .and. (kabs.le.kmax))
+	
 
 		!If not a segmented detector then return at this point
 		if(.not.segment) return
+        phiarray = atan2(real(spread(ky,dim = 2,ncopies = nopix)),real(spread(kx,dim = 1,ncopies = nopiy)))+pi
+	    phi_= mod([phi,phi+delphi],2*pi)
+        do i=1,2
+            if (phi_(i)<0) phi_(i) = phi_(i) + 2*pi
+        enddo
 
-		!Generate phi an array describing the angle of each pixel
-		phigrid = atan2(real(spread(ky,dim = 2,ncopies = nopix)),real(spread(kx,dim = 1,ncopies = nopiy)))
-
-		vec = [sin(phi),cos(phi)]
-
-		do y =1,nopiy
-		do x =1,nopix
-			if(.not.(dot_product(vec,[ky(y),kx(x)]/sqrt(ky(y)**2+kx(y)**2))>cos(delphi))) detector(y,x) = 0
-		enddo
-		enddo
-
-		return
+        upper = merge(1,0,phiarray>phi_(1))
+	    lower = merge(1,0,phiarray<=phi_(2))
+    
+    
+	    if (phi_(2)>phi_(1)) then
+		    detector = detector*lower*upper
+        
+		    detector = detector*upper
+	    else
+		    detector = merge(detector,0.0_fp_kind,((lower==1).or.(upper==1)))
+        endif
+        
+		!vec = [sin(phi),cos(phi)]
+  !      do i=1,2; if(abs(vec(i))<1e-4) vec(i) = 0; enddo
+		!do y =1,nopiy
+		!do x =1,nopix
+		!	if(.not.(dot_product(vec,[ky(y),kx(x)]).ge.sqrt(ky(y)**2+kx(x)**2)*cos(delphi/2))) detector(y,x) = 0
+		!enddo
+  !      enddo
 	end function   
 
 	function kspace_array(nopiy) result(karray)
@@ -696,6 +753,7 @@ module m_multislice
 		integer*4::i
 	
 		karray = [((i - nopiy/2),i=0,nopiy-1)]
+        karray = cshift(karray,-nopiy/2)
 	end function 
 	    
 end module

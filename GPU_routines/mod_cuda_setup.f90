@@ -132,7 +132,7 @@ module cuda_setup
     
             istat = cudaSetDevice(i)
             
-            if (properties%major.lt.2) then
+            if (properties%major.le.2) then
                 write(*,*) 'Warning: this device has compute capability less than 2.0'
                 write(*,*) 'which will likely result in failure.'
                 write(*,*)

@@ -39,9 +39,8 @@
     program MU_STEM
     
         use m_user_input
-        use global_variables, only: high_accuracy, nt, atf, nat, atomf, volts, ss, qep, adf, constants, nopiy, nopix,output_thermal
+        use global_variables!, only: high_accuracy, nt, atf, nat, atomf, volts, ss, qep, adf, constants, nopiy, nopix,output_thermal,ionic
         use m_lens
-        use local_ionization, only: setup_inelastic_ionization_types
 #ifdef GPU        
         use cuda_setup, only: setup_GPU
         use cuda_array_library, only: set_blocks
@@ -52,18 +51,18 @@
         use m_tilt, only: prompt_tilt
         use m_qep, only: setup_qep_parameters
         use m_absorption, only: complex_absorption, prompt_include_absorption, setup_local_diffraction_plane_geometry,include_absorption
-        use m_potential, only: prompt_high_accuracy,precalculate_scattering_factors
+        use m_potential
         use m_multislice, only: prompt_save_load_grates, prompt_output_probe_intensity
         
         implicit none
         
-        integer :: i_illum, i_tds_model, i_cb_menu, i_cb_calc_type,ifile,nfiles,i_arg,idum
+        integer :: i_illum, i_tds_model, i_cb_menu, i_cb_calc_type,ifile,nfiles,i_arg,idum,i
         
         logical :: nopause = .false.,there
         character(512)::command_argument
         character(120)::fnam
-
-
+        character(2):: symb
+        
 108     write(6,109)
         109     format(&
        &1x,'|----------------------------------------------------------------------------|',/,&
@@ -89,9 +88,9 @@
 	   &1x,'|       Software Foundation.                                                 |',/,&
        &1x,'|                                                                            |',/,&
 #ifdef GPU
-       &1x,'|       GPU Version 5.1                                                      |',/,&
+       &1x,'|       GPU Version 5.2                                                      |',/,&
 #else
-       &1x,'|       CPU only Version 5.1                                                 |',/,&
+       &1x,'|       CPU only Version 5.2                                                 |',/,&
 #endif
        &1x,'|                                                                            |',/,&
        &1x,'|       Note: pass the argument "nopause" (without quotation marks)          |',/,&
@@ -109,6 +108,8 @@
                 nopause = .true.
 			case ('timing')
 				timing = .true.
+			case ('ionic')
+				ionic = .true.
             end select
         enddo
        
@@ -399,7 +400,7 @@
         use global_variables
         use m_slicing
 		use m_lens
-		use local_ionization
+        use m_potential
 		if(allocated(nat)                     ) deallocate(nat)    
 		if(allocated(tau)                     ) deallocate(tau)    
 		if(allocated(atf)                     ) deallocate(atf)    

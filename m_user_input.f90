@@ -57,45 +57,133 @@ module m_user_input
     
     contains
 
+    subroutine make_new_user_input_file()
+    implicit none
+    integer*4::ichoice,ichoice2
+    character(120)::temp_string
+    logical::exists,exists2
+    
+    open(unit=control_file_number, file="user_input.txt", status='new')
 
-
+            ichoice=-1
+            do while(ichoice<1.or.ichoice>3)
+                
+                write(*,*) 'Please select from the following options:'
+                write(*,*) '<1> Use the program in interactive mode'
+                write(*,*) '<2> Record a new driving file'
+                write(*,*) '<3> Play an already existing driving file'
+                read(*,*) ichoice
+            
+            
+            if(ichoice==1) write(control_file_number,*) 'interactive'
+            
+            if(ichoice==2) then
+                ichoice2 = 2
+                do while(ichoice2==2)
+                    write(*,*) 'Please input the name of the new driving file'
+                    read(*,*) temp_string
+                    inquire(file=temp_string,exist = exists2)
+                    if (exists2) then
+                        write(*,*) trim(adjustl(temp_string)),' already exists.'
+                        ichoice2=-1
+                        do while(ichoice2<1.or.ichoice2>2)
+                            write(*,*) 'Input <1> to overwrite existing driving file' 
+                            write(*,*) 'Input <2> to choose a new driving file name'
+                            read(*,*) ichoice2
+                        enddo
+                        if(ichoice2==1) write(control_file_number,*) 'record overwrite',char(10),trim(adjustl(temp_string))
+                    elseif(.not.exists2) then
+                        write(control_file_number,*) 'record',char(10),trim(adjustl(temp_string))
+                        ichoice2=1
+                    endif
+                enddo
+            elseif(ichoice==3) then
+                ichoice2=1
+                do while(ichoice2==1)
+                    write(*,*) 'Please input the name of the driving file to play'
+                    read(*,*) temp_string
+                    inquire(file=temp_string,exist = exists2)
+                    if(exists2) then
+                        write(control_file_number,*) 'play',char(10),trim(adjustl(temp_string))
+                        ichoice2=2
+                    else
+                        do while(ichoice2<1.or.ichoice2>2)
+                            write(*,*) "Couldn't find ",trim(adjustl(temp_string))," options:"
+                            write(*,*) "<1> Enter a new driver file name"
+                            write(*,*) "<2> Return to the previous menu (eg. to record a file of that name)"
+                            read(*,*) ichoice2
+                        enddo
+                        if(ichoice2==2) ichoice=-1
+                    endif
+                enddo
+            endif
+            enddo
+            close(unit=control_file_number)
+            end subroutine
+            
     function init_input()
-
+        use m_string,only:to_lower
         implicit none
         
-        integer*4::init_input,io,i
+        integer*4::init_input,io,i,ichoice,ichoice2,reason
         character(120) :: temp_string
-
+        logical::exists,exists2
         line_no = 0
         init_input = 1
+        
+        inquire(file="user_input.txt",exist = exists)
+        !If the user_input file does not already exist then make new one
+        if(.not.exists) then 
+            write(*,*);write(*,*) 'No "user_input.txt" file found, one will be created.'
+            call make_new_user_input_file()
+        endif
+        
         open(unit=control_file_number, file="user_input.txt", status='old', err = 997)
 
-        read(control_file_number, '(A120)') temp_string
+        read(control_file_number, '(A120)',IOSTAT=Reason) temp_string
+        
+        if(reason<0) then
+            write(*,*) char(10),'"user_input.txt" seems to be empty, creating a new one'
+            close(control_file_number, status='delete')
+            call make_new_user_input_file()
+            open(unit=control_file_number, file="user_input.txt", status='old', err = 997)
+            read(control_file_number, '(A120)',IOSTAT=Reason) temp_string
+        endif
+            
 
-        if(trim(temp_string) .eq. "interactive") then
+        if(to_lower(trim(adjustl(temp_string))) .eq. "interactive") then
             input_file_number = 5
             call init_in_file(-1)
 
-        elseif(trim(temp_string) .eq. "record") then
+        elseif(to_lower(trim(adjustl(temp_string))) .eq. "record") then
             input_file_number = 5
             read(control_file_number, '(A120)') temp_string
+            inquire(file=trim(temp_string),exist = exists)
+            if(exists) then
+                write(*,*) 'File "',trim(adjustl(temp_string)),'", listed in "user_input.txt"'," already exists, and you've"
+                write(*,*) 'attempted to record a file of the same name, if you would like to'
+                write(*,*) 'overwrite the already existing file change "record" to "record overwrite"'
+                write(*,*) 'in user_input.txt and rerun muSTEM.'
+                pause
+                stop
+            endif
             open(unit=in_file_number, file=trim(temp_string), status='new')
             call init_in_file(in_file_number)
 
-        elseif(trim(temp_string) .eq. "record overwrite") then
+        elseif(to_lower(trim(adjustl(temp_string))) .eq. "record overwrite") then
           input_file_number = 5
           read(control_file_number, '(A120)') temp_string
           open(unit=in_file_number, file=trim(temp_string), status='replace')
           call init_in_file(in_file_number)
 
-        elseif(trim(temp_string) .eq. "play") then
+        elseif(to_lower(trim(adjustl(temp_string))) .eq. "play") then
           input_file_number = in_file_number
           read(control_file_number, '(A120)') temp_string
           !open(unit=in_file_number, file=trim(temp_string), status='old', err = 998)
           call init_in_file(-1)
           
           
-        elseif(trim(temp_string).eq. "play all") then
+        elseif(to_lower(trim(adjustl(temp_string))).eq. "play all") then
           input_file_number = in_file_number
           init_input = 0
           do

@@ -61,8 +61,8 @@ subroutine qep_stem
     use m_precision
     use output
 	use cufft_wrapper
-    use local_ionization
     use m_slicing
+    use m_crystallography
     use m_probe_scan, only: nysample, nxsample, probe_positions, scan_quarter
     use m_tilt, only: tilt_wave_function
     use m_string, only: to_string
@@ -127,9 +127,16 @@ subroutine qep_stem
     
  	call setup_propagators
     
-    do i = 1, ndet
-        call make_detector_mask(inner(i),outer(i),masks(:,:,i))
-    enddo
+    do i=1,ndet/nseg
+	do j=1,nseg
+		if (nseg>1) masks(:,:,(i-1)*nseg+j) = make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx,2*pi*j/nseg-seg_det_offset,2*pi/nseg)
+		if(nseg==1) masks(:,:,(i-1)*nseg+j) = make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx)
+	enddo
+	enddo
+    
+    !do i = 1, ndet
+    !    call make_detector_mask(inner(i),outer(i),masks(:,:,i))
+    !enddo
 
     
 	t1 = secnds(0.0)
@@ -192,12 +199,7 @@ subroutine qep_stem
 					if(ionization) then
 						psi_intensity = abs(psi)**2
                         do ii=1,num_ionizations
-                            if(on_the_fly) then                        
-                                inelastic_potential= make_ion_potential(ionization_mu(:,:,ii),tau_slice(:,atm_indices(ii),:,j),nat_slice(atm_indices(ii),j),ss_slice(7,j))
-						        temp = psi_intensity *inelastic_potential*prop_distance(j)
-                            else
-						        temp = psi_intensity * ionization_potential(:,:,ii,j) * prop_distance(j)
-                            endif
+					        temp = psi_intensity * ionization_potential(:,:,ii,j) * prop_distance(j)
 					        ion_image(:,:,ii) = temp+ion_image(:,:,ii)
                         enddo
 					endif
@@ -205,7 +207,7 @@ subroutine qep_stem
                    ! Phase grate
 				    nran = floor(n_qep_grates*ran1(idum)) + 1
                     if(on_the_fly) then
-						call make_qep_potential(trans, tau_slice, nat_slice, ss_slice(7,j))
+						!call make_qep_potential(trans, tau_slice, nat_slice, ss_slice(7,j))
 						psi = psi*trans
                     elseif(quick_shift) then
                         shiftx = floor(ifactorx*ran1(idum)) * nopix_ucell

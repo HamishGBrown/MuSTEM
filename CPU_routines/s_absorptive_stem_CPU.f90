@@ -50,15 +50,14 @@ end function
 subroutine absorptive_stem
     
     use m_precision, only: fp_kind
-    use global_variables, only: nopiy, nopix, normalisation, nt, n_cells, fz, fz_dwf, inverse_sinc, bwl_mat, prop, ndet, ionization, eels, adf, on_the_fly, inner, outer, ci,zarray,nz,ncells
+    use global_variables
     use m_lens, only: probe_df, probe_ndf, make_stem_wfn,probe_aberrations
     use m_absorption, only: fz_abs, transf_absorptive, calculate_absorption_mu, calculate_local_adf_mu
-    use local_ionization
     use m_slicing
     use m_probe_scan, only: nysample, nxsample, probe_positions, scan_quarter
     use m_tilt, only: tilt_wave_function
     use m_multislice
-    use m_potential, only: precalculate_scattering_factors
+    use m_potential
     use m_string, only: to_string
 	use output
 	use cufft_wrapper
@@ -182,24 +181,14 @@ subroutine absorptive_stem
                 
                 if(adf) then
 					!Multiply wave function intensity by ADF potential
-                    if(on_the_fly) then
-						call make_adf_potential(inelastic_potential,fz_adf,tau_slice(:,:,:,j),nat_slice(:,j),ss_slice(7,j))
-						temp = psi_intensity* inelastic_potential*prop_distance(j)
-                    else
-						temp = psi_intensity*adf_potential(:,:,j)*prop_distance(j)
-                    endif
+                    temp = psi_intensity*adf_potential(:,:,j)*prop_distance(j)
 					!Depth sum
 					adf_image = temp + adf_image
                 endif
                 
                 if(ionization) then
                     do ii=1,num_ionizations
-                        if(on_the_fly) then                        
-                            inelastic_potential= make_ion_potential(ionization_mu(:,:,ii),tau_slice(:,atm_indices(ii),:,j),nat_slice(atm_indices(ii),j),ss_slice(7,j))
-						    temp = psi_intensity *inelastic_potential*prop_distance(j)
-                        else
-						    temp = psi_intensity * ionization_potential(:,:,ii,j) * prop_distance(j)
-                        endif
+    				    temp = psi_intensity * ionization_potential(:,:,ii,j) * prop_distance(j)
 					    ion_image(:,:,ii) = temp+ion_image(:,:,ii)
                     enddo
                 endif

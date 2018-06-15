@@ -154,7 +154,7 @@ subroutine qep_tem
                 ! Phase grate
 				nran = floor(n_qep_grates*ran1(idum)) + 1
 				if(on_the_fly) then
-					call make_qep_potential(trans, tau_slice, nat_slice, ss_slice(7,i_slice))
+					!call make_qep_potential(trans, tau_slice, nat_slice, ss_slice(7,i_slice))
 					psi_out = psi*trans
 				elseif(quick_shift) then
 					shiftx = floor(ifactorx*ran1(idum)) * nopix_ucell

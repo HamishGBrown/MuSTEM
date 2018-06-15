@@ -89,20 +89,14 @@ module m_absorption
         implicit none
         
         real(8),parameter :: pi = 4.0d0*atan(1.0d0)
-		!real(fp_kind),parameter :: pi = 4.0d0*atan(1.0d0)
-        
+
         call setup_absorptive_array
         
         if (allocated(tdsbr)) deallocate(tdsbr)
         allocate(tdsbr(max_int,nt))
-          
-        if(include_absorption) then
-            call get_inelffs(tdsbr, max_int, kstep, ss, atf, nat, ak, relm, orthog, 0.0_8, pi)
-          
-        else
-            tdsbr = 0.0_fp_kind
-       
-        endif
+        
+        tdsbr = 0.0_fp_kind
+        if(include_absorption) call get_inelffs(tdsbr, max_int, kstep, ss, atf, nat, ak, relm, orthog, 0.0_8, pi)
     
     end subroutine
     
@@ -201,7 +195,9 @@ module m_absorption
         use global_variables, only: nt
         use m_crystallography, only: trimi, trimr
 		use m_string
+        !use WaasmeierKohl
 		use output, only: output_prefix,timing
+        use m_electron, only:element
         
         implicit none
 
@@ -215,7 +211,7 @@ module m_absorption
         real(fp_kind) :: g2, mu_0
 		real(8)::abserr
 
-        integer :: i, ipa,m,ier
+        integer :: i, ipa,m,ier,Z
     
         ! Double precision variables for accuracy
         real(8),parameter :: pi = 4.0d0*atan(1.0d0)
@@ -258,7 +254,6 @@ module m_absorption
         ! Accumulator for mu_0
         mu_0 = 0.0_fp_kind
 		t1 = secnds(0.0)
-
         ! Loop over reciprocal lattice vectors g
         do ipa = 1, max_int
 
@@ -278,20 +273,24 @@ module m_absorption
 
             ! Loop over atomic species
             do i_species = 1, nt
-        
+                Z=nint(atf(1,i_species))
                 ! Set global dwf which is used in tds_calc_phi()
                 dwf = exp( - tp2 * g2 * atf(3, i_species) )
 												
                 ! Integrate over theta and phi
-				call qag ( tds_calc_theta, thmin, thmax, abs_tol, rel_tol, 1, sum1, abserr, m, ier )
+                !if (thmin<1e-2.and.thmax>pi-1e-2) then
+                !    sum1= imag(FSCATT(real(sqrt(g2)*2*pi,kind=4),sqrt(atf(3,i_species)),Z,element(Z),300.0_4,1,.false.,.false.))/(16*2*pi*pi)**2
+                !else
+				    call qag ( tds_calc_theta, thmin, thmax, abs_tol, rel_tol, 1, sum1, abserr, m, ier )
+                !endif
 				
                 ! Fractional occupancy
                 sum1 = sum1 * atf(2,i_species)
 
                 ! Store result (not yet in correct units)
                 tdsbr_t(ipa,i_species) = sum1
-            
-                ! Accumulate mu_0
+                !write(16+i_species,*) sqrt(g2),',',imag(FSCATT(real(sqrt(g2)*2*pi,kind=4),sqrt(atf(3,i_species)),Z,element(Z),300.0_4,1,.false.,.false.))/(16*2*pi*pi)**2,',',sum1 
+                ! Accumulate mu_0)
                 if (all(g.eq.0.0_fp_kind)) then
                     mu_0 = mu_0 + sum1*nat(i_species) 
                 endif
@@ -302,7 +301,8 @@ module m_absorption
 
         write(*,*)
         write(*,*)
-
+        !close(17)
+        !stop
 		
 		if(timing) then
 			delta = secnds(t1)
@@ -420,9 +420,9 @@ module m_absorption
     
     function tds_calc_phi(phi)
   
-        use global_variables, only: ss, nt, atomf, atf, ak
+        use global_variables, only: ss, nt, atomf, atf, ak,ionic,dz
         use m_crystallography, only: trimr        
-        use m_elsa, only: elsa_ext
+        use m_electron, only: elsa_ext,peng_ionic_ff
         
         implicit none
     
@@ -444,9 +444,14 @@ module m_absorption
         q1_sq = trimr(q1,ss)**2
     
         q2_sq = trimr(q2,ss)**2
-    
-        f1 = elsa_ext(nt,i_species,dble(atomf),q1_sq/4)
-        f2 = elsa_ext(nt,i_species,dble(atomf),q2_sq/4)
+		
+		if(ionic) then
+			f1 = Peng_ionic_FF(real(q1_sq/4,kind = fp_kind),nint(atf(1,i_species)),dZ(i_species))
+			f2 = Peng_ionic_FF(real(q2_sq/4,kind = fp_kind),nint(atf(1,i_species)),dZ(i_species))
+        else
+			f1 = elsa_ext(nt,i_species,dble(atomf),q1_sq/4)
+			f2 = elsa_ext(nt,i_species,dble(atomf),q2_sq/4)
+		endif
         
     
         dwf1 = exp( - tp2 * atf(3,i_species) * (q1_sq + q2_sq) )

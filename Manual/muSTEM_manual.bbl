@@ -1,0 +1,61 @@
+\begin{thebibliography}{10}
+
+\bibitem{AFOR1}
+L.~J. Allen, S.~D. Findlay, M.~P. Oxley, and C.~J. Rossouw.
+\newblock Lattice-resolution contrast from a focused coherent electron probe.
+  {P}art {I}.
+\newblock {\em Ultramicroscopy}, 96:47, 2003.
+
+\bibitem{BK1}
+D.~M. Bird and Q.~A. King.
+\newblock Absorptive form factors for high-energy electron diffraction.
+\newblock {\em Acta Cryst.}, A46:202, 1990.
+
+\bibitem{VDB}
+W.~Van den Broek, X.~Jiang, and C.T. Koch.
+\newblock {FDES}, a {GPU}-based multislice algorithm with increased efficiency
+  of the computation of the projected potential.
+\newblock {\em Ultramicroscopy}, 158:89 -- 97, 2015.
+
+\bibitem{FAOR1}
+S.~D. Findlay, L.~J. Allen, M.~P. Oxley, and C.~J. Rossouw.
+\newblock Lattice-resolution contrast from a focused coherent electron probe.
+  {P}art {II}.
+\newblock {\em Ultramicroscopy}, 96:65, 2003.
+
+\bibitem{Forbes2012}
+B.~D. Forbes, A.~J. D'Alfonso, R.~E.~A. Williams, R.~Srinivasan, H.~L. Fraser,
+  D.~W. McComb, B.~Freitag, D.~O. Klenov, and L.~J. Allen.
+\newblock Contribution of thermally scattered electrons to atomic resolution
+  elemental maps.
+\newblock {\em Physical Review B}, 86:024108, 2012.
+
+\bibitem{Forbes2010}
+B.~D. Forbes, A.~V. Martin, S.~D. Findlay, A.~J. D'Alfonso, and L.~J. Allen.
+\newblock Quantum mechanical model for phonon excitation in electron
+  diffraction and imaging using a born-oppenheimer approximation.
+\newblock {\em Phys. Rev. B}, 82(10):104103--, September 2010.
+
+\bibitem{HH1}
+C.~R. Hall and P.~B. Hirsch.
+\newblock Effect of thermal diffuse scattering on propagation of high energy
+  electrons through crystals.
+\newblock {\em Proc. Roy. Soc. Lond. A}, 286:158, 1965.
+
+\bibitem{LXS2}
+R.~F. Loane, P.~Xu, and J.~Silcox.
+\newblock Thermal vibrations in convergent-beam electron diffraction.
+\newblock {\em Acta Cryst.}, A47:267, 1991.
+
+\bibitem{LXS}
+R.~F. Loane, P.~Xu, and J.~Silcox.
+\newblock Thermal vibrations in convergent-beam electron diffraction.
+\newblock {\em Acta Crystallographica Section {A}}, 47:267, 1991.
+
+\bibitem{Zhu2013}
+Y.~Zhu, A.~Soukiassian, D.~G. Schlom, D.~A. Muller, and C.~Dwyer.
+\newblock Towards artifact-free atomic-resolution elemental mapping with
+  electron energy-loss spectroscopy.
+\newblock {\em Applied Physics Letters}, 103(14), 2013.
+
+\end{thebibliography}

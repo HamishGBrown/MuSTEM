@@ -67,7 +67,7 @@ subroutine absorptive_tem
         if(pw_illum) call make_lens_ctf(lens_ctf(:,:,i),imaging_df(i),imaging_aberrations)
 	enddo
 	   
-    call calculate_absorption_mu        
+    !call calculate_absorption_mu        
 
     ! Precalculate the scattering factors on a grid
     call precalculate_scattering_factors()
@@ -126,7 +126,10 @@ subroutine absorptive_tem
 			if (nz>1) filename = trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(z_indx(1))),length)//'_A'
 			call binary_out_unwrap(nopiy, nopix, cbed, trim(adjustl(filename))//'_DiffractionPattern',write_to_screen=.false.)
             
+            
 			if(pw_illum) then
+            call binary_out(nopiy, nopix, abs(psi)**2, trim(adjustl(filename))//'_exit_surface_intensity',write_to_screen=.false.)
+            call binary_out(nopiy, nopix, atan2(imag(psi),real(psi)), trim(adjustl(filename))//'_exit_surface_phase',write_to_screen=.false.)
 			do i=1,imaging_ndf
 				call fft2(nopiy, nopix, psi, nopiy, psi_out, nopiy)
 				psi_out = psi_out*lens_ctf(:,:,i)

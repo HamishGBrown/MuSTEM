@@ -259,7 +259,7 @@ module m_probe_scan
     subroutine setup_stem_image_interpolation()
     
         use m_user_input, only: get_input
-        use global_variables, only: tiley, tilex, output_nopiy, output_nopix
+        use global_variables, only: tiley, tilex, output_nopiy, output_nopix,interpolation
     
         implicit none
 
@@ -267,9 +267,19 @@ module m_probe_scan
         
         if((nysample.gt.1).and.(nxsample.gt.1)) then
             write(6,99) 
-    99      format(' Enter the maximum number of pixels to interpolate the output image to.')
+            99 format(' Enter the maximum number of pixels to interpolate the output image to.',/,&
+                      &' Enter a negative number to disable interpolation.')
             call get_input('output interpolation max pixels', out_max)
-            write(*,*) 
+            write(*,*)
+            if (out_max<0) then
+                write(*,*) 'Interpolation has been disabled.',char(10)
+                interpolation = .false.
+                output_nopix = nxsample
+                output_nopiy = nysample
+                tiley = 1
+                tilex = 1
+                return
+            endif
             
             
             write(*,*) 'Enter the tiling in x and y for interpolation output'
@@ -287,7 +297,7 @@ module m_probe_scan
 105			format(' The choice of ',i4,' output pixels means that sampling of the output STEM image',/,&
 				& ' would fall below the Nyquist  criterion for your choice of probe parameters.',/,&
 				&' The maximum number of output pixels has been increased to ',i4,' to avoid ',/,&
-				&' aliasing of the output.',/)
+				&' undersampling of the output.',/)
 				out_max = max(nxsample*tilex, nysample*tiley)
 			endif
 

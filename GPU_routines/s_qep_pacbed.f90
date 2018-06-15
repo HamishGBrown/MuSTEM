@@ -60,7 +60,6 @@ subroutine qep_pacbed
     use cuda_ms
     use CUFFT
 	use cufft_wrapper
-    use local_ionization
     use cuda_potential
     use m_slicing
     use cuda_setup
@@ -68,13 +67,13 @@ subroutine qep_pacbed
     use m_probe_scan, only: nysample, nxsample, probe_positions
     use m_tilt, only: tilt_wave_function
     use m_multislice, only: make_qep_grates, setup_propagators
-    use m_potential, only: precalculate_scattering_factors
+    use m_potential
     
     implicit none
     
     !dummy variables
     integer(4) ::  i, j, i_qep_pass
-    integer(4) ::  shifty,shiftx
+    integer(4) ::  shifty,shiftx,nopixout,nopiyout
     integer(4) ::  ny, nx,z_indx(1),length
     
     !random variables
@@ -119,18 +118,9 @@ subroutine qep_pacbed
 	write(*,*) '|      Pre-calculation setup       |'
 	write(*,*) '|----------------------------------|'
     write(*,*)
-    
-	write(*,*) 'Output diffraction patterns for each scan position?'
-    write(*,*) '<1> Output the total diffraction pattern (including elastically and '
-	write(*,*) '    inelastically scattered contributions) for each scan position' 
-    write(*,*) '<2> Output both the total diffraction pattern and also the elastically'
-	write(*,*) '    scattered contribution for each scan position'
-    write(*,*) '<3> Do not output diffraction patterns for each scan position'
-	call get_input('Diffraction pattern for each probe position choice',idum)
-	write(*,*)
-	
-	fourDSTEM = (idum == 1.or.idum ==2)
-	elfourd = idum == 2
+
+    call fourD_STEM_options(fourdSTEM,nopiyout,nopixout,nopiy,nopix)
+	elfourd = fourdSTEM.and.(.not.output_thermal)
 	
 	if(elfourd) allocate(psi_elastic_d(nopiy,nopix,nz))
 	allocate(cbed_d(nopiy,nopix,nz))
@@ -282,7 +272,8 @@ subroutine qep_pacbed
 					filename = trim(adjustl(output_prefix))
 					if (nz>1) filename = trim(adjustl(filename))//'_z='//to_string(int(zarray(i)))//'_A'
 					call binary_out_unwrap(nopiy, nopix, fourDSTEM_pattern/n_qep_passes, trim(adjustl(filename)) //'_pp_'//&
-										  &to_string(nx)//'_'//to_string(ny)//'_Diffraction_pattern',write_to_screen=.false.)
+										  &to_string(nx)//'_'//to_string(ny)//'_Diffraction_pattern',write_to_screen=.false.&
+										  &,nopiyout=nopiyout,nopixout=nopixout)
 			endif
 
 			pacbed_pattern(:,:,i) = pacbed_pattern(:,:,i) + fourDSTEM_pattern
@@ -292,7 +283,8 @@ subroutine qep_pacbed
 					filename = trim(adjustl(filename))//'_pp_'//to_string(nx)//'_'//to_string(ny)//'_Elastic_Diffraction_pattern'
 					call cuda_mod<<<blocks,threads>>>(psi_elastic_d(:,:,i), fourDSTEM_pattern_d, normalisation, nopiy, nopix)
 					fourDSTEM_pattern_el = fourDSTEM_pattern_d
-					call binary_out_unwrap(nopiy, nopix, fourDSTEM_pattern_el/n_qep_passes**2, filename,write_to_screen=.false.)
+					call binary_out_unwrap(nopiy, nopix, fourDSTEM_pattern_el/n_qep_passes**2, filename,write_to_screen=.false.&
+											&,nopiyout=nopiyout,nopixout=nopixout)
 			endif
 		
 		

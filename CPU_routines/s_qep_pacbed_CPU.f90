@@ -56,7 +56,6 @@ subroutine qep_pacbed
     use m_precision
     use output
 	use cufft_wrapper
-    use local_ionization
     use m_slicing
 	use m_string
     use m_probe_scan, only: nysample, nxsample, probe_positions
@@ -72,7 +71,7 @@ subroutine qep_pacbed
     integer(4) ::  ny, nx,z_indx(1),length
     
     !random variables
-    integer(4) :: idum
+    integer(4) :: idum,nopiyout,nopixout
     !real(fp_kind) :: ran1
        
     !probe variables
@@ -80,7 +79,7 @@ subroutine qep_pacbed
     complex(fp_kind),dimension(nopiy,nopix,nz) :: psi_elastic
          
     real(fp_kind),dimension(nopiy, nopix) :: fourDSTEM_pattern,fourDSTEM_el_pattern,temp
-	real(fp_kind),dimension(nopiy,nopix,nz) :: pacbed_pattern,cbed
+	real(fp_kind),dimension(nopiy,nopix,nz) :: pacbed_pattern,cbed,PACBED_elastic
     real(fp_kind)::ccd_slice(n_slices)
     
     !diagnostic variables
@@ -98,14 +97,8 @@ subroutine qep_pacbed
 	write(*,*) '|----------------------------------|'
     write(*,*)
     
-	write(*,*) 'Output diffraction patterns for each scan position?'
-    write(*,*) '<1> Output the diffraction pattern for each scan position'
-    write(*,*) '<2> Do not output diffraction patterns for each scan position'
-	call get_input('Diffraction pattern for each probe position? <1> y <2> n',idum)
-	write(*,*)
-	
-	fourDSTEM = idum == 1
-	
+    call fourD_STEM_options(fourdSTEM,nopiyout,nopixout,nopiy,nopix)
+	elfourd = fourdSTEM.and.output_thermal
     call precalculate_scattering_factors
     !Generally not practical for CPU calculations
     on_the_fly = .false.
@@ -131,7 +124,7 @@ subroutine qep_pacbed
         	
     intensity = 1.0_fp_kind
     pacbed_pattern = 0.0_fp_kind
-    
+    PACBED_elastic = 0.0_fp_kind
 	do ny = 1, nysample
     do nx = 1, nxsample
 #ifdef gpu       
@@ -152,6 +145,7 @@ subroutine qep_pacbed
 		fourDSTEM_pattern = 0_fp_kind
 		fourDSTEM_el_pattern = 0_fp_kind
 		psi_elastic = 0
+        
 		cbed = 0
 
         do i_qep_pass = 1, n_qep_passes 
@@ -167,8 +161,8 @@ subroutine qep_pacbed
                     ! Phase grate
 				    nran = floor(n_qep_grates*ran1(idum)) + 1
                     if(on_the_fly) then
-						call make_qep_potential(trans, tau_slice, nat_slice, ss_slice(7,j))
-						psi_out = psi*trans
+						!call make_qep_potential(trans, tau_slice, nat_slice, ss_slice(7,j))
+						!psi_out = psi*trans
                     elseif(quick_shift) then
                         shiftx = floor(ifactorx*ran1(idum)) * nopix_ucell
                         shifty = floor(ifactory*ran1(idum)) * nopiy_ucell
@@ -196,8 +190,8 @@ subroutine qep_pacbed
 					z_indx = minloc(abs(ncells-i))
 
 					! Accumulate elastic wave function
-					if(elfourd)  psi_elastic(:,:,z_indx(1)) = psi_elastic(:,:,z_indx(1)) + psi_out
-
+					if(output_thermal)  psi_elastic(:,:,z_indx(1)) = psi_elastic(:,:,z_indx(1)) + psi_out
+                        
 					! Accumulate diffaction pattern
 					temp = abs(psi_out)**2
 					cbed(:,:,z_indx(1)) = cbed(:,:,z_indx(1)) + temp
@@ -209,6 +203,7 @@ subroutine qep_pacbed
         
         intensity = sum(abs(psi)**2)
 		length = ceiling(log10(maxval(zarray)))
+        PACBED_elastic = PACBED_elastic+abs(psi_elastic)**2
 		do i=1,nz
 			fourDSTEM_pattern = cbed(:,:,i)
 			!Output 4D STEM diffraction pattern
@@ -217,7 +212,8 @@ subroutine qep_pacbed
 					filename = trim(adjustl(output_prefix))
 					if (nz>1) filename = trim(adjustl(filename))//'_z='//to_string(int(zarray(i)))//'_A'
 					call binary_out_unwrap(nopiy, nopix, fourDSTEM_pattern/n_qep_passes, trim(adjustl(filename)) //'_pp_'//&
-										  &to_string(nx)//'_'//to_string(ny)//'_Diffraction_pattern',write_to_screen=.false.)
+										  &to_string(nx)//'_'//to_string(ny)//'_Diffraction_pattern',write_to_screen=.false.&
+                                          &,nopiyout=nopiyout,nopixout=nopixout)
 			endif
 
 			pacbed_pattern(:,:,i) = pacbed_pattern(:,:,i) + fourDSTEM_pattern
@@ -225,8 +221,8 @@ subroutine qep_pacbed
 			if (output_thermal.and.fourDSTEM) then 
 					!Output elastic only diffraction pattern
 					filename = trim(adjustl(filename))//'_pp_'//to_string(nx)//'_'//to_string(ny)//'_Elastic_Diffraction_pattern'
-					fourDSTEM_el_pattern = abs(psi_elastic(:,:,i))**2
-					call binary_out_unwrap(nopiy, nopix, fourDSTEM_el_pattern/n_qep_passes**2, filename,write_to_screen=.false.)
+					fourDSTEM_el_pattern = abs(psi_elastic(:,:,i))**2/n_qep_passes**2
+					call binary_out_unwrap(nopiy, nopix, fourDSTEM_el_pattern, filename,write_to_screen=.false.)
 			endif
 		
 		
@@ -266,8 +262,12 @@ subroutine qep_pacbed
 	do i=1,nz
 		filename = trim(adjustl(output_prefix))
 		if(nz>1) filename=trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(i)),length)//'_A_'
-		filename = trim(adjustl(filename))//'_PACBED_Pattern'
-		call binary_out_unwrap(nopiy,nopix,pacbed_pattern(:,:,i),filename)
+		call binary_out_unwrap(nopiy,nopix,pacbed_pattern(:,:,i),trim(adjustl(filename))//'_PACBED_Pattern')
+        
+        if(output_thermal) then
+            call binary_out_unwrap(nopiy,nopix,PACBED_elastic(:,:,i)/ n_qep_passes/n_qep_passes,trim(adjustl(filename))//'_elastic_PACBED_Pattern')    
+            call binary_out_unwrap(nopiy,nopix,pacbed_pattern(:,:,i)-PACBED_elastic(:,:,i)/ n_qep_passes/n_qep_passes,trim(adjustl(filename))//'_thermal_PACBED_Pattern')
+        endif
 	enddo
     
 end subroutine qep_pacbed

@@ -39,7 +39,7 @@ module m_tilt
         integer :: i_tilt, i_cshift
         
 10      write(*,*) 'The illumination can be tilted off the beam axis.'
-        write(*,*) '<1> No beam tilt',char(10),'<2> Beam tilt'
+        write(*,*) '<1> No beam tilt',char(10),' <2> Beam tilt'
         call get_input('<1> No beam tilt <2> Beam tilt', i_tilt)
         write(*,*)
         
@@ -58,7 +58,7 @@ module m_tilt
         endif
 
 20      write(*,*) 'The specimen can be tilted off the specimen axis.'
-        write(*,*) '<1> No specimen tilt',char(10),'<2> Specimen tilt'
+        write(*,*) '<1> No specimen tilt',char(10),' <2> Specimen tilt'
         call get_input('<1> No specimen tilt <2> Specimen tilt', i_tilt)
         write(*,*)
         
@@ -95,8 +95,8 @@ module m_tilt
 		!second array dimension and y with the first dimension
 		!whilst remaining true to the description of the direction of the 
 		!azimuth
-		bt_x = ak1*sin(tilt_theta)*cos(-tilt_phi)/trimi(ig1,ss)
-		bt_y = ak1*sin(tilt_theta)*sin(-tilt_phi)/trimi(ig2,ss)
+		bt_x = ak1*sin(tilt_theta)*cos(tilt_phi)/trimi(ig1,ss)
+		bt_y = ak1*sin(tilt_theta)*sin(tilt_phi)/trimi(ig2,ss)
 		
 		!Round tilt vector to an integer number of pixels
 		!This avoids a boundary discontinuity in the tilted beam
@@ -147,22 +147,10 @@ module m_tilt
 
         Kz   = ak1 * cos( tilt_theta*1e-3_fp_kind )
         claue  = ak1 * [ sin(tilt_theta*1e-3_fp_kind)*cos(tilt_phi*1e-3_fp_kind)/trimi(ig1,ss), sin(tilt_theta*1e-3_fp_kind)*sin(tilt_phi*1e-3_fp_kind)/trimi(ig2,ss),0_fp_kind]
-    end subroutine   
+    end subroutine      
+    
     
     subroutine tilt_wave_function(psi)
-        implicit none
-        
-        complex(fp_kind) :: psi(:,:)
-        
-        if (tilt_illumination) then
-            call tilt_wave_function_phase_ramp(psi)
-        endif
-        
-    end subroutine
-    
-    
-    
-    subroutine tilt_wave_function_phase_ramp(psi)
         
         use global_variables, only: ifactory, ifactorx, pi,bvec
         use output
@@ -181,58 +169,12 @@ module m_tilt
         bvec_ = bvec/[nopiy,nopix,1]*[ifactory,ifactorx,0]
         
         !$OMP PARALLEL DO PRIVATE(nx, ny)
-        do nx = 1, nopix
-        do ny = 1, nopiy
-                
+        do nx = 1, nopix;do ny = 1, nopiy
             psi(ny,nx) = psi(ny,nx) * exp(cmplx(0.0_fp_kind, 2*pi*dot_product([ny-1, nx-1, 0], bvec_), fp_kind))
-        enddo
-        enddo
+        enddo;enddo
         !$OMP END PARALLEL DO
     end subroutine
-    
-    subroutine tilt_wave_function_shift(psi)
-    
-        use global_variables, only: ifactory, ifactorx, pi,ig1,ig2,bvec
-        use output
-        use CUFFT_wrapper
-        
-        implicit none
-        
-        complex(fp_kind) :: psi(:,:)
-        
-        integer :: nopiy, nopix,shiftx,shifty
-        real(fp_kind) :: shift(3), shift_frac(3),ky(3),kx(3)!,bvec(3)
-        integer :: ny, nx,m1,m2
-        real(fp_kind),allocatable::shift_array(:,:)
-        complex(fp_kind),allocatable :: shift_grate(:,:)
-        integer,allocatable,dimension(:)::fftfreqy,fftfreqx
-        
-        nopiy = size(psi, 1)
-        nopix = size(psi, 2)
 
-        allocate(shift_array(nopiy,nopix),fftfreqy(nopiy),fftfreqx(nopix),shift_grate(nopiy,nopix))
-        
-        shifty = (nopiy-1)/2-1
-        shiftx = (nopix-1)/2-1
-        shift_array = 0
-        fftfreqy = fftfreq(nopiy)
-        fftfreqx = fftfreq(nopix)
-        
-        do ny = 1, nopiy
-            if(abs(fftfreqy(ny)-bvec(1)*ifactory)<1) then
-                do nx =1,nopix
-                    if(abs(fftfreqx(nx)-bvec(2)*ifactorx)<1) then
-                        shift_array(ny,nx)=1                       
-                        exit
-                    endif
-                enddo
-            exit
-            endif
-        enddo
-
-        call fft2(nopiy,nopix,cmplx(shift_array,kind=fp_kind),nopiy,shift_grate,nopiy)
-        
-    end subroutine
     
     function fftfreq(n)
     integer*4,intent(in)::n
@@ -251,16 +193,4 @@ module m_tilt
     endif
     end function
     
-    function quad_shift(array)
-        real(fp_kind)::array(:,:)
-        integer*4::nopiy,nopix
-        real(fp_kind)::quad_shift(size(array, 1),size(array, 2))
-    
-        nopiy = size(array, 1)
-        nopix = size(array, 2)
-        
-        quad_shift = cshift(cshift(array, nopix/2,dim = 2),nopiy/2,dim = 1)
-    
-    end function
-    !
 end module

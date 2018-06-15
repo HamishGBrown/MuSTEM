@@ -267,8 +267,9 @@ module m_lens
 
     function make_ctf(xyposn,df,cutoff,aberrations) result(ctf)
 
-        use global_variables, only: nopiy, nopix, ig1, ig2, ifactory, ifactorx, pi, ss
+        use global_variables, only: nopiy, nopix, ifactory, ifactorx, pi, ss
         use m_crystallography, only: trimr
+        use m_potential, only: make_g_vec_array
         
         implicit none
 
@@ -276,37 +277,23 @@ module m_lens
         real(fp_kind),intent(in) :: xyposn(3),df,cutoff
 		type(aberration_coefficient),intent(in)::aberrations(14)
 
-        integer(4) :: ny, nx, shifty, shiftx
-        real(fp_kind) :: kx(3), ky(3), kr(3), akr, m1, m2,phi
-        real(fp_kind) :: ig1_temp(3), ig2_temp(3)
-    
-        shifty = (nopiy-1)/2-1
-        shiftx = (nopix-1)/2-1
+        integer(4) :: ny, nx
+        real(fp_kind) :: kr(3), akr, m1, m2,phi, g_vec_array(3,nopiy,nopix)
+        
+        call make_g_vec_array(g_vec_array,ifactory,ifactorx)
+        ctf=0.0_fp_kind
+        !$OMP PARALLEL DO PRIVATE(nx, m1, ny, m2, kr, akr,phi)
+        do nx = 1, nopix;do ny = 1, nopiy
+            kr = g_vec_array(:,ny,nx)
+            akr = trimr(kr,ss)
 
-        ig1_temp = float(ig1)/float(ifactorx)
-        ig2_temp = float(ig2)/float(ifactory)
-
-        !$OMP PARALLEL DO PRIVATE(nx, m1, kx, ny, m2, ky, kr, akr,phi)
-        do nx = 1, nopix
-              m1 = float(mod( nx+shiftx, nopix) - shiftx -1)
-              kx = m1 * ig1_temp
-
-              do ny = 1, nopiy
-                    m2 = float(mod( ny+shifty, nopiy) - shifty -1)
-                    ky = m2 * ig2_temp
-                    kr = kx + ky 
-                    akr = trimr(kr,ss)
-
-                    if (akr.le.cutoff) then
-						  phi = atan2(kr(2),kr(1))
-                          ctf(ny,nx) = exp(cmplx(0.0_fp_kind, -1*chi(aberrations,akr,phi,df), fp_kind))
-						  ctf(ny,nx) = ctf(ny,nx) * exp(cmplx(0.0_fp_kind, -2*pi*dot_product(kr, xyposn), fp_kind))
-                    else
-                          ctf(ny,nx) = 0.0_fp_kind
-
-                    endif
-               enddo
-        enddo
+            if (akr.le.cutoff) then
+					phi = atan2(kr(2),kr(1))
+                    ctf(ny,nx) = exp(cmplx(0.0_fp_kind, -1*chi(aberrations,akr,phi,df), fp_kind))
+					ctf(ny,nx) = ctf(ny,nx) * exp(cmplx(0.0_fp_kind, -2*pi*dot_product(kr, xyposn), fp_kind))
+            endif
+               
+        enddo;enddo
         !$OMP END PARALLEL DO
     
     end  function

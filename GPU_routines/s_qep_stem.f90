@@ -65,15 +65,15 @@ subroutine qep_stem
     use cuda_ms
     use CUFFT
 	use cufft_wrapper
-    use local_ionization
     use cuda_potential
     use m_slicing
     use cuda_setup
+	use m_crystallography
     use m_probe_scan, only: nysample, nxsample, probe_positions, scan_quarter
     use m_tilt, only: tilt_wave_function
     use m_string, only: to_string
     use m_multislice!, only: make_qep_grates, output_probe_intensity, output_cell_list, cell_map, output_thickness_list, setup_propagators
-    use m_potential, only: precalculate_scattering_factors
+    use m_potential
     
     implicit none
     
@@ -160,9 +160,12 @@ subroutine qep_stem
     
  	call setup_propagators
     
-    do i = 1, ndet
-        call make_detector_mask(inner(i),outer(i),masks(:,:,i))
-    enddo
+    do i=1,ndet/nseg
+	do j=1,nseg
+		if(nseg>1) masks(:,:,(i-1)*nseg+j) = make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx,2*pi*j/nseg-seg_det_offset,2*pi/nseg)
+		if(nseg==1) masks(:,:,(i-1)*nseg+j) = make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx)
+	enddo
+	enddo
 
     if (on_the_fly.or.quick_shift.or.phase_ramp_shift) then
         allocate(trans_d(nopiy,nopix))

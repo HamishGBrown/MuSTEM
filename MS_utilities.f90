@@ -16,12 +16,44 @@
 !  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 !                       
 !--------------------------------------------------------------------------------
-
+    
+    !Checks the list of atom labels and will append 2,3,4 etc. if there are duplicates
+    !Note that this method is not robust to cases where there are three labels of the form
+    !eg. Sr, Sr2, Sr
+    subroutine correct_duplicate_atom_labels(substance_atom_types,nt)
+    use m_string
+    implicit none
+    character*10::substance_atom_types(nt)    
+    integer*4,intent(in)::nt
+    
+    integer*4:: unique_list(nt),j,i,ii
+    logical::unique
+    
+    
+    j=1
+    do i=1,nt
+        unique = .true.
+        
+        do ii=1,i-1
+            unique = .not.(trim(adjustl(substance_atom_types(ii)))==trim(adjustl(substance_atom_types(i))))
+            if(.not.unique) then
+                unique_list(i)=unique_list(ii)+1
+                exit
+            endif
+        enddo
+        
+        if(unique) unique_list(i) = 1
+    enddo
+    
+    do i=1,nt
+        if(unique_list(i)>1) substance_atom_types(i)=trim(adjustl(substance_atom_types(i)))//to_string(unique_list(i))
+    enddo
+    end subroutine
 
       subroutine set_xtl_global_params()
       use m_precision
       use global_variables
-      use m_xray_factors
+      use m_electron
       use m_user_input
       use m_string, only:is_numeric
       use m_crystallography, only: cryst, zone, subuvw, subhkl, rshkl, angle, trimr, trimi, rsd
@@ -79,7 +111,7 @@
       enddo
       rewind(iunit)
       
-      allocate(atf(3,nt),tau(3,nt,nm),nat(nt),atomf(13,nt),substance_atom_types(nt),fx(nt))
+      allocate(atf(3,nt),tau(3,nt,nm),nat(nt),atomf(13,nt),substance_atom_types(nt),fx(nt),dz(nt))
 
 
 102   format( a20 )
@@ -105,7 +137,11 @@
 
       do i = 1, nt
             read(iunit,*) substance_atom_types(i)
-            read(iunit,*) nat(i), atf(1:3,i)
+            if (ionic) then
+				read(iunit,*) nat(i), atf(1:3,i),dz(i)
+			else
+				read(iunit,*) nat(i), atf(1:3,i)
+			endif
             if(nat(i).gt.nm.or.nat(i).lt.0) then
                   write(6,171) i,nat(i)
 171               format(' Type ',i3,2x,' nat = ',i5,' this is wrong - EXIT')
@@ -144,8 +180,8 @@
                   !endif
             enddo
       enddo
+      call correct_duplicate_atom_labels(substance_atom_types,nt)
       call cryst(a0,deg,ss)   !Establish the triclinic information
-      read(iunit,*) junk
       icount = 0
 
       ! Force to 001 convention
@@ -257,7 +293,7 @@
     subroutine set_volts(nt, atf, nat, atomf, volts, ss)
 
         use m_precision, only: fp_kind
-        use m_elsa, only:elsa_ext
+        use m_electron, only:elsa_ext
 
         implicit none
 
@@ -318,16 +354,6 @@
         write(*,*) '|      Unit cell tiling and grid size      |'
         write(*,*) '|------------------------------------------|'
         write(*,*)
-        
-    !    write(6,100)
-    !100 format(/,&
-    !           &' You will now be asked how the unit cell should be tiled in each direction, ', /, &
-    !           &' as well as the number of pixels in each direction. The number of pixels ', /, &
-    !           &' should preferably be a product of powers of small primes, in order to speed ', / &
-    !           &' up the calculations which employ the Fast Fourier Transform. If possible also ', / &
-    !           &' try to ensure that the number of pixels per unit cell is an integer, ', /, &
-    !           &' as this may further speed up calculations.                        ', /, &
-    !           )
                    
     131 format( ' Enter the integer by which to tile the unit cell in the ', a1,' direction:')
     110 write(6,131) 'x'
@@ -373,10 +399,8 @@
         
     165 continue
         if (mod(nopiy,ifactory).eq.0 .and. mod(nopix, ifactorx).eq.0) then
-            write(6,161) nopix_ucell, nopiy_ucell, &
-                         ifactorx, ifactory, &
-                         nopix, nopiy, &
-                         max_qx, char(143), max_qy, char(143), &
+            write(6,161) nopix_ucell, nopiy_ucell, ifactorx, ifactory, &
+                         nopix, nopiy, max_qx, char(143), max_qy, char(143), &
                          max_mradx, max_mrady
         161 format(  '                                x               y', /, &
             &        ' ---------------------------------------------------------', /, &
@@ -390,7 +414,7 @@
             &        ' <2> Change')
             
         else
-            write(6,162) float(nopiy)/ifactory, float(nopix)/ifactorx, &
+            write(6,162) float(nopix)/ifactorx, float(nopiy)/ifactory, &
                          ifactorx, ifactory, &
                          nopix, nopiy, &
                          max_qx, char(143), max_qy, char(143), &
@@ -445,9 +469,16 @@
     
         use m_precision, only: fp_kind
         use m_user_input, only: get_input
-        use global_variables, only: ak1, inner, outer, ndet
+        use global_variables
+		use m_crystallography, only: trimi
+		use m_string
+		use output
+		use m_multislice
         
         implicit none
+		character*100::dstring
+		integer*4::comaindex,i,j
+		logical::detectors,outputdetectors
     
         write(*,*) '|-----------------------------------------|'
 	    write(*,*) '|      Diffraction plane detectors        |'
@@ -456,16 +487,53 @@
     
         write(6,*) 'Enter the number of detectors in the diffraction plane:'
         write(6,*) '(e.g. 3 if you wish to simulate BF/ABF/ADF simultaneously.)'
-        call get_input('Number of detectors', ndet)
+		write(6,*) "To segment detectors input a comma ',' and then the number"
+		write(6,*) "of angular segments (eg. for 4 rings and 4 quadrants input '4,4')."
+		write(6,*) 'To output the detectors for inspection end the input with a '
+		write(6,*) "question mark ('?'), ie '4,4?'."
+        call get_input('Number of detectors', dstring)
         write(*,*)
+
+		!Check if there is a ',' which indicates the user
+		!wants segmented detectors
+		comaindex = index(dstring,',')
+		segments = (comaindex.ne.0)
+
+		!Check if there is a ?, which indicates the user would
+		!like to output the detectors
+		outputdetectors = (index(dstring,'?').ne.0)
+		!Remove the ? so that it doesn't cause problems later
+		if (outputdetectors) dstring = dstring(:index(dstring,'?')-1)
+
+		!Read detector string
+		if(segments) then
+			read(dstring(:comaindex),*) ndet
+			read(dstring(comaindex+1:),*) nseg
+            ndet = ndet*nseg
+            write(*,*) 'Please input orientation offset for segmented detectors in degrees'
+            call get_input('Segment orientation offset (degrees)', seg_det_offset)
+            seg_det_offset = seg_det_offset/180*pi !Convert from degrees to mrad
+		else
+			read(dstring,*) ndet
+			nseg = 1
+		endif
     
         if(allocated(outer)) deallocate(outer)
         if(allocated(inner)) deallocate(inner)
-        allocate(inner(ndet),outer(ndet))
+        allocate(inner(ndet/nseg),outer(ndet/nseg))
         
         if (ndet.eq.0) return
         
-        call get_cbed_detector_info(outer,inner,ndet,ak1)
+        call get_cbed_detector_info(outer,inner,ndet/nseg,ak1)
+
+		if(outputdetectors) then
+			do i=1,ndet/nseg
+			do j=1,nseg
+				if(nseg>1) call binary_out_unwrap(nopiy,nopix,make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx,2*pi*j/nseg-seg_det_offset,2*pi/nseg),'detector_'//to_string((i-1)*nseg+j))
+				if(nseg==1) call binary_out_unwrap(nopiy,nopix,make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx),'detector_'//to_string((i-1)*nseg+j))
+			enddo
+			enddo
+		endif
     
     end
     
@@ -479,7 +547,8 @@
         
         implicit none
     
-        integer(4)   ndet,ichoice,i,mrad
+        integer(4)   ndet,ichoice,i
+		integer*4:: mrad=-1
         real(fp_kind)      outer(ndet),inner(ndet),k,dummy
     
         real(fp_kind) :: inner_mrad(ndet), outer_mrad(ndet)
@@ -489,79 +558,55 @@
     
         call get_input("manual detector <1> auto <2>",ichoice)
         write(*,*)
-    
-        write(*,*) 'Select how angles will be specified:'
-        write(*,*) '<1> mrad',char(10),'<2> inverse Angstroms'
-        call get_input("<1> mrad <2> inv A", mrad)
-        write(*,*)
+
+		do while(.not.((mrad==1).or.(mrad==2)))
+			write(*,*) 'Select how angles will be specified:'
+			write(*,*) '<1> mrad',char(10),'<2> inverse Angstroms'
+			call get_input("<1> mrad <2> inv A", mrad)
+			write(*,*)
+		enddo
     
         if(ichoice.eq.1) then
               do i = 1, ndet
                     write(*,*) 'Detector ', to_string(i),char(10),'Inner angle:'
                     call get_input("inner",dummy)
-                    if(mrad.eq.1) then 
-                          inner(i) = k*tan(dummy/1000.0_fp_kind)
-                          inner_mrad(i) = dummy
-                    else
-                          inner(i) = dummy
-                          inner_mrad(i) = 1000*atan(dummy/k)
-                    endif
-                
-                    write(*,*) "Outer angle:"
+                    if(mrad.eq.1) inner_mrad(i) = dummy
+					if(mrad.eq.2) inner(i) =  dummy
+					write(*,*) "Outer angle:"
                     call get_input("outer",dummy)
-                    if(mrad.eq.1) then 
-                          outer(i) = k*tan(dummy/1000.0_fp_kind)
-                          outer_mrad(i) = dummy
-                    else
-                          outer(i) = dummy
-                          outer_mrad(i) = 1000*atan(dummy/k)
-                    endif
-                    
-                    write(*,*)
-                    
+                    if(mrad.eq.1) outer_mrad(i) = dummy
+					if(mrad.eq.2) outer(i) =  dummy 
               enddo
         else
               write(*,*) "Initial inner angle:"
               call get_input("initial inner angle", dummy)
-              if(mrad.eq.1) then
-                    inner(1) = k*tan(dummy/1000.0_fp_kind)
-                    inner_mrad(1) = dummy
-              else
-                    inner(1) = dummy
-                    inner_mrad(1) = 1000*atan(dummy/k)
-              endif
-              
+			  if(mrad.eq.1) inner_mrad(1) = dummy
+			  if(mrad.eq.2) inner(1) = dummy
               write(*,*) "Initial outer angle:"
               call get_input("initial outer angle", dummy)
-              if(mrad.eq.1) then
-                    outer(1) = k*tan(dummy/1000.0_fp_kind)
-                    outer_mrad(1) = dummy
-              else
-                    outer(1) = dummy
-                    outer_mrad(1) = 1000*atan(dummy/k)
-              endif
-              
+			  if(mrad.eq.1) outer_mrad(1) = dummy
+			  if(mrad.eq.2) outer(1) = dummy
+			  
               write(*,*) "Increment (both angles incremented by this amount):"
               call get_input("increment", dummy)
-              do i = 1, ndet-1
-                    if(mrad.eq.1) then
-                          inner(1+i) = inner(i) + k*tan(i * dummy/1000.0_fp_kind)
-                          outer(1+i) = outer(i) + k*tan(i * dummy/1000.0_fp_kind)
-                          
-                          inner_mrad(1+i) = inner_mrad(i) + i * dummy
-                          outer_mrad(1+i) = outer_mrad(i) + i * dummy
-                    else
-                          inner(1+i) = inner(i) + i * dummy
-                          outer(1+i) = outer(i) + i * dummy
-                          
-                          inner_mrad(1+i) = inner_mrad(i) + i * 1000 * atan(dummy/k)
-                          outer_mrad(1+i) = outer_mrad(i) + i * 1000 * atan(dummy/k)
-                         
-                    endif
-              enddo
-              
               write(*,*)
+
+			  if(mrad.eq.1) then
+				inner_mrad(2:) = (/((i-1)*dummy+inner_mrad(1), i=2,ndet,1)/)
+				outer_mrad(2:) = (/((i-1)*dummy+outer_mrad(1), i=2,ndet)/)
+			  else
+				inner(2:) = (/((i-1)*dummy+inner(1), i=2,ndet)/)
+				outer(2:) = (/((i-1)*dummy+outer(1), i=2,ndet)/)
+			  endif
+
         endif
+		if(mrad.eq.2) then
+			outer_mrad = 1000*atan(outer/k)
+			inner_mrad = 1000*atan(inner/k)
+		else
+			inner = k*tan(inner_mrad/1000.0_fp_kind)
+			outer = k*tan(outer_mrad/1000.0_fp_kind)
+		endif
         
         write(*,*) 'Summary of diffraction plane detectors:'
         write(*,*)
@@ -570,13 +615,12 @@
         write(*,*) '  --------------------------------'
         do i = 1, ndet
             write(*,50) i, inner_mrad(i), outer_mrad(i)
-50          format(1x, i5, ' | ', f6.2, ' | ', f6.2, '   (mrad)')
             write(*,55) inner(i), outer(i), char(143)
-55          format(1x, 5x, ' | ', f6.2, ' | ', f6.2, '   (', a1, '^-1)')
             write(*,60) 
-60          format(1x, 5x, ' | ', 6x, ' | ')
         enddo
-        
+50          format(1x, i5, ' | ', f6.2, ' | ', f6.2, '   (mrad)')
+55          format(1x, 5x, ' | ', f6.2, ' | ', f6.2, '   (', a1, '^-1)')        
+60          format(1x, 5x, ' | ', 6x, ' | ')
         write(*,*)
         
     end subroutine
@@ -623,6 +667,29 @@
 
     end subroutine
     
+    subroutine fourD_STEM_options(fourdSTEM,nopiyout,nopixout,nopiy,nopix)
+		use m_user_input 
+        integer*4,intent(in)::nopiy,nopix
+        integer*4,intent(out)::nopiyout,nopixout
+        logical,intent(out)::fourdSTEM
+        
+        integer*4::idum
+        
+        write(*,*) 'Output diffraction patterns for each scan position?'
+        write(*,*) '<1> Yes',char(10),' <2> Output cropped diffraction patterns (saves memory)',char(10),' <3> No'
+		call get_input('<1> Diffraction pattern for each probe position',idum)
+		fourDSTEM = (idum == 1).or.(idum ==2)
+        if(idum==2) then
+            write(*,*) 'Please input number of y pixels in diffration pattern output'
+            call get_input('diffraction pattern y pixels',nopiyout)
+            
+            write(*,*) 'Please input number of x pixels in diffration pattern output'
+            call get_input('diffraction pattern x pixels',nopixout)
+        else
+            nopiyout = nopiy
+            nopixout = nopix
+        endif
+    end subroutine
 
     
     !--------------------------------------------------------------------------------------
@@ -694,35 +761,28 @@
     use global_variables
     use m_precision
     use m_crystallography, only: trimr
+    use m_potential, only: make_g_vec_array
         
     implicit none
     integer(4)   m1,m2,ny,nx,shifty,shiftx
     
-    real(fp_kind)      akr,inner_rad,outer_rad,kx(3),ky(3),kr(3)
-    real(fp_kind)      ig1_temp(3),ig2_temp(3)
+    real(fp_kind)      akr,inner_rad,outer_rad,kx(3),ky(3),kr(3),g_vec_array(3,nopiy,nopix)
     real(fp_kind)      mask(nopiy,nopix)
        
     mask=0.0_fp_kind
-
-    shifty = (nopiy-1)/2-1
-    shiftx = (nopix-1)/2-1
-    ig1_temp=float(ig1)/float(ifactorx)
-    ig2_temp=float(ig2)/float(ifactory)
+    
+    call make_g_vec_array(g_vec_array,ifactory,ifactorx)
     do nx=1,nopix
-          m1 = float(mod( nx+shiftx, nopix) - shiftx -1)
-          kx = m1 * ig1_temp
-          !$OMP PARALLEL PRIVATE(m2,ky,kr,akr), SHARED(mask) 
+          !$OMP PARALLEL PRIVATE(ny,akr), SHARED(mask,ss,nopiy,nx,outer_rad,inner_rad) 
           do ny=1,nopiy
-                m2 = float(mod( ny+shifty, nopiy) - shifty -1)
-                ky = m2 * ig2_temp
-                kr = kx + ky 
-                akr = trimr(kr,ss)
+                akr = trimr(g_vec_array(:,ny,nx),ss)
                 if ( (akr.le.outer_rad).and.(akr.ge.inner_rad)) mask(ny,nx)=1.0_fp_kind
            enddo
            !$OMP END PARALLEL
     enddo
 
     end
+	
 
 
     
@@ -733,6 +793,7 @@
     
         use m_precision, only: fp_kind
         use global_variables, only: pi
+        use m_potential, only: make_g_vec_array
     
         implicit none
     
@@ -743,7 +804,6 @@
         complex(fp_kind),dimension(dim_shift),intent(out) :: shift
     
         half_shift = (dim_shift-1)/2-1
-        
         do i = 1, dim_shift
             q = float(mod( i+half_shift, dim_shift) - half_shift -1)
             shift(i) = exp(cmplx(0.0_fp_kind, -2.0_fp_kind*pi*q*coord))

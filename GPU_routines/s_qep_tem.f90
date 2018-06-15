@@ -66,7 +66,7 @@ subroutine qep_tem
     use m_probe_scan, only: place_probe, probe_initial_position
     use m_tilt, only: tilt_wave_function
     use m_multislice, only: make_qep_grates, setup_propagators
-    use m_potential, only: precalculate_scattering_factors
+    use m_potential
 	use m_string
     
     implicit none

@@ -50,7 +50,7 @@ end function
 subroutine absorptive_stem
     
     use m_precision, only: fp_kind
-    use global_variables, only: nopiy, nopix, normalisation, nt, n_cells, fz, fz_dwf, inverse_sinc, bwl_mat, prop, ndet, ionization, eels, adf, on_the_fly, inner, outer, ci,zarray,nz,ncells
+    use global_variables!, only: nopiy, nopix, normalisation, nt, n_cells, fz, fz_dwf, inverse_sinc, bwl_mat, prop, ndet, ionization, eels, adf, on_the_fly, inner, outer, ci,zarray,nz,ncells
     use m_lens!, only: probe_df, probe_ndf, make_stem_wfn
     use m_absorption, only: fz_abs, transf_absorptive, calculate_absorption_mu, calculate_local_adf_mu
     use output, only: output_prefix, output_stem_image,timing
@@ -59,13 +59,12 @@ subroutine absorptive_stem
     use cuda_ms, only: cuda_stem_detector, get_sum
     use cuda_potential, only: volume_array, ccd_slice_array, cuda_setup_many_phasegrate, cuda_make_adf_potential, cuda_make_ion_potential, cuda_make_abs_potential
     use cufft, only: cufft_z2z, cufft_c2c, cufft_forward, cufft_inverse, cufftplan, cufftexec
-    use local_ionization
     use m_slicing, only: n_slices, nat_slice, tau_slice, prop_distance
     use cuda_setup, only: GPU_memory_message
     use m_probe_scan, only: nysample, nxsample, probe_positions, scan_quarter
     use m_tilt, only: tilt_wave_function
     use m_multislice!, only: make_absorptive_grates, output_probe_intensity, output_cell_list, setup_propagators
-    use m_potential, only: precalculate_scattering_factors
+    use m_potential
     use m_string, only: to_string
 	use output
 	use cufft_wrapper
@@ -366,13 +365,16 @@ subroutine absorptive_stem
     if(ionization) then
         do ii=1,num_ionizations
         if(EDX) then
-            filename = trim(adjustl(output_prefix)) // '_'//trim(adjustl(substance_atom_types(atm_indices(ii))))//'_'//trim(adjustl(Ion_description(ii)))//'_shell_EDX'
+            filename = trim(adjustl(output_prefix)) // '_'//trim(adjustl(substance_atom_types(atm_indices(ii))))&
+												   &//'_'//trim(adjustl(Ion_description(ii)))//'_shell_EDX'
             call output_stem_image(stem_ion_image(:,:,:,:,ii), filename,probe_df)
         else
-            filename = trim(adjustl(output_prefix))// '_'//trim(adjustl(substance_atom_types(atm_indices(ii))))//'_'//trim(adjustl(Ion_description(ii)))//'_orbital_EELS'
+            filename = trim(adjustl(output_prefix))// '_'//trim(adjustl(substance_atom_types(atm_indices(ii))))&
+												  &//'_'//trim(adjustl(Ion_description(ii)))//'_orbital_EELS'
             call output_stem_image(stem_ion_image(:,:,:,:,ii), filename,probe_df)
 
-            filename =  trim(adjustl(output_prefix)) //'_'//trim(adjustl(substance_atom_types(atm_indices(ii))))//'_'//trim(adjustl(Ion_description(ii)))//'_orbital_EELS_Corrected'            
+            filename =  trim(adjustl(output_prefix))//'_'//trim(adjustl(substance_atom_types(atm_indices(ii))))&
+												  &//'_'//trim(adjustl(Ion_description(ii)))//'_orbital_EELS_Corrected'            
             call output_stem_image(stem_ion_image(:,:,:,:,ii)*eels_correction_image, filename,probe_df)
         endif
         enddo

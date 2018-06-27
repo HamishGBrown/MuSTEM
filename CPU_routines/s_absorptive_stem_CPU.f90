@@ -20,7 +20,7 @@
 function absorptive_stem_GPU_memory() result(required_memory)
     
     use m_precision, only: fp_kind
-    use global_variables, only: nopiy, nopix, adf, ionization, eels,zarray,nz,ncells
+    use global_variables, only: nopiy, nopix, adf, eels,zarray,nz,ncells
     use m_slicing, only: n_slices
     
     implicit none
@@ -33,9 +33,9 @@ function absorptive_stem_GPU_memory() result(required_memory)
     array_size = 4.0_fp_kind * nopiy * nopix
     
     array_count = 6 + 4*n_slices
-    if (adf.or.ionization) array_count = array_count + 1
+    if (adf) array_count = array_count + 1
     if (adf) array_count = array_count + 1 + n_slices
-    if (ionization) array_count = array_count + 1 + n_slices
+    !if (ionization) array_count = array_count + 1 + n_slices
     if (eels) array_count = array_count + 1
     
     ! Temporary array used in cuda_stem_detector()
@@ -47,7 +47,7 @@ end function
     
 
 
-subroutine absorptive_stem
+subroutine absorptive_stem(STEM,ionization,PACBED)
     
     use m_precision, only: fp_kind
     use global_variables
@@ -58,14 +58,16 @@ subroutine absorptive_stem
     use m_tilt, only: tilt_wave_function
     use m_multislice
     use m_potential
-    use m_string, only: to_string
+    use m_string
 	use output
 	use cufft_wrapper
     
     implicit none
     
+    logical,intent(in)::pacbed,stem,ionization
+    
     !dummy variables
-    integer(4) :: i,ii, j, k, i_df, ny, nx,z_indx(1)
+    integer(4) :: i,ii, j, k, i_df, ny, nx,z_indx(1),nopiyout,nopixout,length
 
     !probe variables
     complex(fp_kind),dimension(nopiy,nopix) :: psi,qpsi,psi_out
@@ -75,8 +77,10 @@ subroutine absorptive_stem
                                             & inelastic_potential,temp
     real(fp_kind),dimension(nysample,nxsample,probe_ndf,nz) :: stem_image,stem_elastic_image,&
                 & stem_inelastic_image,eels_correction_image
-    real(fp_kind),allocatable::adf_image(:,:),probe_intensity(:,:,:),ion_image(:,:,:),stem_ion_image(:,:,:,:,:)
-
+    real(fp_kind),allocatable::adf_image(:,:),probe_intensity(:,:,:),ion_image(:,:,:),stem_ion_image(:,:,:,:,:)&
+                              &,pacbed_pattern(:,:,:)
+    logical::fourdstem,many_df
+    
     !diagnostic variables
     real(fp_kind) :: intens, t1, delta
     
@@ -87,20 +91,13 @@ subroutine absorptive_stem
     
     real(fp_kind) :: absorptive_stem_GPU_memory
     
-    
-    
-
-    
-    
     write(*,*) '|----------------------------------|'
     write(*,*) '|      Pre-calculation setup       |'
     write(*,*) '|----------------------------------|'
     write(*,*)
-	
     
     !call calculate_absorption_mu        
     call calculate_local_adf_mu
-    
     
     !Generally not practical for CPU calculations
     on_the_fly = .false.
@@ -108,26 +105,36 @@ subroutine absorptive_stem
         
         ! These make_fz_*() routines would normally be called in make_local_inelastic_potentials()
         ! But for on_the_fly we don't call that routine.
-        if(adf) call make_fz_adf
+        if(adf.and.stem) call make_fz_adf
         !This step is now done automatically
         !if(ionization) call make_fz_EELS_EDX
         
     else
         call make_absorptive_grates
-        call make_local_inelastic_potentials
+        call make_local_inelastic_potentials(ionization)
         
     endif
     
     call setup_propagators
+    fourdSTEM= .false.
+    if(pacbed) then
+        allocate(pacbed_pattern(nopiy,nopix,nz))
+        pacbed_pattern= 0
+        call fourD_STEM_options(fourdSTEM,nopiyout,nopixout,nopiy,nopix)
+    endif
+    many_df = probe_ndf .gt. 1
+    length = ceiling(log10(maxval(zarray)))
     
     ! Make detector mask arrays (adds the elastic contribution)        
-    call make_detector_mask(inner(1),outer(1),masks)
+    if(stem) then
+        call make_detector_mask(inner(1),outer(1),masks)
+        stem_elastic_image = 0.0_fp_kind
+        if (adf) then
+		    allocate(adf_image(nopiy,nopix))
+		    stem_inelastic_image = 0.0_fp_kind
+        endif
+    endif
     
-    stem_elastic_image = 0.0_fp_kind
-    if (adf) then
-		allocate(adf_image(nopiy,nopix))
-		stem_inelastic_image = 0.0_fp_kind
-	endif
     if (ionization) then
         allocate(ion_image(nopiy,nopix,num_ionizations))
         allocate(stem_ion_image(nysample,nxsample,probe_ndf,nz,num_ionizations))
@@ -158,13 +165,11 @@ subroutine absorptive_stem
         write(6,900) ny, nysample, nx, nxsample, intens
 900     format(1h+,1x, 'y:', i3, '/', i3, ' x:', i3, '/', i3, ' Intensity: ', f12.6)	
 #endif
-    if (scan_quarter) then
-        if (probe_positions(1,ny,nx).gt.0.501_fp_kind .or. probe_positions(2,ny,nx).gt.0.501_fp_kind) cycle
-    endif
     
     do i_df = 1, probe_ndf                                                                  !loop over probe points
-    
-        if (adf) adf_image = 0.0_fp_kind
+        
+        
+        if (adf.and.stem) adf_image = 0.0_fp_kind
         if (ionization) ion_image = 0.0_fp_kind
         if (output_probe_intensity) probe_intensity = 0_fp_kind
         
@@ -177,37 +182,20 @@ subroutine absorptive_stem
             
                 ! Calculate inelastic cross sections
             
-                if (adf.or.ionization) psi_intensity = abs(psi)**2
+                if ((stem.and.adf).or.ionization) psi_intensity = abs(psi)**2
                 
-                if(adf) then
-					!Multiply wave function intensity by ADF potential
-                    temp = psi_intensity*adf_potential(:,:,j)*prop_distance(j)
-					!Depth sum
-					adf_image = temp + adf_image
-                endif
-                
-                if(ionization) then
-                    do ii=1,num_ionizations
-    				    temp = psi_intensity * ionization_potential(:,:,ii,j) * prop_distance(j)
-					    ion_image(:,:,ii) = temp+ion_image(:,:,ii)
-                    enddo
-                endif
-                
-                ! Transmit through slice potential
-				psi = psi*transf_absorptive(:,:,j)
-                
-                ! Propagate to next slice
-				call fft2(nopiy,nopix,psi,nopiy,psi,nopiy)
-				psi = psi*prop(:,:,j)
-				call ifft2(nopiy,nopix,psi,nopiy,psi,nopiy)
+                if(stem.and.adf) adf_image = psi_intensity*adf_potential(:,:,j)*prop_distance(j) + adf_image
+                if(ionization) ion_image = ion_image + spread(psi_intensity,ncopies=num_ionizations,dim=3) * ionization_potential(:,:,:,j) * prop_distance(j)
+                call multislice_iteration(psi,prop(:,:,j),transf_absorptive(:,:,j),nopiy,nopix)
                 
 				!If this thickness corresponds to any of the output values then output images
 				if (any(i==ncells)) then
                     z_indx = minloc(abs(ncells-i))
 					call fft2(nopiy,nopix,psi,nopiy,psi_out,nopiy)
 					temp = abs(psi_out)**2
-					stem_elastic_image(ny,nx,i_df,z_indx(1)) = sum(masks*temp)
-					if(adf) stem_inelastic_image(ny,nx,i_df,z_indx(1)) = sum(adf_image)
+					if(stem) stem_elastic_image(ny,nx,i_df,z_indx(1)) = sum(masks*temp)
+                    if(pacbed.and.(i_df==1)) pacbed_pattern(:,:,z_indx(1)) = pacbed_pattern(:,:,z_indx(1)) + temp
+					if((stem.and.adf)) stem_inelastic_image(ny,nx,i_df,z_indx(1)) = sum(adf_image)
 					if(ionization) then
                         do ii=1,num_ionizations
                             stem_ion_image(ny,nx,i_df,z_indx(1),ii) = sum(ion_image(:,:,ii))
@@ -215,6 +203,15 @@ subroutine absorptive_stem
                         if(.not.EDX) eels_correction_image(ny,nx,i_df,z_indx(1)) = sum(temp*eels_correction_detector)
                     endif
 					
+                    !Output 4D STEM diffraction pattern
+					if(fourDSTEM) then
+							filename = trim(adjustl(output_prefix))
+							if (nz>1) filename = trim(adjustl(filename))//'_z='//to_string(int(zarray(z_indx(1))))//'_A'
+                            if(many_df) filename = trim(adjustl(filename)) // '_Defocus_'//zero_padded_int(int(probe_df(i_df)),length)//'_Ang'
+							filename = trim(adjustl(filename))//'_pp_'//to_string(nx)//'_'//to_string(ny)//'_abs_Diffraction_pattern'
+							call binary_out_unwrap(nopiy, nopix, temp, filename,write_to_screen=.false.,nopiyout=nopiyout,nopixout=nopixout)
+					endif
+                    
                 endif
     			if (output_probe_intensity) then
 					k = (i-1)*n_slices+j
@@ -223,8 +220,6 @@ subroutine absorptive_stem
 					endif
 				endif
             enddo ! End loop over slices
-            
-            
         enddo ! End loop over cells
                 
         intens = sum(abs(psi)**2)
@@ -256,20 +251,20 @@ subroutine absorptive_stem
     endif
     write(*,*)
    
-    if(output_thermal) then
-    filename = trim(adjustl(output_prefix)) // '_DiffPlaneElastic'
-    call output_stem_image(stem_elastic_image,filename,probe_df)
+    if(output_thermal) then    
+        filename = trim(adjustl(output_prefix)) // '_DiffPlaneElastic'
+        if(stem) call output_stem_image(stem_elastic_image,filename,probe_df)
     
-    if (adf) then
-        stem_image = stem_elastic_image + stem_inelastic_image
+        if (stem.and.adf) then
+            stem_image = stem_elastic_image + stem_inelastic_image
     
-        filename = trim(adjustl(output_prefix)) // '_DiffPlaneTotal'
-        call output_stem_image(stem_image,filename,probe_df)
+            filename = trim(adjustl(output_prefix)) // '_DiffPlaneTotal'
+            call output_stem_image(stem_image,filename,probe_df)
     
-        filename = trim(adjustl(output_prefix)) // '_DiffPlaneTDS'
-        call output_stem_image(stem_inelastic_image,filename,probe_df)
-    endif   
-    else
+            filename = trim(adjustl(output_prefix)) // '_DiffPlaneTDS'
+            call output_stem_image(stem_inelastic_image,filename,probe_df)
+        endif   
+    elseif(stem) then
         if (adf) stem_image = stem_elastic_image + stem_inelastic_image
         if (.not.adf) stem_image = stem_elastic_image
         filename = trim(adjustl(output_prefix)) // '_DiffPlane'
@@ -295,7 +290,15 @@ subroutine absorptive_stem
             filename = trim(adjustl(output_prefix)) // '_EELS_CorrectionMap' 
             call output_stem_image(eels_correction_image, filename,probe_df)
         endif
-       
     endif
+    
+    if (pacbed) then
+		do i=1,nz
+			filename = trim(adjustl(output_prefix))
+			if(nz>1) filename = trim(adjustl(output_prefix))//'_z='//zero_padded_int(int(zarray(i)),length)//'_A'
+			filename = trim(adjustl(filename))//'_PACBED_Pattern'
+			call binary_out_unwrap(nopiy,nopix,pacbed_pattern(:,:,i),filename)
+		enddo
+    endif    
 
 end subroutine absorptive_stem

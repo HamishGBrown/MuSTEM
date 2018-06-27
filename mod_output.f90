@@ -485,8 +485,26 @@ module output
         
       end subroutine
 
+      function defocus_string(defocus,length_df)
+            use m_string
+            implicit none
+			
+            character(:),allocatable :: defocus_string
+			integer*4,intent(in),optional::length_df
+			real(fp_kind),intent(in)::defocus
+
+			integer*4::length_df_
+
+			if(present(length_df))then
+				length_df_=length_df
+			else
+				length_df_ = ceiling(log10(abs(defocus)))
+				if(defocus<0) length_df_ = length_df_+1
+			endif
+
+			defocus_string = '_Defocus_'//zero_padded_int(int(defocus),length_df_)//'_Ang'
       
-      
+	  end function
       !----------------------------------------------------------------------------
       !subroutine output stem image
 	  !----------------------------------------------------------------------------
@@ -534,7 +552,7 @@ module output
             
                 fnam_out = trim(adjustl(fnam_det)) 
 				
-				if(many_df) fnam_out = trim(adjustl(fnam_out)) // '_Defocus_'//zero_padded_int(int(defoci(i_df)),lengthdf)//'_Ang'
+				if(many_df) fnam_out = trim(adjustl(fnam_out)) //defocus_string(defoci(i_df),lengthdf)
 				 
 				if(nz>1) fnam_out = trim(adjustl(fnam_out))//'_z='//zero_padded_int(int(zarray(i_z)),length)//'_A'
 				

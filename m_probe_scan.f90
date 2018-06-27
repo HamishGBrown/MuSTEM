@@ -27,14 +27,7 @@ module m_probe_scan
     real(fp_kind), allocatable :: probe_positions(:,:,:) !matrix containing the probe position
     real(fp_kind) :: delx, dely                !stepsize for the probe position in x and y
     real(fp_kind) :: probe_initial_position(3) = [0.0_fp_kind, 0.0_fp_kind, 0.0_fp_kind]
-    
-    logical :: scan_quarter
-
-    
-    
     contains
-    
-    
     
     subroutine setup_probe_scan(interp_setup)
     

@@ -266,8 +266,6 @@
       return
       end
       
-      
-      
     subroutine validate_xtl()
     
         use global_variables, only: deg, ig1, ig2
@@ -283,12 +281,9 @@
             write(*,*)
             pause
             stop
-            
         endif
                 
     end subroutine
-      
-      
       
     subroutine set_volts(nt, atf, nat, atomf, volts, ss)
 
@@ -309,13 +304,10 @@
 
         else
             volts = 0.0_fp_kind
-
             do m = 1, nt
                 volts = volts + nat(m)*elsa_ext(nt, m, atomf, 0.0_fp_kind)*atf(2,m)
             enddo
-
             volts = volts * evconv / ss(7)
-
         endif
         
         if(abs(volts).gt.50.0_fp_kind) then
@@ -330,8 +322,6 @@
 
     end
 
-
-
     subroutine set_tiling_grid()
     
         use m_precision, only: fp_kind
@@ -339,7 +329,7 @@
         use global_variables, only: ifactory, ifactorx, nopiy, nopix, nopiy_ucell, nopix_ucell, &
                                     ig1, ig2, ss, a0, deg, uvw1, uvw2, ak1, deltay, deltax, npixels, normalisation
         use m_lens, only: pw_illum
-        use m_qep, only: quick_shift
+        use m_potential, only: quick_shift
         use m_crystallography, only: trimi, rsd
         
         implicit none
@@ -446,13 +436,7 @@
 
         ! Test if quick shift is possible
         ! (and if unit cell is actually tiled in both directions)
-        if (mod(nopiy,ifactory).eq.0 .and. (mod(nopix,ifactorx)).eq.0 .and. ifactory.gt.1 .and. ifactorx.gt.1) then 
-            quick_shift = .true.
-
-        else
-            quick_shift = .false.
-
-        endif
+        quick_shift = mod(nopiy,ifactory).eq.0 .and. (mod(nopix,ifactorx)).eq.0 .and. (ifactory.gt.1 .or. ifactorx.gt.1)
 
         sitey = uvw2 / (float(nopiy)/float(ifactory))
         sitex = uvw1 / (float(nopix)/float(ifactorx))
@@ -554,21 +538,21 @@
         real(fp_kind) :: inner_mrad(ndet), outer_mrad(ndet)
         
         write(*,*) 'Select a method for choosing inner and outer angles:'
-        write(*,*) '<1> Manual',char(10),'<2> Automatic'
+        write(*,*) '<1> Manual',char(10),' <2> Automatic'
     
         call get_input("manual detector <1> auto <2>",ichoice)
         write(*,*)
 
 		do while(.not.((mrad==1).or.(mrad==2)))
 			write(*,*) 'Select how angles will be specified:'
-			write(*,*) '<1> mrad',char(10),'<2> inverse Angstroms'
+			write(*,*) '<1> mrad',char(10),' <2> inverse Angstroms'
 			call get_input("<1> mrad <2> inv A", mrad)
 			write(*,*)
 		enddo
     
         if(ichoice.eq.1) then
               do i = 1, ndet
-                    write(*,*) 'Detector ', to_string(i),char(10),'Inner angle:'
+                    write(*,*) char(10),' Detector ', to_string(i),char(10),' Inner angle:'
                     call get_input("inner",dummy)
                     if(mrad.eq.1) inner_mrad(i) = dummy
 					if(mrad.eq.2) inner(i) =  dummy
@@ -829,3 +813,50 @@
         call ifft2(nopiy, nopix, output, nopiy, output, nopiy)
     
     end
+    
+    subroutine STEM_options(STEM,ionization,PACBED)
+        use m_string
+        use m_user_input
+        logical,intent(out)::STEM,ionization,PACBED
+        
+        integer*4::i
+        
+        STEM= .false.
+        ionization = .false.
+        PACBED = .false.
+        
+        i=-1
+        
+        do while(i.ne.0)
+            write(*,*) '|-------------------------------|'
+	        write(*,*) '|           STEM modes          |'
+	        write(*,*) '|-------------------------------|'
+            write(*,*)    
+            write(*,*)'muSTEM offers a number of options for STEM modes,'
+            write(*,*)' you can choose to do any number of them simultaneously'
+            write(*,*)'-----------------------------------------------------------'
+            write(*,*)'Option                                       | Included(y/n)'
+			write(*,*)'-----------------------------------------------------------'
+            write(*,*)'<1> Conventional STEM (ADF,ABF,BF etc.)      | ',logical_to_yn(STEM)
+            write(*,*)'<2> Ionization based STEM (EELS and EDX)     | ',logical_to_yn(ionization)
+            write(*,*)'<3> Diffraction (PACBED and 4D-STEM)         | ',logical_to_yn(PACBED)
+            write(*,*)'<0> Continue',char(10)
+            write(*,*)'-----------------------------------------------------------'
+            
+            call get_input('STEM modes',i)
+            write(*,*)
+            
+            if(i==1) STEM = .not.STEM
+            if(i==2) ionization = .not.ionization
+            if(i==3) PACBED = .not.PACBED
+            if(i==0.and.(.not.any([STEM,ionization,PACBED]))) then
+                write(*,*) "You must choose at least one imaging mode to proceed"
+                i=-1
+            endif
+            
+        enddo
+        
+        
+    
+    
+    end subroutine

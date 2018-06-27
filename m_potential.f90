@@ -33,6 +33,11 @@ module m_potential
       real(fp_kind),    allocatable :: ionization_potential(:,:,:,:)
       real(fp_kind),    allocatable :: eels_correction_detector(:,:)
 	 complex(fp_kind), allocatable :: inverse_sinc_new(:,:)
+    
+    integer(4) :: n_qep_grates,n_qep_passes,nran ! Start of random number sequence
+    
+    logical :: phase_ramp_shift
+    logical(4) :: quick_shift
 
     interface
         subroutine make_site_factor_generic(site_factor, tau)
@@ -431,23 +436,15 @@ module m_potential
         write(*,*) '|-----------------------|'
         
 		i_eels = 0
-		do while(i_eels<1.or.i_eels>3)
-			write(*,*) char(10),'<1> EELS',char(10),'<2> EDX',char(10),'<3> No ionization',char(10)
+		do while(i_eels<1.or.i_eels>2)
+			write(*,*) char(10),' <1> EELS',char(10),' <2> EDX',char(10)
 			call get_input('Ionization choice', i_eels)
-		enddo
-      
-		ionization = i_eels.ne.3
+        enddo
+        
 		EDX = i_eels.eq.2
-		if (ionization) call local_potential(EDX)
+		call local_potential(EDX)
 
       end subroutine
-      
-	function logical_to_yn(input) result(str)
-		logical,intent(in)::input
-		character(1)::str
-		if (input) str = 'y'
-		if (.not.input) str = 'n'
-    end function
 	
     function get_ionization_shell_line(shell,atno) result(lineno)
         !Get the line for the given ionization shell and atom number,returns 
@@ -586,7 +583,7 @@ module m_potential
       !********************************************************************************
       subroutine local_potential(EDX)
 
-      use m_string, only: to_string,str2int
+      use m_string
       use m_numerical_tools, only: cubspl,ppvalu
 	 use global_variables
         use m_user_input
@@ -764,7 +761,6 @@ module m_potential
 	use m_precision
     use global_variables
     use m_absorption
-    !use m_potential, only: make_g_vec_array
     use m_crystallography, only: trimr
 	use m_numerical_tools, only: cubspl,ppvalu
 	implicit none
@@ -812,13 +808,14 @@ module m_potential
       !   make_mu_matrix() makes the mu matrices for each HOLZ slice
       !   subroutine to take the unit cell input, 
       !   and slice based on holz
-      subroutine make_local_inelastic_potentials()
+      subroutine make_local_inelastic_potentials(ionization)
       
       use m_slicing
-      use global_variables, only:adf,ionization,nopiy,nopix,high_accuracy,nt,ss
+      use global_variables, only:adf,nopiy,nopix,high_accuracy,nt,ss
       
       implicit none
       
+      logical,intent(in)::ionization
       integer(4)   i,j,nat
       real(fp_kind) :: potential_matrix_complex(nopiy,nopix),vol
 
@@ -829,7 +826,7 @@ module m_potential
       if(allocated(ionization_potential)) deallocate(ionization_potential)
 
       allocate(adf_potential(nopiy,nopix,n_slices))            !the adf potential
-      allocate(ionization_potential(nopiy,nopix,num_ionizations,n_slices))     !the ionization potential
+      if(ionization) allocate(ionization_potential(nopiy,nopix,num_ionizations,n_slices))     !the ionization potential
       
       if(adf) call make_fz_adf()
       
@@ -897,5 +894,225 @@ module m_potential
     endif
     
     end function
+    function make_absorptive_grates(nopiy,nopix,n_slices) result(projected_potential)
     
+        use m_precision, only: fp_kind
+	    use cufft_wrapper, only: fft2, ifft2
+        use global_variables, only: nt, relm, tp, ak, atf, high_accuracy, ci, pi, bwl_mat,fz,fz_DWF,ss
+        use m_absorption, only: transf_absorptive,fz_abs
+        use m_slicing, only: nat_slice, a0_slice, tau_slice, maxnat_slice, ss_slice
+        use m_string, only: to_string
+        use output
+        
+        implicit none
+        
+        integer*4,intent(in)::nopiy,nopix,n_slices
+        complex(fp_kind)::projected_potential(nopiy,nopix,n_slices)
+        
+        integer(4) :: j, m, n,nat_layer
+        real(fp_kind) :: ccd_slice,V_corr
+        complex(fp_kind),dimension(nopiy,nopix) :: scattering_pot,temp,effective_scat_fact
+    
+        real(fp_kind) :: t1, delta,amplitude(nopiy,nopix),phase(nopiy,nopix)
+    
+        procedure(make_site_factor_generic),pointer :: make_site_factor
+        
+        t1 = secnds(0.0_fp_kind)
+        do j = 1, n_slices
+	        write(*,'(1x, a, a, a, a, a)') 'Calculating transmission functions for slice ', to_string(j), '/', to_string(n_slices), '...'
+        
+    198	    write(6,199) to_string(sum(nat_slice(:,j)))
+    199     format(1x, 'Number of atoms in this slice: ', a, /) 
+
+		    ccd_slice = relm / (tp * ak * ss_slice(7,j))
+            projected_potential = 0
+            V_corr = ss(7)/ss_slice(7,j)
+            do m=1,nt
+                nat_layer = nat_slice(m,j)
+                effective_scat_fact = CCD_slice*fz(:,:,m)*fz_DWF(:,:,m)+cmplx(0,1)*fz_abs(:,:,m)*V_corr
+                projected_potential(:,:,j) = projected_potential(:,:,j)+potential_from_scattering_factors(effective_scat_fact,tau_slice(:,m,:nat_layer,j),nat_layer,nopiy,nopix,high_accuracy)
+            enddo
+                
+	    enddo ! End loop over slices
+	
+	    delta = secnds(t1)
+        
+		if(timing) then
+            write(*,*) 'The calculation of transmission functions for the absorptive model took ', delta, 'seconds.'
+            write(*,*)
+			open(unit=9834, file=trim(adjustl(output_prefix))//'_timing.txt', access='append')
+			write(9834, '(a, g, a, /)') 'The calculation of transmission functions for the absorptive model took ', delta, 'seconds.'
+			close(9834)
+        endif    
+        
+    end function make_absorptive_grates
+    
+           
+        integer function seed_rng() result(idum)
+            
+	        use m_numerical_tools, only: ran1
+            use m_precision, only: fp_kind
+            
+            implicit none
+
+            integer :: i
+            real(fp_kind) :: random
+            
+	        idum = -1
+            
+	        do i = 1, nran
+		        random = ran1(idum)
+	        enddo
+            
+        end function seed_rng
+
+      
+    subroutine make_propagator(nopiy,nopix,prop,dz,ak1,ss,ig1,ig2,claue,ifactorx,ifactory)
+
+        use m_precision, only: fp_kind
+        use m_crystallography, only: trimr
+            
+        implicit none
+
+        integer(4) :: nopiy,nopix
+        complex(fp_kind) :: prop(nopiy,nopix)        
+        real(fp_kind) :: ak1, ss(7), claue(3), dz, g_vec_array(3,nopiy,nopix)
+        integer(4) :: ifactorx, ifactory, ig1(3), ig2(3)
+
+        real(fp_kind),parameter :: pi = atan(1.0d0)*4.0d0
+        integer(4) :: ny, nx
+        
+        
+        call make_g_vec_array(g_vec_array,ifactory,ifactorx)
+
+        do ny = 1, nopiy;do nx = 1, nopix
+            prop(ny,nx) = exp(cmplx(0.0d0, -pi*dz*trimr(g_vec_array(:,ny,nx)-claue,ss)**2/ak1, fp_kind ))
+        enddo;enddo
+
+    end subroutine
+       
+    function make_qep_grates(idum) result(projected_potential)
+    
+        use m_precision, only: fp_kind
+	    use cufft_wrapper, only: fft2, ifft2
+        use global_variables, only: nopiy, nopix, nt, relm, tp, ak, ak1, atf, high_accuracy, ci, pi, bwl_mat,fz
+        use m_slicing, only: n_slices, nat_slice, a0_slice, tau_slice, maxnat_slice, ss_slice
+        use m_string, only: to_string
+        use output, only: output_prefix,timing,binary_in
+        use m_numerical_tools, only: displace
+
+        implicit none
+        
+        integer(4),intent(inout) :: idum
+    
+        complex(fp_kind) :: projected_potential(nopiy,nopix,n_slices,n_qep_grates),temp(nopiy,nopix),scattering_pot(nopiy,nopix,nt)
+		integer(4), allocatable :: handled(:,:)
+		integer(4):: save_list(2,nt),match_count, i, j, m, n,ii,jj,jjj,kk,iii
+        real(fp_kind) :: tau_holder(3),tau_holder2(3),ccd_slice,ums,amplitude(nopiy,nopix),phase(nopiy,nopix)
+        real(fp_kind) :: mod_tau(3,nt,maxnat_slice,n_slices,n_qep_grates),t1, delta
+        logical::fracocc
+    
+        procedure(make_site_factor_generic),pointer :: make_site_factor
+        
+	    
+ 	 	!	Search for fractional occupancy
+         fracocc = any(atf(2,:).lt.0.99d0)
+        
+        t1 = secnds(0.0_fp_kind)
+
+        do j = 1, n_slices
+	        write(*,'(1x, a, a, a, a, a)') 'Calculating transmission functions for slice ', to_string(j), '/', to_string(n_slices), '...'
+        
+    198	    write(6,199) to_string(sum(nat_slice(:,j)))
+    199     format(1x, 'Number of atoms in this slice: ', a) 
+
+		    ccd_slice = relm / (tp * ak * ss_slice(7,j))
+
+	        do i = 1, n_qep_grates
+    200	        format(a1, 1x, i3, '/', i3)
+	            write(6,200, advance='no') achar(13), i, n_qep_grates
+          
+                ! Randomly displace the atoms
+				if (.not.fracocc) then
+ 	            do m = 1, nt
+	                do n = 1, nat_slice(m,j)
+			            call displace(tau_slice(1:3,m,n,j),mod_tau(1:3,m,n,j,i),sqrt(atf(3,m)),a0_slice,idum)
+	                enddo
+                enddo
+				else
+					allocate( handled(nt,maxnat_slice) )
+					handled = 0
+					do ii=1, nt
+					 do jj = 1, nat_slice(ii,j)
+						 if (handled(ii,jj).eq.1) cycle
+						 tau_holder(1:3) = tau_slice(1:3,ii,jj,j)
+
+						 save_list = 0
+						 match_count = 0
+						 ums = atf(3,ii)
+						 do iii=ii+1,nt
+						 do jjj=1,nat_slice(iii,j)
+							if (same_site(tau_holder,tau_slice(1:3,iii,jjj,j))) then
+							   match_count = match_count+1
+							   save_list(1,match_count)=iii
+							   save_list(2,match_count)=jjj
+							   ums = ums + atf(3,iii)
+							   cycle
+							endif
+						 enddo
+						 enddo
+
+						 ums = ums / dfloat(match_count+1)
+					   call displace(tau_holder(1:3),tau_holder2(1:3),sqrt(ums),a0_slice,idum)
+						 mod_tau(1:3,ii,jj,j,i) = tau_holder2(1:3)
+						 handled(ii,jj) = 1
+						 do kk=1,match_count
+							 mod_tau(1:3,save_list(1,kk),save_list(2,kk),j,i)&
+				                                              &= tau_holder2(1:3)
+							 handled(save_list(1,kk),save_list(2,kk)) = 1
+						 enddo
+						   
+					 enddo
+					 enddo
+
+					 deallocate( handled )
+				endif
+				
+				projected_potential(:,:,i,j) = 0
+				do m = 1, nt
+					projected_potential(:,:,i,j) = projected_potential(:,:,i,j)+real(potential_from_scattering_factors(CCD_slice*fz(:,:,m)&
+												&,mod_tau(:,m,1:nat_slice(m,j),j,i),nat_slice(m,j),nopiy,nopix,high_accuracy))
+                enddo
+	        enddo ! End loop over grates
+        
+            write(*,*)
+            write(*,*)
+        
+	    enddo ! End loop over slices
+	
+	    delta = secnds(t1)
+        
+        write(*,*) 'The calculation of transmission functions for the QEP model took ', delta, 'seconds.'
+        write(*,*)
+
+    	if(timing) then
+			open(unit=9834, file=trim(adjustl(output_prefix))//'_timing.txt', access='append')
+			write(9834, '(a, g, a, /)') 'The calculation of transmission functions for the QEP model took ', delta, 'seconds.'
+			close(9834)
+        endif    
+    
+    end function make_qep_grates
+
+	logical(4) function same_site(site1,site2)
+      
+      implicit none
+      
+      real(fp_kind) site1(3),site2(3)
+      real(fp_kind) tol
+      
+      tol = 1.0d-6
+      same_site = all(abs(site1-site2).lt.tol)
+      
+      return
+      end function
 end module

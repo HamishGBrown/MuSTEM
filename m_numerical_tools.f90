@@ -35,7 +35,35 @@ module m_numerical_tools
 		module procedure r8_uniform_01	
 	end interface
 
-contains
+contains        
+        
+        
+    subroutine displace(tauin, tauout, urms, a0, idum)
+
+        use m_precision
+    
+	    implicit none
+
+	    real(fp_kind) tauin(3), tauout(3), a0(3)
+	    real(fp_kind) urms
+	    integer(4) idum
+	    real(fp_kind) xran, yran, zran
+	    !real(fp_kind) gasdev
+
+	    xran = gasdev(idum)
+	    yran = gasdev(idum)
+	    !zran = gasdev(idum)
+
+	    xran = xran * urms / a0(1)
+	    yran = yran * urms / a0(2)
+	    !zran = zran * urms / a0(3)
+
+	    tauout(1) = tauin(1) + xran
+	    tauout(2) = tauin(2) + yran
+	    tauout(3) = tauin(3)
+    !	tauout(3) = tauin(3) + zran
+	
+    end subroutine displace
 
 subroutine normal_sample ( a, b, seed, x )
 

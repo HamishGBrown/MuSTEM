@@ -88,14 +88,14 @@ module m_slicing
         implicit none
         
         integer(4) i, ichoice
-
-      5 write(*,*) 'Enter the number of slices per unit cell in the beam direction:'
+        
+        n_slices = -1
+        do while(n_slices<1) 
+        write(*,*) 'Enter the number of slices per unit cell in the beam direction:'
 	    call get_input("Number of distinct potentials ", n_slices)
         write(*,*)
         
-        if (n_slices.eq.1) then
-            call calculate_depths_no_slicing
-                        
+        if (n_slices.eq.1) then; call calculate_depths_no_slicing
         elseif (n_slices.gt.1) then
             if (allocated(depths)) deallocate(depths)
             allocate(depths(n_slices+1))
@@ -109,8 +109,9 @@ module m_slicing
                     &' be entered. (e.g. three even slices would be entered as',/,&
                     &' 0.0, 0.3333, 0.6666 ).', /)
 	    
-                    
-    15      write(6,16) 
+            ichoice = 0
+            do while(ichoice<1.or.ichoice>2)
+            write(6,16) 
     16      format(' How would you like to specify the slice depths?', /, &
                   &' <1> Manually ', /, &
                   &' <2> Automatically (uniformly spaced)')
@@ -124,7 +125,6 @@ module m_slicing
 	                write(6,20,ADVANCE='NO') achar(13), i
         20          format( a1,' Enter the fractional depth of slice number ', i4, ':  ')
 	                call get_input("depths", depths(i))
-                    
 	            enddo
                 
             elseif (ichoice.eq.2) then
@@ -135,18 +135,10 @@ module m_slicing
                     depths(i) = float( (i-1)) / float(n_slices)
                     write(6,21) i, depths(i)
                 enddo
-                
-            else
-                ! Invalid slicing choice
-                goto 15
-                
             endif
-            
-        else
-            ! Invalid number of slices
-            goto 5
-            
+            enddo
         endif
+        enddo
         
         write(*,*)
         

@@ -166,7 +166,7 @@ end subroutine
 	    use cufft_wrapper
         use cudafor
         use m_slicing, only: n_slices, nat_slice, a0_slice
-        use m_qep, only: displace
+        use m_numerical_tools, only: displace
         use cuda_array_library, only: blocks, threads
 		use output
         

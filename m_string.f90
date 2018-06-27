@@ -7,6 +7,14 @@ implicit none
     
 
     contains
+      
+	function logical_to_yn(input) result(str)
+		logical,intent(in)::input
+		character(1)::str
+		if (input) str = 'y'
+		if (.not.input) str = 'n'
+    end function
+    
 		 function is_numeric(string)
 			  character(len=*), intent(in) :: string
 			  logical :: is_numeric

@@ -108,7 +108,6 @@ module m_lens
     subroutine setup_lens_parameters(string,aberrations,cutoff)
 		
 		use global_variables, only: ak1,nopiy,nopix
-        use global_variables, only: ak1
         use m_user_input, only: get_input
 		use output
 		use CUFFT_wrapper

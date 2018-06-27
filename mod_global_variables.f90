@@ -41,7 +41,8 @@
     real(fp_kind)  :: thetad,surfn(3),orthog(3,3)
     real(fp_kind)  :: volts,ak                            !mean inner potential, wavevector (corrected for refraction)
     real(fp_kind)  :: ak1,relm                            !wavevector in freespace, relativistically corrected mass
-    real(fp_kind)  :: claue(3),Kz                         !Specimen tilt vector and z component of incident wave vector
+    real(fp_kind),allocatable  :: claue(:,:),Kz(:)        !Specimen tilt vector and z component of incident wave vector
+    integer*4::n_tilts_total                              !Total number of specimen tilts
     real(fp_kind)  :: bvec(3)                             !Beam tilt vector
     
     !sample thickness and slicing variables
@@ -51,10 +52,6 @@
 	integer(4)::nz
     integer(4) :: n_cells  
 
-	!integer(4) :: probe_output_interval
-	!logical:: prb_depth_output
-
-    complex(fp_kind), allocatable :: prop(:,:,:)          !propagator
     complex(fp_kind), allocatable :: fz(:,:,:)            !the scattering factors, in reciprocal space, calculated on the grid (supercell)
     complex(fp_kind), allocatable :: fz_DWF(:,:,:)        !the DWF smear_array, in reciprocal space, calculated on the grid (supercell)
     complex(fp_kind), allocatable :: sinc(:,:)            !sinc function to correct for pixelation in the potential construction
@@ -91,7 +88,6 @@
     real(fp_kind),parameter :: hbarc = 1973.26_fp_kind              ! hbarc = hbar * c in eV A units
     
     !logical types to pick inelastic calculations
-    logical :: ionization = .false.
     logical :: adf 
     logical :: EELS = .false.
 
@@ -139,6 +135,8 @@
     ! ak1 is the incident wave vector without corrections for refraction
           ak1   = wavev( ekv * 1000_fp_kind )
     !Initialise tilt to zero (on-axis)
+          allocate(Kz(1),claue(3,1))
+          n_tilts_total = 1
           Kz = ak1
           claue = 0_fp_kind
           

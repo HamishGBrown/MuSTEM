@@ -585,7 +585,7 @@ module m_user_input
                 write(*,*) 'End of file reached, but more parameters need to'
                 write(*,*) 'be read. Please record the file again.'
                 write(*,*)
-                
+                pause
                 stop
             endif
             

@@ -48,31 +48,33 @@ subroutine absorptive_tem
     use m_absorption
     use m_precision
     use output
-    use CUFFT
 	use cufft_wrapper
+#ifdef GPU
+    use CUFFT
     use cuda_array_library
     use cudafor
     use cuda_ms
     use cuda_potential
-    use m_slicing
     use cuda_setup
+#endif
+    use m_slicing
     use m_probe_scan, only: place_probe, probe_initial_position
-    use m_tilt, only: tilt_wave_function
-    use m_multislice, only: make_absorptive_grates, setup_propagators
-    use m_potential, only: precalculate_scattering_factors
+    use m_tilt
+    use m_multislice
+    use m_potential
     use m_string
     implicit none
     
     !dummy variables
-    integer(4) :: i_cell,i_slice,z_indx(1),length,lengthdf,i
+    integer(4) :: i_cell,i_slice,z_indx(1),length,lengthdf,i,idum,ntilt
     
     !random variables
     integer(4) :: count
        
     !probe variables
-    complex(fp_kind) :: psi(nopiy,nopix)
-    complex(fp_kind) :: psi_initial(nopiy,nopix)
+    complex(fp_kind),dimension(nopiy,nopix)  :: psi,psi_initial,psi_out
     complex(fp_kind) :: lens_ctf(nopiy,nopix,imaging_ndf)
+    complex(fp_kind),dimension(nopiy,nopix,n_slices)::projected_potential,prop
     
     !output
     real(fp_kind),dimension(nopiy,nopix) :: cbed,image,tem_image,temp_image
@@ -83,6 +85,7 @@ subroutine absorptive_tem
     !output variables
     character(120) :: filename,fnam_df
     
+#ifdef GPU
     !device variables
 	integer :: plan
 	complex(fp_kind),device,allocatable :: prop_d(:,:,:),transf_d(:,:,:)
@@ -94,10 +97,8 @@ subroutine absorptive_tem
         
     real(fp_kind) :: absorptive_tem_GPU_memory
 
-    
-    
     call GPU_memory_message(absorptive_tem_GPU_memory(), on_the_fly)
-    
+#endif    
     
     
     write(*,*) '|----------------------------------|'
@@ -105,48 +106,34 @@ subroutine absorptive_tem
 	write(*,*) '|----------------------------------|'
     write(*,*) 
 
-    if(pw_illum) then
 	do i=1,imaging_ndf
-        call make_lens_ctf(lens_ctf(:,:,i),imaging_df(i),imaging_aberrations)
+        if(pw_illum) call make_lens_ctf(lens_ctf(:,:,i),imaging_df(i),imaging_aberrations)
 	enddo
-	endif
-	   
     ! Precalculate the scattering factors on a grid
     call precalculate_scattering_factors()
-                
-    if (on_the_fly) then
-        call cuda_setup_many_phasegrate
-    else
-        call make_absorptive_grates
+	
+    if (pw_illum) then
+        psi_initial = 1.0_fp_kind/sqrt(float(nopiy*nopix))
+	else
+	    call make_stem_wfn(psi_initial,probe_df(1),probe_initial_position,probe_aberrations)
     endif
+    call tilt_wave_function(psi_initial)
+    projected_potential = make_absorptive_grates(nopiy,nopix,n_slices)
+    call load_save_add_grates(projected_potential,nopiy,nopix,n_slices)
     
-	call setup_propagators
-    
-
-
     write(*,*) '|--------------------------------|'
 	write(*,*) '|      Calculation running       |'
 	write(*,*) '|--------------------------------|'
     write(*,*)
-    
-    
-    
+
+	t1 = secnds(0.0)
+#ifdef GPU
 	! Plan the fourier transforms
     if (fp_kind.eq.8)then
           call cufftPlan(plan,nopix,nopiy,CUFFT_Z2Z)
 	else
           call cufftPlan(plan,nopix,nopiy,CUFFT_C2C)
     endif
-
-	t1 = secnds(0.0)
-	
-	if (pw_illum) then
-        psi_initial = 1.0_fp_kind/sqrt(float(nopiy*nopix))
-	else
-	    call make_stem_wfn(psi_initial,probe_df(1),probe_initial_position,probe_aberrations)
-    endif
-    
-    call tilt_wave_function(psi_initial)
     
     !Copy host arrays to the device
     if (on_the_fly) then
@@ -163,16 +150,37 @@ subroutine absorptive_tem
         bwl_mat_d = bwl_mat
     else
 	    allocate(transf_d(nopiy,nopix,n_slices))
-	    transf_d=transf_absorptive
     endif
     allocate(prop_d(nopiy,nopix,n_slices))
+#endif
+    
+    allocate(transf_absorptive(nopiy,nopix,n_slices))
+    do ntilt=1,n_tilts_total
+	!For each specimen tilt we have to redo the transmission function
+	!and propagators
+#ifdef GPU								
+    if (on_the_fly) call cuda_setup_many_phasegrate
+#endif
+	
+    
+    do i = 1, n_slices
+	    call make_propagator(nopiy,nopix,prop(:,:,i),prop_distance(i),Kz(ntilt),ss,ig1,ig2,claue(:,ntilt),ifactorx,ifactory)
+        
+	    prop(:,:,i) = prop(:,:,i) * bwl_mat
+        transf_absorptive(:,:,i) = exp(ci*pi*a0_slice(3,i)/Kz(ntilt)*projected_potential(:,:,i))
+        ! Bandwith limit the phase grate, psi is used for temporary storage
+        call fft2(nopiy, nopix, transf_absorptive(:,:,i), nopiy, psi, nopiy)
+        psi = psi * bwl_mat
+        call ifft2(nopiy, nopix, psi, nopiy, transf_absorptive(:,:,i), nopiy)
+    enddo
+
    lengthdf = ceiling(log10(maxval(abs(imaging_df))))
    if(any(imaging_df<0)) lengthdf = lengthdf+1
 
-    prop_d = prop
+#ifdef GPU
+    transf_d=transf_absorptive
     psi_d = psi_initial
-	length = ceiling(log10(maxval(zarray)))
-    
+    prop_d = prop
     do i_cell = 1, maxval(ncells)
         do i_slice = 1, n_slices
             
@@ -196,6 +204,7 @@ subroutine absorptive_tem
 			z_indx = minloc(abs(ncells-i_cell))
 			filename = trim(adjustl(output_prefix))
 			if (nz>1) filename = trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(z_indx(1))),length)//'_A'
+            if (n_tilts_total>1) filename = trim(adjustl(filename))//tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2)
 			call binary_out_unwrap(nopiy, nopix, cbed, trim(adjustl(filename))//'_DiffractionPattern',write_to_screen=.false.)
 				
 			if(pw_illum) then
@@ -214,10 +223,52 @@ subroutine absorptive_tem
 		endif
         intensity = get_sum(psi_d)
 	    write(6,900,advance='no') achar(13), i_cell, intensity
-900     format(a1, 1x, 'Cell: ', i5, ' Intensity: ', f12.6)	
+900     format(a1, 1x, 'Cell: ', i5, ' Intensity: ', f12.6)
+#else
+    psi = psi_initial
+    do i_cell = 1, maxval(ncells)
+        do i_slice = 1, n_slices	
+            call multislice_iteration(psi,prop(:,:,i_slice),transf_absorptive(:,:,i_slice),nopiy,nopix);												  
+        enddo ! End loop over slices
+        
+		!If this thickness corresponds to any of the output values then output images
+		if (any(i_cell==ncells)) then
+			  
+			call fft2(nopiy, nopix, psi, nopiy, psi_out, nopiy)
+			cbed = abs(psi_out)**2
+			z_indx = minloc(abs(ncells-i_cell))
+			filename = trim(adjustl(output_prefix))
+			if (nz>1) filename = trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(z_indx(1))),length)//'_A'
+            if (n_tilts_total>1) filename = trim(adjustl(filename))//tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2)
+			call binary_out_unwrap(nopiy, nopix, cbed, trim(adjustl(filename))//'_DiffractionPattern',write_to_screen=.false.)
+            
+            
+			if(pw_illum) then
+            call binary_out(nopiy, nopix, abs(psi)**2, trim(adjustl(filename))//'_exit_surface_intensity',write_to_screen=.false.)
+            call binary_out(nopiy, nopix, atan2(imag(psi),real(psi)), trim(adjustl(filename))//'_exit_surface_phase',write_to_screen=.false.)
+			do i=1,imaging_ndf
+			   
+				call fft2(nopiy, nopix, psi, nopiy, psi_out, nopiy)
+																		  
+				psi_out = psi_out*lens_ctf(:,:,i)
+				call ifft2(nopiy, nopix, psi_out, nopiy, psi_out, nopiy)
+				tem_image = abs(psi_out)**2
+				fnam_df = trim(adjustl(filename))// '_Image'
+				if(imaging_ndf>1) fnam_df = trim(adjustl(fnam_df))//'_Defocus_'//zero_padded_int(int(imaging_df(i)),lengthdf)//'_Ang'
+				call binary_out(nopiy, nopix, tem_image, fnam_df,write_to_screen=.false.)
+            enddo
+            endif
+		endif
+        intensity = sum(abs(psi)**2)
+        
+        if(n_tilts_total<2) write(6,900) i_cell, intensity
+        if(n_tilts_total>1) write(6,901) i_cell, ntilt,n_tilts_total, intensity
+900     format(1h+,1x, 'Cell: ', i5, ' Intensity: ', f12.6)	        
+901     format(1h+,1x, 'Cell: ', i5, ' tilt:',i5,'/',i5,' Intensity: ', f12.6)	
+#endif	
         
 	enddo ! End loop over cells
-
+    enddo ! End loop over tilts
     
     
 	delta = secnds(t1)
@@ -234,6 +285,6 @@ subroutine absorptive_tem
 		write(9834, '(a, g, a, /)') 'The multislice calculation took ', delta, 'seconds.'
 		close(9834)
 	endif
-
+    
 
 end subroutine absorptive_tem

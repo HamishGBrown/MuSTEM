@@ -49,16 +49,15 @@
         use output, only: setup_output_prefix,timing
         use m_probe_scan, only: setup_probe_scan, setup_probe_scan_pacbed, place_probe, probe_initial_position
         use m_tilt, only: prompt_tilt
-        use m_qep, only: setup_qep_parameters
         use m_absorption, only: complex_absorption, prompt_include_absorption, setup_local_diffraction_plane_geometry,include_absorption
         use m_potential
-        use m_multislice, only: prompt_save_load_grates, prompt_output_probe_intensity
+        use m_multislice, only: prompt_save_load_grates, prompt_output_probe_intensity,setup_qep_parameters
         
         implicit none
         
         integer :: i_illum, i_tds_model, i_cb_menu, i_cb_calc_type,ifile,nfiles,i_arg,idum,i
         
-        logical :: nopause = .false.,there
+        logical :: nopause = .false.,there,ionization,stem,pacbed
         character(512)::command_argument
         character(120)::fnam
         character(2):: symb
@@ -181,20 +180,18 @@
         ! Set the unit cell tiling and grid size
         call set_tiling_grid
         
-        
-        write(*,*) '|----------------------------|'
-        write(*,*) '|        Illumination        |'
-        write(*,*) '|----------------------------|'
-        write(*,*)
-110     write(*,*) '<1> Plane wave      (including HRTEM images and diffraction patterns)'
-        write(*,*) '<2> Convergent-beam (including STEM images and CBED patterns)'
+        i_illum = -1
+        do while(i_illum<1.or.i_illum>2)
+            write(*,*) '|----------------------------|'
+            write(*,*) '|        Illumination        |'
+            write(*,*) '|----------------------------|'
+            write(*,*)
+            write(*,*) '<1> Plane wave      (including HRTEM images and diffraction patterns)'
+            write(*,*) '<2> Convergent-beam (including STEM images and CBED patterns)'
                                                                                                
-        call get_input('Calculation type', i_illum) 
-        write(*,*)
-       
-        ! Validate illumination choice
-        if (i_illum.ne.1 .and. i_illum.ne.2 .and. i_illum.ne.99) goto 110
-     
+            call get_input('Calculation type', i_illum) 
+            write(*,*)
+        enddo
         
         ! Set illumination flags
         pw_illum = (i_illum == 1)
@@ -206,24 +203,22 @@
         if (cb_illum) call setup_lens_parameters('Probe',probe_aberrations,probe_cutoff)
 
         
-        
-        write(*,*) '|----------------------------------------|'
-        write(*,*) '|        Thermal scattering model        |'
-        write(*,*) '|----------------------------------------|'
-        write(*,*)
-112     write(*,*) '<1> Quantum Excitation of Phonons (QEP) model'
-        write(*,*) '    (Accurately accounts for inelastic scattering'
-        write(*,*) '     due to phonon excitation)'
-        write(*,*) '<2> Absorptive model'
-        write(*,*) '     (Calculates faster than QEP but only approximates'
-        write(*,*) '      inelastic scattering due to phonon excitation)'
+        i_tds_model=-1
+        do while(i_tds_model<1.or.i_tds_model>2)
+            write(*,*) '|----------------------------------------|'
+            write(*,*) '|        Thermal scattering model        |'
+            write(*,*) '|----------------------------------------|'
+            write(*,*)
+            write(*,*) '<1> Quantum Excitation of Phonons (QEP) model'
+            write(*,*) '    (Accurately accounts for inelastic scattering'
+            write(*,*) '     due to phonon excitation)'
+            write(*,*) '<2> Absorptive model'
+            write(*,*) '     (Calculates faster than QEP but only approximates'
+            write(*,*) '      inelastic scattering due to phonon excitation)'
 
-        call get_input('<1> QEP <2> ABS', i_tds_model)
-        write(*,*)
-        
-        
-        ! Validate choice
-        if (i_tds_model.lt.1 .or. i_tds_model.gt.2) goto 112
+            call get_input('<1> QEP <2> ABS', i_tds_model)
+            write(*,*)
+        enddo
         
         ! Set TDS model flags
         complex_absorption = (i_tds_model == 2)
@@ -257,7 +252,7 @@
         call make_bwl_mat                           
         
         ! Ask for QEP parameters
-        if (qep) call setup_qep_parameters
+        if (qep) call setup_qep_parameters(n_qep_grates,n_qep_passes,phase_ramp_shift,nran,quick_shift,ifactory,ifactorx)
         
         ! Save/load transmission functions
         call prompt_save_load_grates
@@ -277,40 +272,34 @@
             write(*,*)
             write(*,*) 'Choose a calculation type:'
 115         write(*,*) '<1> CBED pattern'
-            write(*,*) '<2> PACBED pattern (can output diffraction patterns for each probe position)'
-            write(*,*) '<3> STEM image (BF/ABF/ADF/EELS/EDX)'
+            write(*,*) '<2> STEM (BF/ABF/ADF/EELS/EDX/PACBED/4D-STEM)'
             
-            call get_input('<1> CBED <2> PACBED <3> STEM', i_cb_calc_type)
+            call get_input('<1> CBED <2> STEM/PACBED', i_cb_calc_type)
             write(*,*)
             
             select case (i_cb_calc_type)
                 case (1)
                     ! CBED pattern
                     call place_probe(probe_initial_position)
-                    
                 case (2)
-                    ! PACBED pattern
-                    call setup_probe_scan_pacbed
-					!call setup_probe_scan(.false.)
-                    
-                case (3)
                     ! STEM images
-                    call setup_probe_scan
+                    call STEM_options(STEM,ionization,PACBED)
+                    call setup_probe_scan(ionization.or.STEM)
                     call prompt_output_probe_intensity
 
                     if (qep) then
                         adf = .false. 
-                        call setup_integration_measurements
+                        if(STEM) call setup_integration_measurements
                         
                     else
                         adf = .true.
-                        call setup_local_diffraction_plane_geometry
+                        if(STEM) call setup_local_diffraction_plane_geometry
                     
                     endif
                     
                     ! Precalculate the scattering factors on a grid
                     call precalculate_scattering_factors()
-                    call setup_inelastic_ionization_types
+                    if(ionization) call setup_inelastic_ionization_types
                     
                 case default
                     goto 115
@@ -320,12 +309,7 @@
             
         endif
         
-        
-        
-        !-----------------------------
         ! Start simulation
-        !-----------------------------
-            
         if (pw_illum .and. qep) then
             ! Plane wave QEP
             call qep_tem
@@ -339,24 +323,17 @@
             call qep_tem
 
         elseif (cb_illum .and. qep .and. i_cb_calc_type.eq.2) then
-            ! Convergent-beam QEP PACBED
-            call qep_pacbed
-
-        elseif (cb_illum .and. qep .and. i_cb_calc_type.eq.3) then
+            
             ! Convergent-beam QEP STEM
-            call qep_stem
+            call qep_stem(STEM,ionization,PACBED)
             
         elseif (cb_illum .and. complex_absorption .and. i_cb_calc_type.eq.1) then
             ! Convergent-beam absorptive CBED
             call absorptive_tem
 
         elseif (cb_illum .and. complex_absorption .and. i_cb_calc_type.eq.2) then
-            ! Convergent-beam absorptive PACBED
-            call absorptive_pacbed
-
-        elseif (cb_illum .and. complex_absorption .and. i_cb_calc_type.eq.3) then
             ! Convergent-beam absorptive STEM
-            call absorptive_stem
+            call absorptive_stem(STEM,ionization,PACBED)
             
         endif
          
@@ -408,7 +385,6 @@
 		if(allocated(fx)                      ) deallocate(fx)   
 		if(allocated(zarray)                  ) deallocate(zarray)   
 		if(allocated(ncells)                  ) deallocate(ncells)   
-		if(allocated(prop  )                  ) deallocate(prop  )   
 		if(allocated(fz    )                  ) deallocate(fz)   
 		if(allocated(fz_DWF)                  ) deallocate(fz_DWF)   
 		if(allocated(sinc)                    ) deallocate(sinc)   

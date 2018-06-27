@@ -17,16 +17,17 @@
 !                       
 !--------------------------------------------------------------------------------
 
-function qep_tem_GPU_memory() result(required_memory)
+function qep_tem_GPU_memory(n_qep_grates, quick_shift, phase_ramp_shift) result(required_memory)
     
     use m_precision, only: fp_kind
     use global_variables, only: nopiy, nopix, ifactory, ifactorx, on_the_fly
     use m_lens, only: imaging,imaging_ndf
     use m_slicing, only: n_slices
-    use m_qep, only: n_qep_grates, quick_shift, phase_ramp_shift
     
     implicit none
     
+	integer*4,intent(in)::n_qep_grates
+	logical,intent(in)::quick_shift,phase_ramp_shift
     real(fp_kind) :: required_memory
     
     real(fp_kind) :: array_size
@@ -54,25 +55,26 @@ subroutine qep_tem
 	use m_numerical_tools
     use global_variables!, only: nopiy, nopix, ifactory, ifactorx, npixels, nopix_ucell, nopiy_ucell, normalisation, n_cells, ndet, ionization, on_the_fly, ig1, ig2, nt, prop, fz, inverse_sinc, bwl_mat
     use m_lens!, only: imaging, imaging_df, pw_illum, probe_df, make_lens_ctf, make_stem_wfn,imaging_ndf,imaging_df
-    use m_qep, only: n_qep_passes, n_qep_grates, seed_rng, qep_grates, quick_shift, phase_ramp_shift, shift_arrayx, shift_arrayy, nran
-	use cufft_wrapper, only: cufft_z2z, cufft_c2c, cufft_inverse, cufft_forward, cufftPlan, cufftExec, fft2, ifft2
+    use cufft_wrapper
+#ifdef GPU	
     use cuda_array_library, only: cuda_multiplication, cuda_addition, cuda_mod, blocks, threads
     use cudafor, only: dim3
     use cuda_ms, only: get_sum
-    use output, only: output_prefix, binary_out, binary_out_unwrap,timing
     use cuda_potential, only: cuda_setup_many_phasegrate, ccd_slice_array, cuda_fph_make_potential
-    use m_slicing, only: n_slices, nat_slice, tau_slice, prop_distance
     use cuda_setup, only: GPU_memory_message
+#endif
+    use m_slicing
+    use output, only: output_prefix, binary_out, binary_out_unwrap,timing
     use m_probe_scan, only: place_probe, probe_initial_position
     use m_tilt, only: tilt_wave_function
-    use m_multislice, only: make_qep_grates, setup_propagators
+    use m_multislice!, only: make_qep_grates, setup_propagators
     use m_potential
 	use m_string
     
     implicit none
     
     !dummy variables
-    integer(4) :: i_cell, i_slice, i_qep_pass,i,j
+    integer(4) :: i_cell, i_slice, i_qep_pass,i,j,ntilt
     integer(4) :: shifty, shiftx,length,z_indx(1)
     
     !random variables
@@ -80,7 +82,9 @@ subroutine qep_tem
     !real(fp_kind) :: ran1
        
     !probe variables
-    complex(fp_kind),dimension(nopiy,nopix) :: psi,psi_initial
+    complex(fp_kind),dimension(nopiy,nopix,n_slices)::prop
+    complex(fp_kind),dimension(nopiy,nopix,n_qep_grates,n_slices)::projected_potential,qep_grates
+    complex(fp_kind),dimension(nopiy,nopix) :: psi,psi_initial,psi_out,psi_temp,trans
 	complex(fp_kind),dimension(nopiy,nopix,imaging_ndf)::ctf
     complex(fp_kind)::psi_elastic(nopiy,nopix,nz)
 	
@@ -88,16 +92,16 @@ subroutine qep_tem
     !output
     real(fp_kind),dimension(nopiy,nopix,nz) :: cbed,total_intensity
 	real(fp_kind)::tem_image(nopiy,nopix,nz,imaging_ndf)
-    real(fp_kind) :: image(nopiy,nopix)
+    real(fp_kind),dimension(nopiy,nopix) :: image,temp
 	character*120 ::fnam_df
 	integer :: lengthdf
     
     !diagnostic variables
     real(fp_kind) :: intensity, t1, delta
-    
+#ifdef GPU    
     !device variables
 	integer :: plan
-    complex(fp_kind),device,dimension(nopiy,nopix) :: psi_d, psi_initial_d,psi_out_d,psi_temp
+    complex(fp_kind),device,dimension(nopiy,nopix) :: psi_d, psi_initial_d,psi_out_d,psi_temp_d
     complex(fp_kind),device :: psi_elastic_d(nopiy,nopix,nz)
 	complex(fp_kind),device,allocatable :: prop_d(:,:,:), transf_d(:,:,:,:), ctf_d(:,:,:), shift_arrayx_d(:,:), shift_arrayy_d(:,:), shift_array_d(:,:), trans_d(:,:)
     real(fp_kind),device,allocatable :: tem_image_d(:,:,:,:)
@@ -107,13 +111,13 @@ subroutine qep_tem
     !device variables for on the fly potentials
     complex(fp_kind),device,allocatable,dimension(:,:) :: bwl_mat_d, inverse_sinc_d
     complex(fp_kind),device,allocatable,dimension(:,:,:) :: fz_d
-
+#endif
     real(fp_kind) :: qep_tem_GPU_memory
     
     character*100::filename
-    
+#ifdef GPU    
     call GPU_memory_message(qep_tem_GPU_memory(), on_the_fly)
-    
+#endif    
     
     
     write(*,*) '|----------------------------------|'
@@ -123,25 +127,30 @@ subroutine qep_tem
 
     call precalculate_scattering_factors
 	idum = seed_rng()
+#ifdef GPU						
     if (on_the_fly) then
         call cuda_setup_many_phasegrate
         
     else
+#endif        
+    projected_potential = make_qep_grates(idum)  
         
-        
-        call make_qep_grates(idum)
-        
+#ifdef GPU        
     endif
-    call setup_propagators
+#else
+	on_the_fly=.false.
+#endif
 
 	if(pw_illum) then
 		do i=1,imaging_ndf
 			call make_lens_ctf(ctf(:,:,i),imaging_df(i),imaging_aberrations)
 		enddo
+#ifdef GPU		
 		allocate(ctf_d(nopiy,nopix,imaging_ndf))
 		ctf_d = ctf
 	    allocate(tem_image_d(nopiy,nopix,nz,imaging_ndf))
 		tem_image_d = 0.0_fp_kind
+#endif
 	endif
 
 
@@ -152,7 +161,7 @@ subroutine qep_tem
 	write(*,*) '|      Calculation running       |'
 	write(*,*) '|--------------------------------|'
     write(*,*)
-
+#ifdef GPU
     if (fp_kind.eq.8)then
 	    call cufftPlan(plan,nopix,nopiy,CUFFT_Z2Z)
 	else
@@ -188,7 +197,7 @@ subroutine qep_tem
     if (on_the_fly.or.quick_shift.or.phase_ramp_shift) then
         allocate(trans_d(nopiy,nopix))
     endif
-    
+#endif    
 	t1 = secnds(0.0)
 
 	if (pw_illum) then
@@ -198,13 +207,23 @@ subroutine qep_tem
 	endif
     
     call tilt_wave_function(psi_initial)
-
+    do ntilt = 1,n_tilts_total
+        
+	do i = 1, n_slices
+	    call make_propagator(nopiy,nopix,prop(:,:,i),prop_distance(i),Kz(ntilt),ss,ig1,ig2,claue(:,ntilt),ifactorx,ifactory)
+	    prop(:,:,i) = prop(:,:,i) * bwl_mat
+    enddo
+    qep_grates = exp(ci*pi*a0_slice(3,j)/Kz(ntilt)*projected_potential)
+    
+#ifdef GPU
+    transf_d = qep_grates
     psi_initial_d = psi_initial
         
 	! Set accumulators to zero
     cbed_d = 0.0_fp_kind
     psi_elastic_d = 0.0_fp_kind
     total_intensity_d = 0.0_fp_kind
+
     
     do i_qep_pass = 1, n_qep_passes 
     
@@ -267,10 +286,10 @@ subroutine qep_tem
 					if(pw_illum) then
 					! Accumulate image
 					do i=1,imaging_ndf
-						psi_temp = psi_out_d
-						call cuda_multiplication<<<blocks,threads>>>(psi_temp, ctf_d(:,:,i), psi_temp, sqrt(normalisation), nopiy, nopix)
-						call cufftExec(plan, psi_temp, psi_temp, CUFFT_INVERSE)
-						call cuda_mod<<<blocks,threads>>>(psi_temp, temp_image_d, normalisation, nopiy, nopix)
+						psi_temp_d = psi_out_d
+						call cuda_multiplication<<<blocks,threads>>>(psi_temp_d, ctf_d(:,:,i), psi_temp_d, sqrt(normalisation), nopiy, nopix)
+						call cufftExec(plan, psi_temp_d, psi_temp_d, CUFFT_INVERSE)
+						call cuda_mod<<<blocks,threads>>>(psi_temp_d, temp_image_d, normalisation, nopiy, nopix)
 						call cuda_addition<<<blocks,threads>>>(tem_image_d(:,:,z_indx(1),i), temp_image_d, tem_image_d(:,:,z_indx(1),i), 1.0_fp_kind, nopiy, nopix)
 					enddo
 					endif
@@ -281,14 +300,97 @@ subroutine qep_tem
         intensity = get_sum(psi_d)
 		write(6,900,advance='no') achar(13), i_qep_pass, n_qep_passes, intensity
     900 format(a1, 1x, 'QEP pass:', i4, '/', i4, ' Intensity: ', f8.3)	
-
-	enddo ! End loop over QEP passes
+#else
+    cbed = 0.0_fp_kind
+    psi_elastic = 0.0_fp_kind
+    total_intensity = 0.0_fp_kind
     
+    do i_qep_pass = 1, n_qep_passes 
+    
+        ! Reset wavefunction
+		psi = psi_initial
+        
+        do i_cell = 1,maxval(ncells)
+	        do i_slice = 1, n_slices
+            
+                ! Phase grate
+				nran = floor(n_qep_grates*ran1(idum)) + 1
+				if(on_the_fly) then
+					!call make_qep_potential(trans, tau_slice, nat_slice, ss_slice(7,i_slice))
+					psi_out = psi*trans
+				elseif(quick_shift) then
+												 
+					shiftx = floor(ifactorx*ran1(idum)) * nopix_ucell
+					shifty = floor(ifactory*ran1(idum)) * nopiy_ucell
+					trans = cshift(cshift(qep_grates(:,:,nran,i_slice),shifty,dim=1),shiftx,dim=2)
+					psi_out = psi*trans
+				elseif(phase_ramp_shift) then                       !randomly shift phase grate
+												 
+					shiftx = floor(ifactorx*ran1(idum)) + 1
+					shifty = floor(ifactory*ran1(idum)) + 1
+					call phase_shift_array(qep_grates(:,:,nran,i_slice),trans,shift_arrayy,shift_arrayx)
+																																		   
+																	  
+					psi_out = psi*trans
+				else
+												 
+					psi_out = psi*qep_grates(:,:,nran,i_slice)
+				endif
+                
+				!propagate
+                call fft2(nopiy,nopix,psi_out,nopiy,psi,nopiy)
+				psi_out = prop(:,:,i_slice)*psi
+				call ifft2(nopiy,nopix,psi_out,nopiy,psi,nopiy)
+
+
+            enddo ! End loop over slices
+			
+				!If this thickness is an output thickness then accumulate relevent TEM images and diffraction patterns
+				if (any(i_cell==ncells)) then
+					
+					!Transform into diffraction space
+					call fft2(nopiy,nopix,psi,nopiy,psi_out,nopiy)
+					temp = abs(psi_out)**2
+					z_indx = minloc(abs(ncells-i_cell))
+
+					! Accumulate elastic wave function
+					psi_elastic(:,:,z_indx(1)) = psi_elastic(:,:,z_indx(1)) + psi
+
+					! Accumulate exit surface intensity
+																					  
+					total_intensity(:,:,z_indx(1)) = total_intensity(:,:,z_indx(1)) + abs(psi)**2
+					
+					! Accumulate diffaction pattern
+					temp=abs(psi_out)**2
+					cbed(:,:,z_indx(1)) = cbed(:,:,z_indx(1)) + temp
+					
+					  
+					! Accumulate image
+                    if(pw_illum) then
+					do i=1,imaging_ndf
+						psi_temp = ctf(:,:,i)*psi_out
+						call ifft2(nopiy,nopix,psi_temp,nopiy,psi_temp,nopiy)
+															 
+																							
+						tem_image(:,:,z_indx(1),i) = tem_image(:,:,z_indx(1),i)+abs(psi_temp)**2
+                    enddo
+                    endif
+
+				endif
+        enddo ! End loop over cells
+        
+        intensity = sum(abs(psi)**2)
+		
+        write(6,900) i_qep_pass, n_qep_passes, intensity
+900     format(1h+,  'QEP pass:', i4, '/', i4, ' Intensity: ', f8.3)
+#endif
+	enddo ! End loop over QEP passes
+#ifdef GPU    
     cbed = cbed_d
     psi_elastic = psi_elastic_d
     total_intensity = total_intensity_d
 	tem_image = tem_image_d
-    
+#endif    
     delta = secnds(t1)
     
     write(*,*)
@@ -367,5 +469,7 @@ subroutine qep_tem
 		enddo
 		endif
 	
-	enddo
+    enddo
+    
+    enddo !end loop over tilts
 end subroutine qep_tem

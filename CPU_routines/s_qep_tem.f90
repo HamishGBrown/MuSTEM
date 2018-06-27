@@ -17,36 +17,6 @@
 !                       
 !--------------------------------------------------------------------------------
 
-function qep_tem_GPU_memory() result(required_memory)
-    
-    use m_precision, only: fp_kind
-    use global_variables, only: nopiy, nopix, ifactory, ifactorx, on_the_fly
-    use m_lens, only: imaging,imaging_ndf
-    use m_slicing, only: n_slices
-    use m_qep, only: n_qep_grates, quick_shift, phase_ramp_shift
-    
-    implicit none
-    
-    real(fp_kind) :: required_memory
-    
-    real(fp_kind) :: array_size
-    integer :: array_count
-    
-    array_size = 4.0_fp_kind * nopiy * nopix
-    
-    array_count = 2*(3 + n_slices + n_slices*n_qep_grates) + 3
-    
-    if (imaging) array_count = array_count + 2 + 1 +imaging_ndf
-    if (on_the_fly.or.quick_shift.or.phase_ramp_shift) array_count = array_count + 2
-    if (phase_ramp_shift) array_count = array_count + 2
-    
-    required_memory = array_count * array_size
-    
-    if (phase_ramp_shift) required_memory = required_memory + 8.0_fp_kind*(nopiy*ifactory + nopix*ifactorx)
-    
-end function
-    
-
 
 subroutine qep_tem
     
@@ -54,13 +24,12 @@ subroutine qep_tem
 	use m_numerical_tools
     use global_variables!, only: nopiy, nopix, ifactory, ifactorx, npixels, nopix_ucell, nopiy_ucell, normalisation, n_cells, ndet, ionization, on_the_fly, ig1, ig2, nt, prop, fz, inverse_sinc, bwl_mat
     use m_lens, only: imaging, imaging_df, pw_illum, probe_df, make_lens_ctf, make_stem_wfn,imaging_ndf,imaging_df,imaging_aberrations,probe_aberrations
-    use m_qep, only: n_qep_passes, n_qep_grates, seed_rng, qep_grates, quick_shift, phase_ramp_shift, shift_arrayx, shift_arrayy, nran
 	use cufft_wrapper
     use output, only: output_prefix, binary_out, binary_out_unwrap,timing
     use m_slicing
     use m_probe_scan, only: place_probe, probe_initial_position
     use m_tilt, only: tilt_wave_function
-    use m_multislice, only: make_qep_grates, setup_propagators
+    use m_multislice
 	use m_string
     use m_potential
     

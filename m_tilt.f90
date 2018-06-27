@@ -31,7 +31,6 @@ module m_tilt
     
     
     subroutine prompt_tilt
-        
         use m_user_input, only: get_input
         
         implicit none
@@ -43,19 +42,8 @@ module m_tilt
         call get_input('<1> No beam tilt <2> Beam tilt', i_tilt)
         write(*,*)
         
-        if (i_tilt.eq.1) then
-            tilt_illumination = .false.
-            
-            
-        elseif (i_tilt.eq.2) then
-            tilt_illumination = .true.
-			
-            call setup_tilt
-        
-        else
-            goto 10
-            
-        endif
+		tilt_illumination = i_tilt.eq.2
+		if(tilt_illumination) call setup_tilt
 
 20      write(*,*) 'The specimen can be tilted off the specimen axis.'
         write(*,*) '<1> No specimen tilt',char(10),' <2> Specimen tilt'
@@ -63,10 +51,7 @@ module m_tilt
         write(*,*)
         
         if (i_tilt.eq.2) call setup_specimen_tilt
-        
     end subroutine
-    
-    
     
     subroutine setup_tilt
     
@@ -121,39 +106,55 @@ module m_tilt
         &1x,'inputted, please consider increasing the dimensions of the',/,&
         &1x,'supercell used in the simulation by increasing the unit cell',/,&
         &1x,'tiling.',/)
-        
-        
     end subroutine
      
     subroutine setup_specimen_tilt
         
-        use global_variables, only: claue,ak1,Kz,ss,ig1,ig2
+        use global_variables, only: claue,ak1,Kz,ss,ig1,ig2,n_tilts_total
         use m_crystallography
         use m_user_input, only: get_input
+        use m_string
         
         implicit none
         
-        real(fp_kind)::tilt_theta,tilt_phi
+        real(fp_kind),allocatable::azimuth_array(:),tilt_array(:)
+        integer*4::n_azimuth,n_tilt,i,j,index
+		character*120::input_string
         
+        write(*,*) 'Please enter the specimen tilt in mrad'
+		write(*,*) 'A tilt series can be performed by inputting a comma seperated list:'
+        write(*,*) 'eg. 5,10,15'
+        write(*,*) 'or as a sequence:'
+        write(*,*) 'eg. 5:15:5 (start:stop:step)',char(10)
+        call get_input('Specimen tilt in mrad', input_string)
         
-    
-        write(*,*) 'Please enter the specimen tilt in mrad:',char(10)
-        call get_input('Specimen tilt in mrad', tilt_theta)
+        call read_sequence_string(input_string,120,n_tilt)
+		allocate(tilt_array(n_tilt))
+        call read_sequence_string(input_string,120,n_tilt,tilt_array)
         
         write(*,*) char(10),'Please enter the azimuth of the specimen tilt, measured from'
-        write(*,*) '[100] ("East") clockwise to [010] ("South") in mrad:',char(10)
-        call get_input('Specimen tilt azimuth in mrad', tilt_phi)
+        write(*,*) '[100] ("East") clockwise to [010] ("South") in mrad'
+		write(*,*) 'As before, a series can be performed by entering a comma seperated list or a sequence',char(10)
+        call get_input('Specimen tilt azimuth in mrad', input_string)
         write(*,*)
-
-        Kz   = ak1 * cos( tilt_theta*1e-3_fp_kind )
-        claue  = ak1 * [ sin(tilt_theta*1e-3_fp_kind)*cos(tilt_phi*1e-3_fp_kind)/trimi(ig1,ss), sin(tilt_theta*1e-3_fp_kind)*sin(tilt_phi*1e-3_fp_kind)/trimi(ig2,ss),0_fp_kind]
+        call read_sequence_string(input_string,120,n_azimuth)
+		allocate(azimuth_array(n_azimuth))
+        call read_sequence_string(input_string,120,n_azimuth,azimuth_array)
+        
+        n_tilts_total = n_azimuth*n_tilt
+        if(allocated(claue)) deallocate(claue);if(allocated(Kz)) deallocate(Kz)
+        allocate(Kz(n_tilts_total),claue(3,n_tilts_total))
+        do i=1,n_tilt;do j=1,n_azimuth
+                index = (i-1)*n_azimuth+j
+                Kz(index) = ak1 * cos( tilt_array(i)*1e-3_fp_kind )
+                claue(:,index)  = ak1 * [ sin(tilt_array(i)*1e-3_fp_kind)*cos(azimuth_array(j)*1e-3_fp_kind)/trimi(ig1,ss), sin(tilt_array(i)*1e-3_fp_kind)*sin(azimuth_array(j)*1e-3_fp_kind)/trimi(ig2,ss),0_fp_kind]
+        enddo;enddo
     end subroutine      
     
     
     subroutine tilt_wave_function(psi)
         
         use global_variables, only: ifactory, ifactorx, pi,bvec
-        use output
         implicit none
         
         complex(fp_kind) :: psi(:,:)
@@ -174,23 +175,18 @@ module m_tilt
         enddo;enddo
         !$OMP END PARALLEL DO
     end subroutine
-
     
-    function fftfreq(n)
-    integer*4,intent(in)::n
-    integer*4::fftfreq(n),i
-    
-    if (mod(n,2)==0) then
-        !Even case
-        do i=1,n
-            fftfreq(i) = -n/2+i
-        enddo
-    else
-        !Odd case
-        do i=1,n
-            fftfreq(i) = -n/2+i-1
-        enddo
-    endif
+    function tilt_description(claue,ak1,ss,ig1,ig2)
+        use m_crystallography
+        use m_string
+        implicit none
+        character(len=:),allocatable :: tilt_description
+        real(fp_kind),intent(in)::claue(3),ak1,ss(7)
+        integer*4,intent(in)::ig1(3),ig2(3)
+        real(fp_kind)::theta,phi
+        
+            theta = sqrt(claue(1)**2*trimi(ig1,ss)**2+claue(2)**2*trimi(ig2,ss)**2)/ak1*1e3
+            phi = atan2(claue(2),claue(1))
+            tilt_description = '_theta_'//to_string(theta)//'_mrad_phi_'//to_string(phi)//'_mrad'
     end function
-    
 end module

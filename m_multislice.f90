@@ -31,13 +31,69 @@ module m_multislice
     logical,allocatable :: output_cell_list(:)
     real(fp_kind),allocatable :: output_thickness_list(:)
     integer,allocatable :: cell_map(:)
+     
+    character*200,allocatable::amplitude_fnam(:),phase_fnam(:) 
     
-    character*200,allocatable::amplitude_fnam(:),phase_fnam(:)
+
+    complex(fp_kind),allocatable,dimension(:,:) :: shift_arrayx, shift_arrayy        
     
+    
+    interface load_save_add_grates
+        module procedure load_save_add_grates_qep,load_save_add_grates_abs
+    end interface
     
     contains
     
+    !This subroutine samples from the available phase grates and then performs one iteration of the multislice algorithm (called in CPU versions only)
     
+    subroutine qep_multislice_iteration(psi,propagator,transmission,nopiy,nopix,ifactory,ifactorx,idum,n_qep_grates,mode,shift_arrayy,shift_arrayx)
+        use m_numerical_tools,only:ran1
+        complex(fp_kind),intent(inout)::psi(nopiy,nopix)
+        complex(fp_kind),intent(in)::propagator(nopiy,nopix),transmission(nopiy,nopix,n_qep_grates),shift_arrayy(nopiy),shift_arrayx(nopix)
+        integer*4,intent(in)::nopiy,nopix,n_qep_grates,mode,ifactory,ifactorx
+        integer*4,intent(inout)::idum
+        
+        integer*4::shifty,shiftx,nran
+        complex(fp_kind)::trans(nopiy,nopix)
+        
+        ! Phase grate
+		nran = floor(n_qep_grates*ran1(idum)) + 1
+        
+        if(mode == 1) then !On the fly calculation
+			!call make_qep_potential(trans, tau_slice, nat_slice, ss_slice(7,j))
+			!psi_out = psi*trans
+        elseif(mode == 2) then !Quick shift
+            shiftx = floor(ifactorx*ran1(idum)) * nopix/ifactorx
+            shifty = floor(ifactory*ran1(idum)) * nopiy/ifactory
+			trans = cshift(cshift(transmission(:,:,nran),shifty,dim=1),shiftx,dim=2)
+            call multislice_iteration(psi,propagator,trans,nopiy,nopix)
+        elseif(mode == 3) then      !Phase ramp shift
+            shiftx = floor(ifactorx*ran1(idum)) + 1
+            shifty = floor(ifactory*ran1(idum)) + 1
+			call phase_shift_array(transmission(:,:,nran),trans,shift_arrayy,shift_arrayx)
+            call multislice_iteration(psi,propagator,trans,nopiy,nopix)
+        else
+            call multislice_iteration(psi,propagator,transmission(:,:,nran),nopiy,nopix)
+        endif
+    end subroutine
+    
+    !This subroutine performs one iteration of the multislice algorithm (called in CPU versions only)
+    !Probe (psi) input and output is in real space
+    subroutine multislice_iteration(psi,propagator,transmission,nopiy,nopix)
+	    use cufft_wrapper
+        complex(fp_kind),intent(inout)::psi(nopiy,nopix)
+        complex(fp_kind),intent(in)::propagator(nopiy,nopix),transmission(nopiy,nopix)
+        integer*4,intent(in)::nopiy,nopix
+        
+        ! Transmit through slice potential
+		psi = psi*transmission
+                
+        ! Propagate to next slice
+		call fft2(nopiy,nopix,psi,nopiy,psi,nopiy)
+		psi = psi*propagator
+		call ifft2(nopiy,nopix,psi,nopiy,psi,nopiy)
+    
+    end subroutine
     
     subroutine prompt_output_probe_intensity
     
@@ -354,45 +410,19 @@ module m_multislice
         enddo
     end subroutine
     
-    
-    
-    subroutine make_qep_grates(idum)
-    
-        use m_precision, only: fp_kind
-	    use cufft_wrapper, only: fft2, ifft2
-        use global_variables, only: nopiy, nopix, nt, relm, tp, ak, ak1, atf, high_accuracy, ci, pi, bwl_mat,Kz,fz
-        use m_qep, only: displace, qep_grates,phase_ramp_shift, n_qep_grates
-        use m_slicing, only: n_slices, nat_slice, a0_slice, tau_slice, maxnat_slice, ss_slice
-        use m_string, only: to_string
-        use output, only: output_prefix,timing,binary_in
-        use m_potential!, only: make_qep_potential, make_site_factor_generic, make_site_factor_cuda, make_site_factor_hybrid
+ subroutine load_save_add_grates_qep(idum,qep_grates,nopiy,nopix,n_qep_grates,n_slices,nt,nat_slice)
+        use m_numerical_tools, only: gasdev
+        use output
+	    integer(4),intent(inout):: idum
+        complex(fp_kind),intent(inout)::qep_grates(nopiy,nopix,n_qep_grates,n_slices)
+        integer*4,intent(in)::nopiy,nopix,n_qep_grates,n_slices,nt,nat_slice(nt,n_slices)
         
-        implicit none
-    
-        integer(4) :: idum
-    
-        integer(4) :: i, j, m, n,i_fracocc,ii,jj,jjj,kk,iii
-        complex(fp_kind) :: projected_potential(nopiy,nopix),temp(nopiy,nopix),scattering_pot(nopiy,nopix,nt)
-		integer(4), allocatable :: handled(:,:)
-		real(fp_kind) tau_holder(3),tau_holder2(3),ccd_slice,ums,amplitude(nopiy,nopix),phase(nopiy,nopix)
-		integer(4):: save_list(2,nt),match_count
-        real(fp_kind),allocatable :: mod_tau(:,:,:,:,:)
-    
-        real(fp_kind) :: t1, delta
-    
-        procedure(make_site_factor_generic),pointer :: make_site_factor
+        integer*4::j,i,m,n
+        real(fp_kind)::junk
         
-	    if(allocated(mod_tau)) deallocate(mod_tau)
-	    if(allocated(qep_grates)) deallocate(qep_grates)
-	
-        allocate(qep_grates(nopiy,nopix,n_qep_grates,n_slices))
-        allocate(mod_tau(3,nt,maxnat_slice,n_slices,n_qep_grates))
- 	 	!	Search for fractional occupancy
-         i_fracocc = 0
-         do i=1,nt
-            if (atf(2,i).lt.0.99d0) i_fracocc = 1
-         enddo
-		 
+        real(fp_kind)::amplitude(nopiy,nopix),phase(nopiy,nopix)
+        
+        
         if (load_grates) then
             write(*,*) 'Loading transmission functions from file...'
             write(*,*)
@@ -401,113 +431,14 @@ module m_multislice
             close(3984)
             
             ! Make sure the random number sequence is as if grates were calculated
-            do j = 1, n_slices
-	        do i = 1, n_qep_grates
- 	        do m = 1, nt
-	        do n = 1, nat_slice(m,j)
-			    call displace(tau_slice(1:3,m,n,j),mod_tau(1:3,m,n,j,i),sqrt(atf(3,m)),a0_slice,idum)
-            enddo
-            enddo
-            enddo
-            enddo
+            ! So call gasdev as many times as it would usually be called
+            do j = 1, n_slices;do i = 1, n_qep_grates;do m = 1, nt;do n = 1, nat_slice(m,j)*2
+                junk = gasdev(idum)
+            enddo;enddo;enddo;enddo
             
             return
         endif
-        
-        t1 = secnds(0.0_fp_kind)
-
-        do j = 1, n_slices
-	        write(*,'(1x, a, a, a, a, a)') 'Calculating transmission functions for slice ', to_string(j), '/', to_string(n_slices), '...'
-        
-    198	    write(6,199) to_string(sum(nat_slice(:,j)))
-    199     format(1x, 'Number of atoms in this slice: ', a) 
-
-		    ccd_slice = relm / (tp * ak * ss_slice(7,j))
-
-	        do i = 1, n_qep_grates
-    200	        format(a1, 1x, i3, '/', i3)
-	            write(6,200, advance='no') achar(13), i, n_qep_grates
-          
-                ! Randomly displace the atoms
-				if (i_fracocc.ne.1) then
- 	            do m = 1, nt
-	                do n = 1, nat_slice(m,j)
-			            call displace(tau_slice(1:3,m,n,j),mod_tau(1:3,m,n,j,i),sqrt(atf(3,m)),a0_slice,idum)
-	                enddo
-                enddo
-				else
-					allocate( handled(nt,maxnat_slice) )
-					handled = 0
-					do ii=1, nt
-					 do jj = 1, nat_slice(ii,j)
-						 if (handled(ii,jj).eq.1) cycle
-						 tau_holder(1:3) = tau_slice(1:3,ii,jj,j)
-
-						 save_list = 0
-						 match_count = 0
-						 ums = atf(3,ii)
-						 do iii=ii+1,nt
-						 do jjj=1,nat_slice(iii,j)
-							if (same_site(tau_holder,tau_slice(1:3,iii,jjj,j))) then
-							   match_count = match_count+1
-							   save_list(1,match_count)=iii
-							   save_list(2,match_count)=jjj
-							   ums = ums + atf(3,iii)
-							   cycle
-							endif
-						 enddo
-						 enddo
-
-						 ums = ums / dfloat(match_count+1)
-					   call displace(tau_holder(1:3),tau_holder2(1:3),sqrt(ums),a0_slice,idum)
-						 mod_tau(1:3,ii,jj,j,i) = tau_holder2(1:3)
-						 handled(ii,jj) = 1
-						 do kk=1,match_count
-							 mod_tau(1:3,save_list(1,kk),save_list(2,kk),j,i)&
-				                                              &= tau_holder2(1:3)
-							 handled(save_list(1,kk),save_list(2,kk)) = 1
-						 enddo
-						   
-					 enddo
-					 enddo
-
-					 deallocate( handled )
-				endif
-				
-				projected_potential = 0
-				do m = 1, nt
-					projected_potential = projected_potential+real(potential_from_scattering_factors(CCD_slice*fz(:,:,m)&
-												&,mod_tau(:,m,1:nat_slice(m,j),j,i),nat_slice(m,j),nopiy,nopix,high_accuracy))
-                enddo
-                qep_grates(:,:,i,j) = exp(ci*pi*a0_slice(3,j)/Kz*projected_potential)
-            
-                ! Bandwith limit the phase grate
-                call fft2(nopiy, nopix, qep_grates(:,:,i,j), nopiy, temp, nopiy)
-	            qep_grates(:,:,i,j) = temp * bwl_mat
-            
-                if (.not.phase_ramp_shift) then
-					
-                    ! If not using phase_ramp_shifts, get the phase grates in real space
-                    call ifft2(nopiy, nopix, qep_grates(:,:,i,j), nopiy, qep_grates(:,:,i,j), nopiy)
-                endif
-	        enddo ! End loop over grates
-        
-            write(*,*)
-            write(*,*)
-        
-	    enddo ! End loop over slices
-	
-	    delta = secnds(t1)
-        
-        write(*,*) 'The calculation of transmission functions for the QEP model took ', delta, 'seconds.'
-        write(*,*)
-
-    	if(timing) then
-			open(unit=9834, file=trim(adjustl(output_prefix))//'_timing.txt', access='append')
-			write(9834, '(a, g, a, /)') 'The calculation of transmission functions for the QEP model took ', delta, 'seconds.'
-			close(9834)
-        endif
-        
+    
         if(additional_transmission_function) then
             write(*,*) 'Adding addition transmission function to file...'
             amplitude = 1
@@ -522,168 +453,46 @@ module m_multislice
             write(*,*) 'Saving transmission functions to file...',char(10)
             open(unit=3984, file=grates_filename, form='binary', convert='big_endian')
             write(3984) qep_grates;close(3984)
-        endif        
-    
-    end subroutine make_qep_grates
+        endif    
+    end subroutine
 
-	logical(4) function same_site(site1,site2)
-      
-      implicit none
-      
-      real(fp_kind) site1(3),site2(3)
-      real(fp_kind) tol
-      
-      tol = 1.0d-6
-      
-      if ( (abs(site1(1)-site2(1)).lt.tol) .and.&
-          &(abs(site1(2)-site2(2)).lt.tol) .and.&
-          &(abs(site1(3)-site2(3)).lt.tol) ) then
-          same_site = .true.
-      else
-          same_site = .false.
-      endif
-      
-      return
-      end function
-    
-    subroutine make_absorptive_grates
-    
-        use m_precision, only: fp_kind
-	    use cufft_wrapper, only: fft2, ifft2
-        use global_variables, only: nopiy, nopix, nt, relm, tp, ak, Kz, atf, high_accuracy, ci, pi, bwl_mat,fz,fz_DWF,ss
-        use m_absorption, only: transf_absorptive,fz_abs
-        use m_slicing, only: n_slices, nat_slice, a0_slice, tau_slice, maxnat_slice, ss_slice
-        use m_string, only: to_string
+subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
+        use m_numerical_tools, only: gasdev
         use output
-        use m_potential
+        complex(fp_kind),intent(inout)::abs_grates(nopiy,nopix,n_slices)
+        integer*4,intent(in)::nopiy,nopix,n_slices
         
-        implicit none
-    
-        integer(4) :: j, m, n,nat_layer
-        real(fp_kind) :: ccd_slice,V_corr
-        complex(fp_kind),dimension(nopiy,nopix) :: scattering_pot,projected_potential,temp,effective_scat_fact
-    
-        real(fp_kind) :: t1, delta,amplitude(nopiy,nopix),phase(nopiy,nopix)
-    
-        procedure(make_site_factor_generic),pointer :: make_site_factor
-        	
-        if(allocated(transf_absorptive)) deallocate(transf_absorptive)   
-        allocate(transf_absorptive(nopiy,nopix,n_slices))
+        integer*4::j,i,m,n
+        real(fp_kind)::junk
+        
+        real(fp_kind)::amplitude(nopiy,nopix),phase(nopiy,nopix)
+        
         
         if (load_grates) then
             write(*,*) 'Loading transmission functions from file...'
             write(*,*)
             open(unit=3984, file=grates_filename, form='binary', convert='big_endian')
-            read(3984) transf_absorptive
+            read(3984) abs_grates
             close(3984)
             return
         endif
-        
-        t1 = secnds(0.0_fp_kind)
-        do j = 1, n_slices
-	        write(*,'(1x, a, a, a, a, a)') 'Calculating transmission functions for slice ', to_string(j), '/', to_string(n_slices), '...'
-        
-    198	    write(6,199) to_string(sum(nat_slice(:,j)))
-    199     format(1x, 'Number of atoms in this slice: ', a, /) 
-
-		    ccd_slice = relm / (tp * ak * ss_slice(7,j))
-            projected_potential = 0
-            V_corr = ss(7)/ss_slice(7,j)
-            do m=1,nt
-                nat_layer = nat_slice(m,j)
-                effective_scat_fact = CCD_slice*fz(:,:,m)*fz_DWF(:,:,m)+cmplx(0,1)*fz_abs(:,:,m)*V_corr
-                projected_potential = projected_potential+potential_from_scattering_factors(effective_scat_fact,tau_slice(:,m,:nat_layer,j),nat_layer,nopiy,nopix,high_accuracy)
-                
-            enddo
-            
-            transf_absorptive(:,:,j) = exp(ci*pi*a0_slice(3,j)/Kz*projected_potential)
-            ! Bandwith limit the phase grate
-            call fft2(nopiy, nopix, transf_absorptive(:,:,j), nopiy, temp, nopiy)
-            temp = temp * bwl_mat
-            call ifft2(nopiy, nopix, temp, nopiy, transf_absorptive(:,:,j), nopiy)
-                
-	    enddo ! End loop over slices
-	
-	    delta = secnds(t1)
-        
-        write(*,*) 'The calculation of transmission functions for the absorptive model took ', delta, 'seconds.'
-        write(*,*)
-        
-		if(timing) then
-			open(unit=9834, file=trim(adjustl(output_prefix))//'_timing.txt', access='append')
-			write(9834, '(a, g, a, /)') 'The calculation of transmission functions for the absorptive model took ', delta, 'seconds.'
-			close(9834)
-        endif
-        
+    
         if(additional_transmission_function) then
             write(*,*) 'Adding addition transmission function to file...'
             amplitude = 1
             do j=1,n_slices
                 if(.not.pure_phase) call binary_in(nopiy,nopix,amplitude,amplitude_fnam(j))
                 call binary_in(nopiy,nopix,phase,phase_fnam(j))
-                transf_absorptive(:,:,j) = transf_absorptive(:,:,j)*transpose(amplitude)*exp( cmplx(0,1)*transpose(phase))
+                abs_grates(:,:,j) = abs_grates(:,:,j)*transpose(amplitude)*exp( cmplx(0,1)*transpose(phase))
             enddo
         endif
-    
+        
         if (save_grates) then
-            write(*,*) 'Saving transmission functions to file...'
-            write(*,*)
+            write(*,*) 'Saving transmission functions to file...',char(10)
             open(unit=3984, file=grates_filename, form='binary', convert='big_endian')
-            write(3984) transf_absorptive
-            close(3984)
-        endif        
-        
-    end subroutine make_absorptive_grates
-
-
-
-    subroutine setup_propagators()
-      
-        use global_variables, only: nopiy, nopix, bwl_mat, prop, ak1, ss, ig1, ig2, ifactory, ifactorx,Kz,claue
-        use m_precision, only: fp_kind
-        use m_slicing, only: n_slices, prop_distance
-        use output
-      
-        implicit none
-      
-        integer(4) :: i
-        
-        if(allocated(prop)) deallocate(prop)
-        allocate(prop(nopiy,nopix,n_slices))
-        
-        do i = 1, n_slices
-	        call make_propagator(nopiy,nopix,prop(:,:,i),prop_distance(i),Kz,ss,ig1,ig2,claue,ifactorx,ifactory)
-	        prop(:,:,i) = prop(:,:,i) * bwl_mat
-        enddo
-
+            write(3984) abs_grates;close(3984)
+        endif    
     end subroutine
-
-      
-      
-    subroutine make_propagator(nopiy,nopix,prop,dz,ak1,ss,ig1,ig2,claue,ifactorx,ifactory)
-
-        use m_precision, only: fp_kind
-        use m_crystallography, only: trimr
-        use m_potential, only: make_g_vec_array
-            
-        implicit none
-
-        integer(4) :: nopiy,nopix
-        complex(fp_kind) :: prop(nopiy,nopix)        
-        real(fp_kind) :: ak1, ss(7), claue(3), dz, g_vec_array(3,nopiy,nopix)
-        integer(4) :: ifactorx, ifactory, ig1(3), ig2(3)
-
-        real(fp_kind),parameter :: pi = atan(1.0d0)*4.0d0
-        integer(4) :: ny, nx
-        
-        
-        call make_g_vec_array(g_vec_array,ifactory,ifactorx)
-
-        do ny = 1, nopiy;do nx = 1, nopix
-            prop(ny,nx) = exp(cmplx(0.0d0, -pi*dz*trimr(g_vec_array(:,ny,nx)-claue,ss)**2/ak1, fp_kind ))
-        enddo;enddo
-
-	end subroutine
     
 
 	function make_detector(nopiy,nopix,kmin,kmax,deltaky,deltakx,phi,delphi) result(detector)
@@ -735,14 +544,7 @@ module m_multislice
 	    else
 		    detector = merge(detector,0.0_fp_kind,((lower==1).or.(upper==1)))
         endif
-        
-		!vec = [sin(phi),cos(phi)]
-  !      do i=1,2; if(abs(vec(i))<1e-4) vec(i) = 0; enddo
-		!do y =1,nopiy
-		!do x =1,nopix
-		!	if(.not.(dot_product(vec,[ky(y),kx(x)]).ge.sqrt(ky(y)**2+kx(x)**2)*cos(delphi/2))) detector(y,x) = 0
-		!enddo
-  !      enddo
+
 	end function   
 
 	function kspace_array(nopiy) result(karray)
@@ -754,7 +556,108 @@ module m_multislice
 	
 		karray = [((i - nopiy/2),i=0,nopiy-1)]
         karray = cshift(karray,-nopiy/2)
-	end function 
+	end function     
+    
+    subroutine setup_qep_parameters(n_qep_grates,n_qep_passes,phase_ramp_shift,nran,quick_shift,ifactory,ifactorx)
+    
+        use m_user_input, only: get_input
+        use m_string, only: to_string
+        
+        implicit none
+        
+        integer*4,intent(out)::n_qep_grates,n_qep_passes,nran
+        logical,intent(out)::phase_ramp_shift
+        integer*4,intent(in)::ifactory,ifactorx
+        logical,intent(in)::quick_shift
+        
+    
+        integer :: i
+        
+        write(*,*) '|--------------------------------|'
+	    write(*,*) '|      QEP model parameters      |'
+	    write(*,*) '|--------------------------------|'
+        write(*,*)
+             	
+    10  write(*,*) 'Enter the number of distinct transmission functions to calculate:'
+        call get_input("Number of phase grates calculated", n_qep_grates)
+        write(*,*)
+    
+        if (quick_shift) then
+            write(6,100) to_string(ifactorx*ifactory), to_string(n_qep_grates), to_string(ifactorx*ifactory*n_qep_grates)
+    100     format(' The choice of tiling and grid size permits quick shifting.',/,&
+                  &' The effective number of transmission functions used in  ',/,&
+                  &' calculations will be ', a, ' * ', a, ' = ', a, '.', /)
+        else
+            write(6,101)
+        101 format( ' The choice of tiling and grid size does not permit quick shifting ', /, &
+                    &' of the precalculated transmission functions. Shifting using ', /, &
+                    &' phase ramps can be performed but is time consuming. You may wish ', /, &
+                    &' to go back and calculate more distinct transmission functions, or ', /, &
+                    &' simply proceed without using phase ramp shifting. ' /)
+                
+        110 write(6,111)
+        111 format(  ' <1> Go back and choose a larger number', /, &
+                    &' <2> Proceed with phase ramp shifting', /, &
+                    &' <3> Proceed without phase ramp shifting', / &                
+                    )
+            call get_input("<1> choose more <2> phase ramp <3> no phase ramp", i)
+            write(*,*)
+        
+            if (i.eq.1) then
+                goto 10
+            
+            elseif (i.eq.2 .and. (ifactory.gt.1 .or. ifactorx.gt.1)) then
+                phase_ramp_shift = .true.
+                
+                call setup_phase_ramp_shifts
+                        
+            elseif (i.eq.3) then
+                phase_ramp_shift = .false.
+            
+            else
+                goto 110
+            
+            endif
+              
+        endif
+
+        write(6,*) 'Enter the number of passes to perform for QEP calculation:'
+        write(*,*) 'Warning: using only a single pass is usually NOT sufficient.'
+        call get_input("Number of Monte Carlo calculated", n_qep_passes )
+        write(*,*)
+    
+        write(6,*) 'Enter the starting position of the random number sequence:'
+        call get_input("Number of ran1 discarded", nran )
+        write(*,*)       
+
+        end subroutine
+    
+        subroutine setup_phase_ramp_shifts
+            use global_variables, only: nopiy, nopix, ifactory, ifactorx
+            implicit none
+            
+            integer(4) :: i
+            real(fp_kind) :: r_coord
+    
+            if(allocated(shift_arrayy)) deallocate(shift_arrayy)
+            if(allocated(shift_arrayx)) deallocate(shift_arrayx)
+            allocate(shift_arrayy(nopiy,ifactory))
+            allocate(shift_arrayx(nopix,ifactorx))
+            
+            do i = 1,ifactory
+                r_coord=float(i)/float(ifactory)
+                call make_shift_oned(shift_arrayy(:,i),nopiy,r_coord)
+            enddo
+        
+            do i = 1,ifactorx
+                r_coord=float(i)/float(ifactorx)
+                call make_shift_oned(shift_arrayx(:,i),nopix,r_coord)
+            enddo
+            
+        end subroutine
+        
+        
+ 
 	    
 end module
 

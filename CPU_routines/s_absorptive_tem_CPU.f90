@@ -29,13 +29,13 @@ subroutine absorptive_tem
     use m_slicing
     use m_probe_scan, only: place_probe, probe_initial_position
     use m_tilt, only: tilt_wave_function
-    use m_multislice, only: make_absorptive_grates, setup_propagators
-    use m_potential, only: precalculate_scattering_factors
+    use m_multislice
+    use m_potential
     use m_string
     implicit none
     
     !dummy variables
-    integer(4) :: i_cell,i_slice,z_indx(1),length,lengthdf,i
+    integer(4) :: i_cell,i_slice,z_indx(1),length,lengthdf,i,idum
     
     !random variables
     integer(4) :: count
@@ -75,7 +75,11 @@ subroutine absorptive_tem
     on_the_fly = .false.            
     if (on_the_fly) then
     else
-        call make_absorptive_grates
+        	
+        if(allocated(transf_absorptive)) deallocate(transf_absorptive)   
+        allocate(transf_absorptive(nopiy,nopix,n_slices))
+        if(.not.load_grates) call make_absorptive_grates
+        call load_save_add_grates(transf_absorptive,nopiy,nopix,n_slices)
     endif
     
 	call setup_propagators
@@ -106,15 +110,7 @@ subroutine absorptive_tem
     psi = psi_initial
     do i_cell = 1, maxval(ncells)
         do i_slice = 1, n_slices
-            
-            ! Transmit through slice potential
-			psi = psi*transf_absorptive(:,:,i_slice)
-          
-            
-			! Propagate to next slice
-			call fft2(nopiy,nopix,psi,nopiy,psi,nopiy)
-			psi = psi*prop(:,:,i_slice)
-			call ifft2(nopiy,nopix,psi,nopiy,psi,nopiy)
+            call multislice_iteration(psi,prop(:,:,i_slice),transf_absorptive(:,:,i_slice),nopiy,nopix);
         enddo ! End loop over slices
         
 		!If this thickness corresponds to any of the output values then output images

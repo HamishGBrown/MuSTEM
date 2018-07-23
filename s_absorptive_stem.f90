@@ -76,7 +76,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     logical,intent(in)::pacbed,stem,ionization
     
     !dummy variables
-    integer(4) :: i, j, k, i_df, ny, nx,z_indx(1),ii,nopiyout,nopixout,length,idum,ntilt
+    integer(4) :: i, j, k, i_df, ny, nx,z_indx(1),ii,nopiyout,nopixout,length,idum,ntilt,lengthdf
 
     !probe variables
     complex(fp_kind),dimension(nopiy,nopix) :: psi,qpsi,psi_out
@@ -145,7 +145,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
         allocate(transf_absorptive(nopiy,nopix,n_slices))
         projected_potential = make_absorptive_grates(nopiy,nopix,n_slices)
         call load_save_add_grates(projected_potential,nopiy,nopix,n_slices)
-        if(ionization) call make_local_inelastic_potentials(ionization)
+        if(ionization.or.stem) call make_local_inelastic_potentials(ionization)
     endif
     
     fourdSTEM= .false.
@@ -154,8 +154,13 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
         call fourD_STEM_options(fourdSTEM,nopiyout,nopixout,nopiy,nopix)
     endif
     many_df = probe_ndf .gt. 1
-    length = ceiling(log10(maxval(zarray)))	
+    length = ceiling(log10(maxval(zarray)))
     
+		
+    lengthdf = ceiling(log10(maxval(abs(probe_df))))
+    if(any(probe_df<0)) lengthdf = lengthdf+1
+    
+   
     ! Make detector mask arrays (adds the elastic contribution)        
 	if(stem) then													
 		call make_detector_mask(inner(1),outer(1),masks)
@@ -210,7 +215,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
         ! Set up device variables for precalculated potentials
     
         allocate(transf_d(nopiy,nopix,n_slices))
-        transf_d = transf_absorptive
+        !transf_d = transf_absorptive
         
         if (adf) then
             allocate(adf_potential_d(nopiy,nopix,n_slices))
@@ -257,8 +262,9 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     do ntilt=1,n_tilts_total
 	!Have to redo transmission functions and propagator for each tilt
 	
-    transf_absorptive = exp(ci*pi*a0_slice(3,i)/Kz(ntilt)*projected_potential)
+    
 	do i = 1, n_slices
+        transf_absorptive(:,:,i) = exp(ci*pi*a0_slice(3,i)/Kz(ntilt)*projected_potential(:,:,i))
 	    call make_propagator(nopiy,nopix,prop(:,:,i),prop_distance(i),Kz(ntilt),ss,ig1,ig2,claue(:,ntilt),ifactorx,ifactory)
 	    prop(:,:,i) = prop(:,:,i) * bwl_mat
         !! Bandwith limit the phase grate, psi is used for temporary storage
@@ -270,6 +276,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 	
 #ifdef GPU
 	prop_d = prop
+	transf_d = transf_absorptive
 	if(.not.on_the_fly) transf_d = transf_absorptive
 #endif
     do ny = 1, nysample
@@ -353,7 +360,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 						temp = temp_d
 						filename = trim(adjustl(output_prefix))
 						if (nz>1) filename = trim(adjustl(filename))//'_z='//to_string(int(zarray(z_indx(1))))//'_A'
-						if(many_df) filename = trim(adjustl(filename)) // '_Defocus_'//zero_padded_int(int(probe_df(i_df)),length)//'_Ang'
+						if(many_df) filename = trim(adjustl(filename)) // '_Defocus_'//zero_padded_int(int(probe_df(i_df)),lengthdf)//'_Ang'
                         if (n_tilts_total>1) filename = trim(adjustl(filename))//tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2)
 						filename = trim(adjustl(filename))//'_pp_'//to_string(nx)//'_'//to_string(ny)//'_abs_Diffraction_pattern'
 						call binary_out_unwrap(nopiy, nopix, temp, filename,write_to_screen=.false.,nopiyout=nopiyout,nopixout=nopixout)
@@ -398,7 +405,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 				if(fourDSTEM) then
 						filename = trim(adjustl(output_prefix))
 						if (nz>1) filename = trim(adjustl(filename))//'_z='//to_string(int(zarray(z_indx(1))))//'_A'
-						if(many_df) filename = trim(adjustl(filename)) // '_Defocus_'//zero_padded_int(int(probe_df(i_df)),length)//'_Ang'
+						if(many_df) filename = trim(adjustl(filename)) // '_Defocus_'//zero_padded_int(int(probe_df(i_df)),lengthdf)//'_Ang'
                         if (n_tilts_total>1) filename = trim(adjustl(filename))//tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2)
 						filename = trim(adjustl(filename))//'_pp_'//to_string(nx)//'_'//to_string(ny)//'_abs_Diffraction_pattern'
 						call binary_out_unwrap(nopiy, nopix, temp, filename,write_to_screen=.false.,nopiyout=nopiyout,nopixout=nopixout)
@@ -469,15 +476,15 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
         do ii=1,num_ionizations
 		
         if(EDX) then
-            filename = fnam // '_'//trim(adjustl(substance_atom_types(atm_indices(ii))))&
+            filename = trim(adjustl(fnam)) // '_'//trim(adjustl(substance_atom_types(atm_indices(ii))))&
 						   &//'_'//trim(adjustl(Ion_description(ii)))//'_shell_EDX'
             call output_stem_image(stem_ion_image(:,:,:,:,ii), filename,probe_df)
         else
-            filename = fnam// '_'//trim(adjustl(substance_atom_types(atm_indices(ii))))&
+            filename = trim(adjustl(fnam))// '_'//trim(adjustl(substance_atom_types(atm_indices(ii))))&
 						  &//'_'//trim(adjustl(Ion_description(ii)))//'_orbital_EELS'
             call output_stem_image(stem_ion_image(:,:,:,:,ii), filename,probe_df)
 
-            filename =  fnam//'_'//trim(adjustl(substance_atom_types(atm_indices(ii))))&
+            filename =  trim(adjustl(fnam))//'_'//trim(adjustl(substance_atom_types(atm_indices(ii))))&
 						   &//'_'//trim(adjustl(Ion_description(ii)))//'_orbital_EELS_Corrected'            
             call output_stem_image(stem_ion_image(:,:,:,:,ii)*eels_correction_image, filename,probe_df)
         endif

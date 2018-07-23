@@ -916,7 +916,7 @@ module m_potential
         real(fp_kind) :: t1, delta,amplitude(nopiy,nopix),phase(nopiy,nopix)
     
         procedure(make_site_factor_generic),pointer :: make_site_factor
-        
+        projected_potential= 0 
         t1 = secnds(0.0_fp_kind)
         do j = 1, n_slices
 	        write(*,'(1x, a, a, a, a, a)') 'Calculating transmission functions for slice ', to_string(j), '/', to_string(n_slices), '...'
@@ -925,7 +925,6 @@ module m_potential
     199     format(1x, 'Number of atoms in this slice: ', a, /) 
 
 		    ccd_slice = relm / (tp * ak * ss_slice(7,j))
-            projected_potential = 0
             V_corr = ss(7)/ss_slice(7,j)
             do m=1,nt
                 nat_layer = nat_slice(m,j)
@@ -1005,7 +1004,7 @@ module m_potential
         
         integer(4),intent(inout) :: idum
     
-        complex(fp_kind) :: projected_potential(nopiy,nopix,n_slices,n_qep_grates),temp(nopiy,nopix),scattering_pot(nopiy,nopix,nt)
+        complex(fp_kind) :: projected_potential(nopiy,nopix,n_qep_grates,n_slices),temp(nopiy,nopix),scattering_pot(nopiy,nopix,nt)
 		integer(4), allocatable :: handled(:,:)
 		integer(4):: save_list(2,nt),match_count, i, j, m, n,ii,jj,jjj,kk,iii
         real(fp_kind) :: tau_holder(3),tau_holder2(3),ccd_slice,ums,amplitude(nopiy,nopix),phase(nopiy,nopix)

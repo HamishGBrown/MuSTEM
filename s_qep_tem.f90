@@ -212,8 +212,8 @@ subroutine qep_tem
 	do i = 1, n_slices
 	    call make_propagator(nopiy,nopix,prop(:,:,i),prop_distance(i),Kz(ntilt),ss,ig1,ig2,claue(:,ntilt),ifactorx,ifactory)
 	    prop(:,:,i) = prop(:,:,i) * bwl_mat
+        qep_grates(:,:,:,i) = exp(ci*pi*a0_slice(3,i)/Kz(ntilt)*projected_potential(:,:,:,i))
     enddo
-    qep_grates = exp(ci*pi*a0_slice(3,j)/Kz(ntilt)*projected_potential)
     
 #ifdef GPU
     transf_d = qep_grates
@@ -453,7 +453,11 @@ subroutine qep_tem
 			call ifft2 (nopiy, nopix, psi, nopiy, psi, nopiy)
 			image = abs(psi)**2
 				
-			if(imaging_ndf>1) fnam_df = trim(adjustl(filename))//'_Defocus_'//zero_padded_int(int(imaging_df(j)),lengthdf)//'_Ang'
+			if(imaging_ndf>1) then
+                fnam_df = trim(adjustl(filename))//'_Defocus_'//zero_padded_int(int(imaging_df(j)),lengthdf)//'_Ang'
+            else
+                fnam_df = trim(adjustl(filename))
+            endif
 			if(output_thermal) then
 			call binary_out(nopiy, nopix, image, trim(fnam_df)//'_Image_Elastic')
 				  

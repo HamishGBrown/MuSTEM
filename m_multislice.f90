@@ -137,7 +137,7 @@ module m_multislice
                 endif
                 call split_filepath(output_prefix,dir,fnam)
                 
-                call system('mkdir '//trim(adjustl(dir))//'Probe_intensity')
+                call system('mkdir '//trim(adjustl(dir))//'\Probe_intensity')
                 
                 call generate_cell_list(thickness_interval)
                 
@@ -145,7 +145,7 @@ module m_multislice
                 
                 write(*,*) 'The probe intensities will be written to the files'
                 write(*,*)
-                write(*,*) '  '//trim(adjustl(dir))//'Probe_intensity' // trim(adjustl(fnam)) // '_ProbeIntensity*.bin'
+                write(*,*) '  '//trim(adjustl(dir))//'\Probe_intensity' // trim(adjustl(fnam)) // '_ProbeIntensity*.bin'
                 write(*,*)
                 if (fp_kind.eq.4) then
                     write(*,*) 'as 32-bit big-endian floats.'
@@ -234,7 +234,7 @@ module m_multislice
         if(j>0) then
             dir = trim(adjustl(output_prefix(:j)))
             fnam = trim(adjustl(output_prefix(j:)))
-            filename = trim(adjustl(dir))//'Probe_intensity'//trim(adjustl(fnam))//'_probe_intensity_thicknesss.txt'
+            filename = trim(adjustl(dir))//'\Probe_intensity'//trim(adjustl(fnam))//'_probe_intensity_thicknesss.txt'
         else
             filename = 'Probe_intensity\'//trim(adjustl(output_prefix))//'_probe_intensity_thicknesss.txt'
         endif
@@ -268,16 +268,17 @@ module m_multislice
     real(fp_kind),intent(in)::probe_intensity(nopiy,nopix,size(output_thickness_list))
     integer*4,intent(in)::i_df,ny,nx,n_qep_passes
     
-    integer*4::j
+    integer*4::j,z
     character*1024::filename,fnam,dir
     
         j = index(output_prefix,'/',back=.true.)
         j = max(j,index(output_prefix,'\',back=.true.))
+        z = size(output_thickness_list)
         
         if(j>0) then
             dir = trim(adjustl(output_prefix(:j)))
             fnam = trim(adjustl(output_prefix(j:)))
-            filename = trim(adjustl(dir))//'Probe_intensity\'//trim(adjustl(fnam))//'_ProbeIntensity'
+            filename = trim(adjustl(dir))//'\Probe_intensity\'//trim(adjustl(fnam))//'_ProbeIntensity'
         else
             filename = 'Probe_intensity\'//trim(adjustl(output_prefix))//'_ProbeIntensity'
         endif
@@ -285,9 +286,9 @@ module m_multislice
         if (probe_ndf.gt.1) filename = trim(filename) // '_df' // to_string(i_df)
         if (nysample.gt.1) filename = trim(filename) // '_ny' // to_string(ny)
         if (nxsample.gt.1) filename = trim(filename) // '_nx' // to_string(nx)
-        filename = trim(filename) // '.bin'
+        filename = trim(filename) // '_'//to_string(nopiy)//'x'//to_string(nopix)//'x'//to_string(z)//'.bin'
         open(4985, file=filename, form='binary', convert='big_endian')
-        do j=1,size(output_thickness_list)
+        do j=1,z
             write(4985) quad_shift(probe_intensity(:,:,j),nopiy,nopix)/ n_qep_passes
         enddo
         close(4985)

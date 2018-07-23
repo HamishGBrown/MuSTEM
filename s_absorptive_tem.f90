@@ -66,7 +66,7 @@ subroutine absorptive_tem
     implicit none
     
     !dummy variables
-    integer(4) :: i_cell,i_slice,z_indx(1),length,lengthdf,i,idum,ntilt
+    integer(4) :: i_cell,i_slice,z_indx(1),lengthz,lengthdf,i,idum,ntilt
     
     !random variables
     integer(4) :: count
@@ -174,6 +174,7 @@ subroutine absorptive_tem
         call ifft2(nopiy, nopix, psi, nopiy, transf_absorptive(:,:,i), nopiy)
     enddo
 
+   lengthz = ceiling(log10(maxval(abs(zarray))))
    lengthdf = ceiling(log10(maxval(abs(imaging_df))))
    if(any(imaging_df<0)) lengthdf = lengthdf+1
 
@@ -203,7 +204,7 @@ subroutine absorptive_tem
 			cbed = abs(psi)**2
 			z_indx = minloc(abs(ncells-i_cell))
 			filename = trim(adjustl(output_prefix))
-			if (nz>1) filename = trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(z_indx(1))),length)//'_A'
+			if (nz>1) filename = trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(z_indx(1))),lengthz)//'_A'
             if (n_tilts_total>1) filename = trim(adjustl(filename))//tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2)
 			call binary_out_unwrap(nopiy, nopix, cbed, trim(adjustl(filename))//'_DiffractionPattern',write_to_screen=.false.)
 				
@@ -211,7 +212,6 @@ subroutine absorptive_tem
 			do i=1,imaging_ndf
 				psi = psi_d
 				call fft2(nopiy, nopix, psi, nopiy, psi, nopiy)
-				!call binary_out(nopiy,nopix,lens_ctf(:,:,i),'lens_ctf'//to_string(i))
 				psi = psi*lens_ctf(:,:,i)
 				call ifft2(nopiy, nopix, psi, nopiy, psi, nopiy)
 				tem_image = abs(psi)**2
@@ -238,7 +238,7 @@ subroutine absorptive_tem
 			cbed = abs(psi_out)**2
 			z_indx = minloc(abs(ncells-i_cell))
 			filename = trim(adjustl(output_prefix))
-			if (nz>1) filename = trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(z_indx(1))),length)//'_A'
+			if (nz>1) filename = trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(z_indx(1))),lengthz)//'_A'
             if (n_tilts_total>1) filename = trim(adjustl(filename))//tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2)
 			call binary_out_unwrap(nopiy, nopix, cbed, trim(adjustl(filename))//'_DiffractionPattern',write_to_screen=.false.)
             

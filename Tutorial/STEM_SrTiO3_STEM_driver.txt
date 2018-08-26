@@ -1,0 +1,94 @@
+ Output filename
+ STEM_SrTiO3\STEM_SrTiO3
+ Input crystal file name
+ xtl_files\SrTiO3.xtl
+ Probe accelerating voltage (kV)
+ 300
+  Slice unit cell <1> yes <2> no
+ 1
+ Number of distinct potentials
+    2
+<1> manual or <2> auto slicing
+    2
+ Thickness
+   39.0500000000000
+ Scattering factor accuracy
+		2
+ Tile supercell x
+           5
+ Tile supercell y
+           5
+ Number of pixels in x
+         512
+ Number of pixels in y
+         512
+ <1> continue <2> change
+           1
+ calculation type
+         2 
+ aperture cutoff
+   20.0000000000000     
+  defocus
+  0.000000000000000E+000
+ Change probe forming lens parameters
+           0
+ <1> QEP <2> ABS
+           2
+ <1> Absorption <2> No absorption
+           1
+ Elastic and inelastic scattering output choice
+           1
+<0> Continue <1> Beam tilt <2> Specimen tilt
+0
+ <0> continue <1> save <2> load
+        0
+<1> CBED <2> STEM/PACBED
+        2
+STEM modes
+1
+STEM modes
+2
+STEM modes
+0
+Probe scan menu choice
+    1
+ output interpolation max pixels
+     128
+ output interpolation tilex
+     2
+ output interpolation tiley
+     2
+ <0> Proceed <1> Output probe intensity
+     0
+Number of detectors
+    3
+manual detector <1> auto <2>
+    1
+<1> mrad <2> inv A
+    1
+inner
+    0
+outer
+    2
+inner
+    10
+outer
+    20
+inner
+    70
+outer
+    220
+ Ionization choice
+           2
+ Shell choice <0> continue
+			2
+ Shell choice <0> continue
+			3
+ Shell choice <0> continue
+			8
+ Shell choice <0> continue
+			10
+ Shell choice <0> continue
+			11
+ Shell choice <0> continue
+            0

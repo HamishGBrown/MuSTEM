@@ -1,0 +1,50 @@
+ Output filename
+ STEM_Al110_PACBED\STEM_Al110_PACBED_143A
+ Input crystal file name
+ xtl_files\Al_110.xtl
+ Probe accelerating voltage (kV)
+ 300
+ Slice unit cell <1> yes <2> no
+ 1
+ Number of distinct potentials
+    2
+<1> manual or <2> auto slicing
+    2
+ Thickness
+   143.1750000000000     
+Scattering factor accuracy
+		1
+ Tile supercell x
+          20
+ Tile supercell y
+          28
+ Number of pixels in x
+         1024
+ Number of pixels in y
+         1024
+ <1> continue <2> change
+           1
+ calculation type
+         2
+ aperture cutoff
+   9.3000000000000     
+ defocus
+           0
+ Change probe forming lens parameters
+           0
+ <1> QEP <2> ABS
+           2
+ <1> Absorption <2> No absorption
+           1
+ Elastic and inelastic scattering output choice
+           1
+ <1> No beam tilt <2> beam tilt
+		1
+ <1> no specimen tilt <2> specimen tilt
+		1
+ <0> continue <1> save <2> load
+        0
+ <1> CBED <2> PACBED <3> STEM
+        2
+ <1> Diffraction pattern for each probe position
+        0

@@ -1,0 +1,80 @@
+ Output filename
+ STEM_Al3Li_ABF\STEM_Al3Li_ABF
+ Input crystal file name
+ xtl_files\Al3Li.xtl
+ Probe accelerating voltage (kV)
+ 300
+ Slice unit cell <1> yes <2> no
+ 1
+ Number of distinct potentials
+    2
+<1> manual or <2> auto slicing
+    2
+ Thickness
+   39.7200000000000     
+Scattering factor accuracy
+    2
+ Tile supercell x
+           8
+ Tile supercell y
+           8
+ Number of pixels in x
+         512
+ Number of pixels in y
+         512
+ <1> continue <2> change
+           1
+ calculation type
+           2
+ aperture cutoff
+   19.0000000000000     
+ defocus
+  0.0
+ Change probe forming lens parameters
+           0
+ <1> QEP <2> ABS
+           2
+ <1> Absorption <2> No absorption
+           1
+ Elastic and inelastic scattering output choice
+           1
+<0> Continue <1> Beam tilt <2> Specimen tilt
+0
+ <0> continue <1> save <2> load
+    0
+ <1> CBED <2> STEM/PACBED
+ 2
+ STEM modes
+ 1
+ STEM modes
+ 0
+Probe scan menu choice
+    1
+ output interpolation max pixels
+     256
+ output interpolation tilex
+     4
+ output interpolation tiley
+     4
+ <0> Proceed <1> Output probe intensity
+     0
+Number of detectors
+    3
+manual detector <1> auto <2>
+    1
+<1> mrad <2> inv A
+    1
+inner
+    0.000000000000000
+outer
+    9.5
+inner
+    9.5
+outer
+    19
+inner
+    50
+outer
+    200
+ Ionization choice
+           3

@@ -1,0 +1,40 @@
+ Output filename
+ TEM_Si3N4_HRTEM\TEM_Si3N4_HRTEM
+ Input crystal file name
+ xtl_files\Si3N4_betaphase.xtl
+ Probe accelerating voltage (kV)
+ 200
+  Slice unit cell <1> yes <2> no
+ 2
+ Thickness
+   29.0900000000000     
+ scattering factor accuracy
+         2
+ Tile supercell x
+           2
+ Tile supercell y
+           1
+ Number of pixels in x
+         256
+ Number of pixels in y
+         256
+ <1> continue <2> change
+           1
+  calculation type
+         1
+ <1> QEP <2> ABS
+           2
+ <1> Absorption <2> No absorption
+           1
+ Elastic and inelastic scattering output choice
+           1
+<0> continue <1> Beam tilt <2> Specimen tilt
+0
+ <0> continue <1> save <2> load
+        0
+ aperture cutoff
+   12.7000000000000     
+  defocus
+  0.000000000000000E+000
+ Change image forming lens parameters
+           0

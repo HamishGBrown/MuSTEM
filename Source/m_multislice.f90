@@ -27,6 +27,7 @@ module m_multislice
     logical :: load_grates = .false.
     character(1024) :: grates_filename
     
+    integer*4::qep_mode
     logical :: output_probe_intensity = .false.,additional_transmission_function = .false.,pure_phase
     logical,allocatable :: output_cell_list(:)
     real(fp_kind),allocatable :: output_thickness_list(:)
@@ -320,14 +321,12 @@ module m_multislice
         write(*,*) '    (eg. from magnetic structure) from file'
         call get_input('<0> continue <1> save <2> load', i_save_load)
         write(*,*)
-323     format( '  - The xtl file',\,&
-               &'  - The slicing of the unit cell',\,&
-               &'  - The choice of thermal scattering model (QEP vs. absorptive)',\,&
-               &'  - The tiling of the unit cell',\,&
-               &'  - The number of pixels',\,&
-               &'  - (For absorptive model: whether absorption is included)',\,&
-               &'  - (For QEP model: the number of distinct transmission functions)',\,&
-               &'  - (For QEP model: phase ramp shift choice)',\)
+323     format( '  - The xtl file',/,'  - The slicing of the unit cell',/,&
+               &'  - The choice of thermal scattering model (QEP vs. absorptive)',/,&
+               &'  - The tiling of the unit cell',/,'  - The number of pixels',/,&
+               &'  - (For absorptive model: whether absorption is included)',/,&
+               &'  - (For QEP model: the number of distinct transmission functions)',/,&
+               &'  - (For QEP model: phase ramp shift choice)',/)
         
         select case (i_save_load)
             case (0)
@@ -373,7 +372,7 @@ module m_multislice
                 load_grates = .true.
             case (3)
                 additional_transmission_function=.true.
-                pure_phase=.false.
+                pure_phase=.true.
                 
                 if(.not.allocated(amplitude_fnam)) allocate(amplitude_fnam(n_slices),phase_fnam(n_slices))
                 do i=1,n_slices
@@ -401,6 +400,7 @@ module m_multislice
  subroutine load_save_add_grates_qep(idum,qep_grates,nopiy,nopix,n_qep_grates,n_slices,nt,nat_slice)
         use m_numerical_tools, only: gasdev
         use output
+        use global_variables, only: ak,pi
 	    integer(4),intent(inout):: idum
         complex(fp_kind),intent(inout)::qep_grates(nopiy,nopix,n_qep_grates,n_slices)
         integer*4,intent(in)::nopiy,nopix,n_qep_grates,n_slices,nt,nat_slice(nt,n_slices)
@@ -433,18 +433,24 @@ module m_multislice
             do j=1,n_slices
                 if(.not.pure_phase) call binary_in(nopiy,nopix,amplitude,amplitude_fnam(j))
                 call binary_in(nopiy,nopix,phase,phase_fnam(j))
-                qep_grates(:,:,:,j) = qep_grates(:,:,:,j)+spread(transpose(phase),dim=3,ncopies=n_qep_grates)
+                qep_grates(:,:,:,j) = qep_grates(:,:,:,j)+spread(transpose(phase),dim=3,ncopies=n_qep_grates)/pi/a0_slice(3,j)*ak
+				if(.not.pure_phase) then
+					call binary_in(nopiy,nopix,amplitude,amplitude_fnam(j))
+					qep_grates(:,:,:,j) = qep_grates(:,:,:,j)+spread(cmplx(0_fp_kind,log(transpose(amplitude))),dim=3,ncopies=n_qep_grates)
+				endif
             enddo
+            qep_mode=4
         endif
         
         if (save_grates) then
             write(*,*) 'Saving transmission functions to file...',char(10)
             open(unit=3984, file=grates_filename, form='binary', convert='big_endian')
-            write(3984) qep_grates;close(3984)
+            write(3984) qep_grates*pi*spread(spread(spread(a0_slice(3,1:n_slices),dim=1,ncopies=nopiy),dim=2,ncopies=nopix),dim=3,ncopies=n_qep_grates)/ak;close(3984)
         endif    
     end subroutine
 
 subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
+        use global_variables, only: pi,ak
         use m_numerical_tools, only: gasdev
         use output
         complex(fp_kind),intent(inout)::abs_grates(nopiy,nopix,n_slices)
@@ -466,11 +472,11 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
         endif
     
         if(additional_transmission_function) then
-            write(*,*) 'Adding addition transmission function to file...'
+            write(*,*) 'Adding addition transmission function from file...'
             amplitude = 1
             do j=1,n_slices
                 call binary_in(nopiy,nopix,phase,phase_fnam(j))
-                abs_grates(:,:,j) = abs_grates(:,:,j)+transpose(phase)
+                abs_grates(:,:,j) = abs_grates(:,:,j)+transpose(phase)/pi/a0_slice(3,j)*ak
 				if(.not.pure_phase) then
 					call binary_in(nopiy,nopix,amplitude,amplitude_fnam(j))
 					abs_grates(:,:,j) = abs_grates(:,:,j)+cmplx(0_fp_kind,log(transpose(amplitude)))
@@ -481,75 +487,56 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
         if (save_grates) then
             write(*,*) 'Saving transmission functions to file...',char(10)
             open(unit=3984, file=grates_filename, form='binary', convert='big_endian')
-            write(3984) abs_grates;close(3984)
+            write(3984) abs_grates*pi*spread(spread(a0_slice(3,1:n_slices),dim=1,ncopies=nopiy),dim=2,ncopies=nopix)/ak;close(3984)
         endif    
     end subroutine
     
 
-	function make_detector(nopiy,nopix,kmin,kmax,deltaky,deltakx,phi,delphi) result(detector)
-        use global_variables,only:pi
+	function make_detector(nopiy,nopix,ifactory,ifactorx,ss,kmin,kmax,phi,delphi) result(detector)
+		use m_crystallography
 		!makes a detector on an array nopiy x nopix with Fourier space pixel size deltaky x deltakx
 		!which measures from kmin to kmax, supplying phi and delphi (detector orientation 
 		!and angular range in radians) will create a detector segment
-		integer*4,intent(in)::nopiy,nopix
-		real(fp_kind),intent(in)::kmin,kmax,deltaky,deltakx,phi,delphi
+		integer*4,intent(in)::nopiy,nopix,ifactory,ifactorx
+		real(fp_kind),intent(in)::kmin,kmax,phi,delphi,ss(7)
 		optional::phi,delphi
 
-		real(fp_kind)::detector(nopiy,nopix)
-
-		real(fp_kind)::ky(nopiy),kx(nopix),vec(2),phi_(2)
-		real(fp_kind),dimension(nopiy,nopix)::phigrid,kabs,phiarray
-		integer*4::y,x,i,lower(nopiy,nopix),upper(nopiy,nopix)
-		logical::segment
-
+		real(fp_kind)::phi_(2),g_vec_array(3,nopiy,nopix),ang,kabs,detector(nopiy,nopix),pi
+		integer*4::y,x
+		logical::segment,notwrapped
+        
+        pi = 4.0d0*atan(1.0d0)
 		!If the phi and delphi variables are present, then make a segmented detector
 		segment = present(phi).and.present(delphi)
+		if(segment) then
+            !Force angle to be between 0 and 2pi
+			phi_= mod([phi,phi+delphi],2*pi)
+			do y=1,2
+				if (phi_(y)<0) phi_(y) = phi_(y) + 2*pi
+			enddo
+			notwrapped = phi_(2)>phi_(1)
+		endif
 		detector = 0
-
-		!Generate k space arrays
-		ky = kspace_array(nopiy)*deltaky
-		kx = kspace_array(nopix)*deltakx
-
-		!Generate the radial part of the detector
-		kabs = sqrt(real(spread(ky**2,dim=2,ncopies = nopix)&
-		               &+spread(kx**2,dim=1,ncopies = nopiy),kind=fp_kind))
-		detector = merge(1,0,(kabs.ge.kmin) .and. (kabs.le.kmax))
-	
-
-		!If not a segmented detector then return at this point
-		if(.not.segment) return
-        phiarray = atan2(real(spread(ky,dim = 2,ncopies = nopix)),real(spread(kx,dim = 1,ncopies = nopiy)))+pi
-	    phi_= mod([phi,phi+delphi],2*pi)
-        do i=1,2
-            if (phi_(i)<0) phi_(i) = phi_(i) + 2*pi
-        enddo
-
-        upper = merge(1,0,phiarray>phi_(1))
-	    lower = merge(1,0,phiarray<=phi_(2))
+		
+        call make_g_vec_array(g_vec_array,ifactory,ifactorx)
+		detector = 0
+		do y=1,nopiy;do x=1,nopix
+			kabs = trimr(g_vec_array(:,y,x),ss)
+			if((kabs.ge.kmin).and.(kabs.le.kmax)) then
+                detector(y,x) =1
+                if(segment) then
+                    !Force angle to be between 0 and 2pi
+				    ang = modulo(atan2(g_vec_array(1,y,x),g_vec_array(2,y,x)),2*pi)
+				    if (notwrapped) then
+					    if(.not.(ang>phi_(1).and.ang<=phi_(2))) detector(y,x)=0
+				    else
+					    if(.not.(ang>phi_(1).or.ang<=phi_(2))) detector(y,x)=0
+				    endif
+			endif;endif
+            enddo;enddo;
+	end function    
     
-    
-	    if (phi_(2)>phi_(1)) then
-		    detector = detector*lower*upper
-        
-		    detector = detector*upper
-	    else
-		    detector = merge(detector,0.0_fp_kind,((lower==1).or.(upper==1)))
-        endif
-
-	end function   
-
-	function kspace_array(nopiy) result(karray)
-
-		integer*4,intent(in)::nopiy
-		integer*4::karray(nopiy)
-	
-		integer*4::i
-	
-		karray = [((i - nopiy/2),i=0,nopiy-1)]
-        karray = cshift(karray,-nopiy/2)
-	end function     
-    
-    subroutine setup_qep_parameters(n_qep_grates,n_qep_passes,phase_ramp_shift,nran,quick_shift,ifactory,ifactorx)
+    subroutine setup_qep_parameters(n_qep_grates,n_qep_passes,nran,quick_shift,ifactory,ifactorx)
     
         use m_user_input, only: get_input
         use m_string, only: to_string,command_line_title_box
@@ -557,7 +544,6 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
         implicit none
         
         integer*4,intent(out)::n_qep_grates,n_qep_passes,nran
-        logical,intent(out)::phase_ramp_shift
         integer*4,intent(in)::ifactory,ifactorx
         logical,intent(in)::quick_shift
         
@@ -567,12 +553,13 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
     10  write(*,*) 'Enter the number of distinct transmission functions to calculate:'
         call get_input("Number of phase grates calculated", n_qep_grates)
         write(*,*)
-    
+        
         if (quick_shift) then
             write(6,100) to_string(ifactorx*ifactory), to_string(n_qep_grates), to_string(ifactorx*ifactory*n_qep_grates)
-    100     format(' The choice of tiling and grid size permits quick shifting.',/,&
+100         format(' The choice of tiling and grid size permits quick shifting.',/,&
                   &' The effective number of transmission functions used in  ',/,&
                   &' calculations will be ', a, ' * ', a, ' = ', a, '.', /)
+            qep_mode=2
         else
             write(6,101)
         101 format( ' The choice of tiling and grid size does not permit quick shifting ', /, &
@@ -593,13 +580,11 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
                 goto 10
             
             elseif (i.eq.2 .and. (ifactory.gt.1 .or. ifactorx.gt.1)) then
-                phase_ramp_shift = .true.
-                
+                qep_mode=3
                 call setup_phase_ramp_shifts
                         
             elseif (i.eq.3) then
-                phase_ramp_shift = .false.
-            
+                qep_mode=4
             else
                 goto 110
             

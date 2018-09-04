@@ -96,6 +96,8 @@ subroutine absorptive_tem
     real(fp_kind) :: absorptive_tem_GPU_memory
 
     call GPU_memory_message(absorptive_tem_GPU_memory(), on_the_fly)
+#else
+	on_the_fly=.false.
 #endif    
     
     call command_line_title_box('Pre-calculation setup')
@@ -113,10 +115,9 @@ subroutine absorptive_tem
         psi_initial = psi_initial/sqrt(sum(abs(psi_initial)**2))
     endif
     call tilt_wave_function(psi_initial)
-    projected_potential = make_absorptive_grates(nopiy,nopix,n_slices)
+    if(.not.load_grates) projected_potential = make_absorptive_grates(nopiy,nopix,n_slices)
     call load_save_add_grates(projected_potential,nopiy,nopix,n_slices)
     
-    call command_line_title_box('Calculation running')
 
 	t1 = secnds(0.0)
 #ifdef GPU
@@ -129,15 +130,12 @@ subroutine absorptive_tem
     
     !Copy host arrays to the device
     if (on_the_fly) then
-        allocate(bwl_mat_d(nopiy,nopix))
-        allocate(inverse_sinc_d(nopiy,nopix))
-        allocate(trans_d(nopiy,nopix))
-        allocate(fz_d(nopiy,nopix,nt))
-        allocate(fz_dwf_d(nopiy,nopix,nt))
-        allocate(fz_abs_d(nopiy,nopix,nt))
+        allocate(bwl_mat_d(nopiy,nopix),inverse_sinc_d(nopiy,nopix))
+        allocate(trans_d(nopiy,nopix),fz_d(nopiy,nopix,nt))
+        allocate(fz_dwf_d(nopiy,nopix,nt),fz_abs_d(nopiy,nopix,nt))
         fz_d=fz 
         fz_dwf_d=fz_dwf
-        !fz_abs_d = ci*fz_abs  !make the potential absorptive
+        fz_abs_d = ci*absorptive_scattering_factors(ig1,ig2,ifactory,ifactorx,nopiy,nopix,nt,a0,ss,atf,nat, ak, relm, orthog, 0.0_8, 4.0d0*atan(1.0d0))*2*ak  !make the potential absorptive
         inverse_sinc_d=inverse_sinc
         bwl_mat_d = bwl_mat
     else
@@ -145,6 +143,7 @@ subroutine absorptive_tem
     endif
     allocate(prop_d(nopiy,nopix,n_slices))
 #endif
+    call command_line_title_box('Calculation running')
     
     do ntilt=1,n_tilts_total
 	!For each specimen tilt we have to redo the transmission function
@@ -152,30 +151,27 @@ subroutine absorptive_tem
 #ifdef GPU								
     if (on_the_fly) call cuda_setup_many_phasegrate
 #endif
-	
     
     do i = 1, n_slices
 	    call make_propagator(nopiy,nopix,prop(:,:,i),prop_distance(i),Kz(ntilt),ss,ig1,ig2,claue(:,ntilt),ifactorx,ifactory)
         
 	    prop(:,:,i) = prop(:,:,i) * bwl_mat
-        transf_absorptive(:,:,i) = exp(ci*pi*a0_slice(3,i)/Kz(ntilt)*projected_potential(:,:,i))
+        if(.not.on_the_fly) transf_absorptive(:,:,i) = exp(ci*pi*a0_slice(3,i)/Kz(ntilt)*projected_potential(:,:,i))
         ! Bandwith limit the phase grate, psi is used for temporary storage
         call fft2(nopiy, nopix, transf_absorptive(:,:,i), nopiy, psi, nopiy)
         psi = psi * bwl_mat
         call ifft2(nopiy, nopix, psi, nopiy, transf_absorptive(:,:,i), nopiy)
     enddo
-
    lengthz = ceiling(log10(maxval(abs(zarray))))
    lengthdf = ceiling(log10(maxval(abs(imaging_df))))
    if(any(imaging_df<0)) lengthdf = lengthdf+1
-
 #ifdef GPU
-    transf_d=transf_absorptive
+    if(.not.on_the_fly) transf_d=transf_absorptive
     psi_d = psi_initial
     prop_d = prop
     do i_cell = 1, maxval(ncells)
         do i_slice = 1, n_slices
-            
+			
             if(on_the_fly) then
                 call cuda_make_abs_potential(trans_d,ccd_slice_array(i_slice),tau_slice(:,:,:,i_slice),nat_slice(:,i_slice),prop_distance(i_slice),plan,fz_d,fz_dwf_d,fz_abs_d,inverse_sinc_d,bwl_mat_d,Volume_array(i_slice))
                 call cuda_multiplication<<<blocks,threads>>>(psi_d,trans_d, psi_out_d,1.0_fp_kind,nopiy,nopix)

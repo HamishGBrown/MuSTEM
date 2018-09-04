@@ -28,6 +28,11 @@ module m_electron
         module procedure double_elsa_ext
     end interface
     
+    interface Peng_ionic_FF
+        module procedure Peng_ionic_FF_fractional_ionicity
+        module procedure Peng_ionic_FF_integer_ionicity
+    end interface
+    
     
 !X-RAY FORM FACTORS
 character(2), parameter :: element(92) = &
@@ -1128,38 +1133,74 @@ data ionicFF_Peng(106)/t_ionicFF_peng('U ', 92,  +6, [0.687E+0, 0.114E+1, 0.183E
     end function single_elsa_ext
    
 
-    function Peng_ionic_FF(s2,Z,dZ,cutoff) result(fe)
+    function Peng_ionic_FF_integer_ionicity(s2,Z,dZ,cutoff) result(fe)
 	    use m_precision	
 	
 	    real(fp_kind),intent(in)::s2,cutoff
 	    integer*4,intent(in):: Z,dZ
+        integer*4::Zapprox
 	    optional:: cutoff
 
 	    real(fp_kind)::fe,cutoff_
 
 	    integer*4::i,j
-	
-	    !First find atom
-	    do i=1,114
-		    if (i==114) then
-			    write(*,*) 'A parametrization of Z = ',Z,' DeltaZ = ',dZ,'does not seem to be included in Peng (1998).'
-			    write(*,*) 'Please try an alternative parametrization of electron scattering factors.'
-			    stop
-		    endif 
-		    if (ionicFF_Peng(i)%Z==Z.and.ionicFF_Peng(i)%dZ==dZ) exit
-	    enddo
-
+	    
 	    cutoff_ = 1e-4
 	    if (present(cutoff)) cutoff_=cutoff
-
-	    if (s2<cutoff_) then
+	    
+        if (s2<cutoff_) then
 		    fe = 0
 	    else
 		    fe = 0.023934*dZ/s2
 	    endif
+        
+	    !First find atom
+	    do i=1,113
+		    if (ionicFF_Peng(i)%Z==Z.and.ionicFF_Peng(i)%dZ==dZ) then
 
-	    fe = sum(ionicFF_Peng(i)%a(1:5)*exp(-ionicFF_Peng(i)%b(1:5)*s2))
+	        cutoff_ = 1e-4
+	        if (present(cutoff)) cutoff_=cutoff
 
+	        
+
+	        fe = fe+sum(ionicFF_Peng(i)%a(1:5)*exp(-ionicFF_Peng(i)%b(1:5)*s2))
+            return
+            endif
+        enddo
+		!write(*,*) 'A parametrization of Z = ',Z,' DeltaZ = ',dZ,'does not seem to be included in Peng (1998).'
+		!write(*,*) 'It will be approximated using the ionic scattering factors of Waasmaier and Kirfel (1994).' 
+        !If no atom, approximate it using the closest Z atom from Waasmeier and Kirfel
+        !plus ionic contribtuion
+        
+        Zapprox = Z-dZ
+        
+        fe = fe+ elsa_ext(92,Zapprox,xrayFF(2:14,:),s2)
+        
+    end function
+    
+    function Peng_ionic_FF_fractional_ionicity(s2,Z,dZ,cutoff) result(fe)
+	    use m_precision	
+	
+	    real(fp_kind),intent(in)::s2,cutoff,dZ
+	    integer*4,intent(in):: Z
+        integer*4::Zceil,Zfloor
+	    optional:: cutoff
+
+	    real(fp_kind)::fe,frac,cutoff_
+
+	    integer*4::i,j
+	    
+	    cutoff_ = 1e-4
+	    if (present(cutoff)) cutoff_=cutoff
+        
+        !Find floor and ceiling of fractional ionicity and calculate
+        Zceil = ceiling(dZ)
+        frac = modulo(dZ,1.0)
+        fe = Peng_ionic_FF_integer_ionicity(s2,Z,Zceil,cutoff_)*frac
+        Zfloor = floor(dZ)
+        fe = fe+Peng_ionic_FF_integer_ionicity(s2,Z,Zfloor,cutoff_)*(1-frac)
+	    
+        
     end function
     
     

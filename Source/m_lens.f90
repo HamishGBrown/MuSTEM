@@ -185,7 +185,6 @@ module m_lens
 	 13	format(   1x,'<',i2,'> ',a10,    '| ',a2,3x,'|',a17,          '|',g13.4,    '|',g13.4)
      14      format(   ' <16> Output lens contrast transfer function ',t40,/,&
                  &' <17> Apodize probe (remove Airy tails)      ',t40,/,&
-                 &' <18> Read in arbitrary phase plate          ',t40,/,&
                  &' -----------------------------------------------', /, &
                  &' Select option to change any parameter or <0> to continue')
         
@@ -283,10 +282,10 @@ module m_lens
 
     function make_ctf(xyposn,df,cutoff,aberrations,apodisation) result(ctf)
 
-        use global_variables, only: nopiy, nopix, ifactory, ifactorx, pi, ss
+        use global_variables, only: nopiy, nopix, ifactory, ifactorx, pi, ss,a0
         use m_multislice,only:make_detector
         use m_crystallography, only: trimr,make_g_vec_array
-        !use output
+        use output
         use CUFFT_wrapper
         
         implicit none
@@ -298,7 +297,7 @@ module m_lens
         optional::apodisation
 
         integer(4) :: ny, nx
-        real(fp_kind) :: kr(3), akr, m1, m2,phi, g_vec_array(3,nopiy,nopix)
+        real(fp_kind) :: kr(3), akr, m1, m2,phi, g_vec_array(3,nopiy,nopix),x,y,r
         
         call make_g_vec_array(g_vec_array,ifactory,ifactorx)
         ctf=0.0_fp_kind
@@ -317,9 +316,12 @@ module m_lens
         
         if(present(apodisation)) then
         if(apodisation>0) then
-            deltay = 1/trimr(g_vec_array(:,2,1)-g_vec_array(:,1,1),ss)/nopiy
-            deltax = 1/trimr(g_vec_array(:,1,2)-g_vec_array(:,1,1),ss)/nopix
-            real_space_aperture =make_detector(nopiy,nopix,0.0_fp_kind,apodisation,deltay,deltax)
+            real_space_aperture = 0
+            do nx = 1, nopix;x = (nx-nopix/2-2)*a0(2)*ifactorx/nopix; do ny = 1, nopiy
+                y = (ny-nopiy/2-2)*a0(1)*ifactory/nopiy;r = sqrt(x**2+y**2)
+                if (r.le.apodisation) real_space_aperture(ny,nx) =1
+            enddo;enddo
+            real_space_aperture = quad_shift(real_space_aperture,nopiy,nopix)
             call ifft2(nopiy,nopix,ctf,nopiy,ctf,nopiy)
             ctf = ctf*real_space_aperture
             call fft2(nopiy,nopix,ctf,nopiy,ctf,nopiy)

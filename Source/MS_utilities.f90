@@ -485,8 +485,8 @@
 		if(outputdetectors) then
 			do i=1,ndet/nseg
 			do j=1,nseg
-				if(nseg>1) call binary_out_unwrap(nopiy,nopix,make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx,2*pi*j/nseg-seg_det_offset,2*pi/nseg),'detector_'//to_string((i-1)*nseg+j))
-				if(nseg==1) call binary_out_unwrap(nopiy,nopix,make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx),'detector_'//to_string((i-1)*nseg+j))
+				if(nseg>1) call binary_out_unwrap(nopiy,nopix,make_detector(nopiy,nopix,ifactory,ifactorx,ss,inner(i),outer(i),2*pi*j/nseg-seg_det_offset,2*pi/nseg),'detector_'//to_string((i-1)*nseg+j))
+				if(nseg==1) call binary_out_unwrap(nopiy,nopix,make_detector(nopiy,nopix,ifactory,ifactorx,ss,inner(i),outer(i)),'detector_'//to_string((i-1)*nseg+j))
 			enddo
 			enddo
 		endif
@@ -706,39 +706,6 @@
     
     return
     end
-    
-
-    !--------------------------------------------------------------------------------
-    !     subroutine make mask
-    !     makes a mask based on an input inne and outer q radius in inv A
-    !--------------------------------------------------------------------------------
-
-    subroutine make_detector_mask(inner_rad,outer_rad,mask)
-    use global_variables
-    use m_precision
-    use m_crystallography, only: trimr,make_g_vec_array
-        
-    implicit none
-    integer(4)   m1,m2,ny,nx,shifty,shiftx
-    
-    real(fp_kind)      akr,inner_rad,outer_rad,kx(3),ky(3),kr(3),g_vec_array(3,nopiy,nopix)
-    real(fp_kind)      mask(nopiy,nopix)
-       
-    mask=0.0_fp_kind
-    
-    call make_g_vec_array(g_vec_array,ifactory,ifactorx)
-    do nx=1,nopix
-          !$OMP PARALLEL PRIVATE(ny,akr), SHARED(mask,ss,nopiy,nx,outer_rad,inner_rad) 
-          do ny=1,nopiy
-                akr = trimr(g_vec_array(:,ny,nx),ss)
-                if ( (akr.le.outer_rad).and.(akr.ge.inner_rad)) mask(ny,nx)=1.0_fp_kind
-           enddo
-           !$OMP END PARALLEL
-    enddo
-
-    end
-	
-
 
     
     !-------------------------------------------------------------------------------------

@@ -213,13 +213,12 @@ module m_potential
         complex(fp_kind),device :: site_factor_d(nopiy,nopix)
                           
         call make_g_vec_array(g_vec_array)
-        g_vec_array_d = g_vec_array
+		g_vec_array_d = g_vec_array
         tau_d = tau
         
         call cuda_site_factor<<<blocks,threads>>>(site_factor_d, tau_d, g_vec_array_d, nopiy, nopix)        
 
         site_factor = site_factor_d
-        
     end subroutine make_site_factor_cuda
 #endif    
     
@@ -482,6 +481,7 @@ module m_potential
 
       use m_string
       use m_numerical_tools, only: cubspl,ppvalu
+        use m_multislice
 	 use global_variables
         use m_user_input
 
@@ -524,7 +524,7 @@ module m_potential
 		  eels_outer = ak1*tan(eels_outer/1000.0_fp_kind)
 		  if(allocated(eels_correction_detector)) deallocate(eels_correction_detector)
 		  allocate(eels_correction_detector(nopiy,nopix))
-		  call make_detector_mask(eels_inner,eels_outer,eels_correction_detector)     
+          eels_correction_detector = make_detector(nopiy,nopix,ifactory,ifactorx,ss,eels_inner,eels_outer)
       endif  
 !Count available orbitals by checking what is available for the given atoms in
 !the parametrization files
@@ -716,9 +716,6 @@ module m_potential
                         adf_potential(:,:,j,k)= adf_potential(:,:,j,k) + real(potential_from_scattering_factors(fz_adf(:,:,i,k),tau_slice(:,i,:nat_,j),nat_,nopiy,nopix,high_accuracy)/vol*ss(7)*4*pi)
                       enddo
                   enddo
-                !do k=1,ndet
-                !call binary_out(nopiy,nopix,sum(adf_potential(:,:,:,k),dim=3),'potential_'//to_string(k))
-                !enddo
             endif
       enddo	!ends loop over the number of potential subslices
       
@@ -788,7 +785,9 @@ module m_potential
         procedure(make_site_factor_generic),pointer :: make_site_factor
         projected_potential= 0 
         t1 = secnds(0.0_fp_kind)
-        fz_abs = absorptive_scattering_factors(ig1,ig2,ifactory,ifactorx,nopiy,nopix,nt,a0,ss,atf,nat, ak, relm, orthog, 0.0_8, 4.0d0*atan(1.0d0))*2*ak
+        fz_abs=0
+        if(include_absorption) fz_abs = absorptive_scattering_factors(ig1,ig2,ifactory,ifactorx,nopiy,nopix,nt,a0,ss,atf,nat, ak, relm, orthog, 0.0_8, 4.0d0*atan(1.0d0))*2*ak
+            
         do j = 1, n_slices
 	        write(*,'(1x, a, a, a, a, a)') 'Calculating transmission functions for slice ', to_string(j), '/', to_string(n_slices), '...'
         

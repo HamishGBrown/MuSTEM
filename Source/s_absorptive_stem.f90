@@ -122,6 +122,8 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 	
     call command_line_title_box('Pre-calculation setup')
     
+    ! Precalculate the scattering factors on a grid
+    call precalculate_scattering_factors()
 #ifdef GPU
 #else
 	on_the_fly = .false.
@@ -132,7 +134,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
         call cuda_setup_many_phasegrate()                   
 #endif        
     else
-        projected_potential = make_absorptive_grates(nopiy,nopix,n_slices)
+        if(.not.load_grates) projected_potential = make_absorptive_grates(nopiy,nopix,n_slices)
         call load_save_add_grates(projected_potential,nopiy,nopix,n_slices)
         if(ionization.or.stem) call make_local_inelastic_potentials(ionization)
     endif
@@ -155,8 +157,8 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
         allocate(masks(nopiy,nopix,ndet))
 		do i=1,ndet/nseg
 		do j=1,nseg
-			if(nseg>1) masks(:,:,(i-1)*nseg+j) = make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx,2*pi*j/nseg-seg_det_offset,2*pi/nseg)
-			if(nseg==1) masks(:,:,(i-1)*nseg+j) = make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx)
+			if(nseg>1) masks(:,:,(i-1)*nseg+j) = make_detector(nopiy,nopix,ifactory,ifactorx,ss,inner(i),outer(i),2*pi*j/nseg-seg_det_offset,2*pi/nseg)
+			if(nseg==1) masks(:,:,(i-1)*nseg+j) = make_detector(nopiy,nopix,ifactory,ifactorx,ss,inner(i),outer(i))
 		enddo
 		enddo
 		if (adf) then
@@ -184,23 +186,24 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
         
         allocate(bwl_mat_d(nopiy,nopix),inverse_sinc_d(nopiy,nopix)&
 				&,trans_d(nopiy,nopix),fz_d(nopiy,nopix,nt)&
-				&,fz_dwf_d(nopiy,nopix,nt),fz_abs_d(nopiy,nopix,nt),&
-				&fz_adf_d(nopiy,nopix,nt,ndet))
-       
+				&,fz_dwf_d(nopiy,nopix,nt),fz_abs_d(nopiy,nopix,nt))
+		
         fz_d = fz 
         fz_dwf_d = fz_dwf
-		
-		do k=1,ndet/nseg
-          thmin =  atan(inner((k-1)*nseg+1)/ak)
-          thmax =  atan(outer((k-1)*nseg+1)/ak)
+		if(stem.and.adf)  then
+			allocate(fz_adf_d(nopiy,nopix,nt,ndet))
+			do k=1,ndet/nseg
+			  thmin =  atan(inner((k-1)*nseg+1)/ak)
+			  thmax =  atan(outer((k-1)*nseg+1)/ak)
 		  
-          !Note that the absorptive calculations do not take into account the directionality of inelastic scattering, the absorptive scattering
-          !factors are assumed isotropic and this is only an approximation for inelastic scattering to segmented detectors
-          fz_adf_d(:,:,:,(k-1)*nseg+1:k*nseg) = spread(cmplx(absorptive_scattering_factors(ig1,ig2,ifactory,ifactorx,nopiy,nopix,nt,a0,ss,atf,nat, ak, relm, orthog,thmin,thmax)/nseg,0.0_fp_kind)*4*pi,dim=4,ncopies=nseg)/nseg
-          
-		enddo
+			  !Note that the absorptive calculations do not take into account the directionality of inelastic scattering, the absorptive scattering
+			  !factors are assumed isotropic and this is only an approximation for inelastic scattering to segmented detectors
+			  fz_adf_d(:,:,:,(k-1)*nseg+1:k*nseg) = spread(cmplx(absorptive_scattering_factors(ig1,ig2,ifactory,ifactorx,nopiy,nopix,nt,a0,ss,atf,nat, ak, relm, orthog,thmin,thmax)/nseg,0.0_fp_kind)*4*pi,dim=4,ncopies=nseg)/nseg
+			enddo
+		endif
 		
-        fz_abs_d = ci*absorptive_scattering_factors(ig1,ig2,ifactory,ifactorx,nopiy,nopix,nt,a0,ss,atf,nat, ak, relm, orthog, 0.0_8, 4.0d0*atan(1.0d0))*2*ak  !make the potential absorptive
+		fz_abs_d=0
+        if(include_absorption) fz_abs_d = ci*absorptive_scattering_factors(ig1,ig2,ifactory,ifactorx,nopiy,nopix,nt,a0,ss,atf,nat, ak, relm, orthog, 0.0_8, 4.0d0*atan(1.0d0))*2*ak  !make the potential absorptive
 		
         if (ionization) then
            allocate(fz_mu_d(nopiy,nopix,num_ionizations))
@@ -237,7 +240,6 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     if(ionization.and.(.not.EDX)) then
         allocate(eels_correction_detector_d(nopiy,nopix))
         eels_correction_detector_d = eels_correction_detector
-		eels_correction_image = 0.0_fp_kind
     endif
 #endif
 
@@ -254,7 +256,6 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     
 	do i = 1, n_slices
         transf_absorptive(:,:,i) = exp(ci*pi*a0_slice(3,i)/Kz(ntilt)*projected_potential(:,:,i))
-        !call binary_out(nopiy,nopix,projected_potential(:,:,i),'projected_potential_'//to_string(i))
 	    call make_propagator(nopiy,nopix,prop(:,:,i),prop_distance(i),Kz(ntilt),ss,ig1,ig2,claue(:,ntilt),ifactorx,ifactory)
 	    prop(:,:,i) = prop(:,:,i) * bwl_mat
         !! Bandwith limit the phase grate, psi is used for temporary storage
@@ -265,7 +266,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     
 	pacbed_pattern = 0
 #ifdef GPU
-    pacbed_pattern_d = 0
+    if(pacbed) pacbed_pattern_d = 0
 	prop_d = prop
 	transf_d = transf_absorptive
 #endif
@@ -423,10 +424,13 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 				if(ionization) then
 					do ii=1,num_ionizations
 						stem_ion_image(ny,nx,i_df,z_indx(1),ii) = sum(ion_image(:,:,ii))
-					enddo
+                    enddo
+                    !call binary_out(nopiy,nopix,eels_correction_detector,'eels_correction_detector')
+                    !call binary_out(nopiy,nopix,temp,'temp')
+                    !stop
 					if(.not.EDX) eels_correction_image(ny,nx,i_df,z_indx(1)) = sum(temp*eels_correction_detector)
 				endif
-				
+				 
 				!Output 4D STEM diffraction pattern
 				if(fourDSTEM) then
 						filename = trim(adjustl(output_prefix))

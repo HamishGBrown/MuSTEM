@@ -81,7 +81,7 @@ module cuda_ms
 	end subroutine
 
 	attributes(host) subroutine cuda_multislice_iteration(psi_d,transf_d,prop_d,plan)
-		use cufft
+		use CUFFT_wrapper
         use cuda_array_library, only: blocks, threads
 
 		implicit none

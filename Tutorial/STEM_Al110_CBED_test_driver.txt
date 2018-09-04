@@ -11,7 +11,7 @@
 <1> manual or <2> auto slicing
     2
  Thickness
-   286
+   50:500:50
 Scattering factor accuracy
     1   
  Tile supercell x

@@ -1,8 +1,6 @@
-play all
-STEM_Si110_PACBED_test_driver.txt
+play
 STEM_Al110_CBED_test_driver.txt
-TEM_Si3N4_HRTEM_driver.txt
 STEM_Al3Li_ABF_driver.txt
-STEM_STO_HAADF_driver.txt
-STEM_Al110_PACBED_test_driver.txt
-STEM_STO_EDX_SrK_driver.txt
+STEM_SrTiO3_STEM_driver.txt
+STEM_Si110_PACBED_test_driver.txt
+TEM_Si3N4_HRTEM_driver.txt

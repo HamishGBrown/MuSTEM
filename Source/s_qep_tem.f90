@@ -126,7 +126,8 @@ subroutine qep_tem
         
     else
 #endif        
-    projected_potential = make_qep_grates(idum)  
+    if(.not. load_grates) projected_potential = make_qep_grates(idum)
+    call load_save_add_grates(idum,projected_potential,nopiy,nopix,n_qep_grates,n_slices,nt,nat_slice)
         
 #ifdef GPU        
     endif
@@ -180,9 +181,7 @@ subroutine qep_tem
         endif
     endif
     
-    if (on_the_fly.or.quick_shift.or.phase_ramp_shift) then
-        allocate(trans_d(nopiy,nopix))
-    endif
+    if (any([on_the_fly,quick_shift,phase_ramp_shift])) allocate(trans_d(nopiy,nopix))
 #endif    
 	t1 = secnds(0.0)
 
@@ -200,18 +199,20 @@ subroutine qep_tem
 	do i = 1, n_slices
 	    call make_propagator(nopiy,nopix,prop(:,:,i),prop_distance(i),Kz(ntilt),ss,ig1,ig2,claue(:,ntilt),ifactorx,ifactory)
 	    prop(:,:,i) = prop(:,:,i) * bwl_mat
-        qep_grates(:,:,:,i) = exp(ci*pi*a0_slice(3,i)/Kz(ntilt)*projected_potential(:,:,:,i))
+        if(.not.on_the_fly) then
+		qep_grates(:,:,:,i) = exp(ci*pi*a0_slice(3,i)/Kz(ntilt)*projected_potential(:,:,:,i))
 		do j=1,n_qep_grates
 		call fft2(nopiy,nopix,qep_grates(:,:,j,i),nopiy,psi,nopiy)
 		if(phase_ramp_shift) qep_grates(:,:,j,i)= psi*bwl_mat
 		if(.not.phase_ramp_shift) call ifft2(nopiy,nopix,psi*bwl_mat,nopiy,qep_grates(:,:,j,i),nopiy)
 		enddo
+		endif
     enddo
     
 #ifdef GPU
 prop_d=prop
-    transf_d = qep_grates
-    psi_initial_d = psi_initial
+if(.not.on_the_fly) transf_d = qep_grates
+psi_initial_d = psi_initial
         
 	! Set accumulators to zero
     cbed_d = 0.0_fp_kind
@@ -231,13 +232,13 @@ prop_d=prop
                 if (on_the_fly) then
                     call cuda_fph_make_potential(trans_d,ccd_slice_array(i_slice),tau_slice,nat_slice(:,i_slice),i_slice,prop_distance(i_slice),idum,plan,fz_d,inverse_sinc_d,bwl_mat_d)
                     call cuda_multiplication<<<blocks,threads>>>(psi_d,trans_d, psi_d,1.0_fp_kind,nopiy,nopix)
-                elseif (quick_shift) then
+                elseif (qep_mode == 2) then
 				    nran = floor(n_qep_grates*ran1(idum)) + 1
                     shiftx = floor(ifactorx*ran1(idum)) * nopix_ucell
                     shifty = floor(ifactory*ran1(idum)) * nopiy_ucell
                     call cuda_cshift<<<blocks,threads>>>(transf_d(:,:,nran,i_slice),trans_d,nopiy,nopix,shifty,shiftx)
                     call cuda_multiplication<<<blocks,threads>>>(psi_d,trans_d, psi_d,1.0_fp_kind,nopiy,nopix)
-                elseif (phase_ramp_shift) then
+                elseif (qep_mode == 3) then
 				    nran = floor(n_qep_grates*ran1(idum)) + 1
                     shiftx = floor(ifactorx*ran1(idum)) + 1
                     shifty = floor(ifactory*ran1(idum)) + 1
@@ -310,32 +311,8 @@ prop_d=prop
             
                 ! Phase grate
 				nran = floor(n_qep_grates*ran1(idum)) + 1
-				if(on_the_fly) then
-					!call make_qep_potential(trans, tau_slice, nat_slice, ss_slice(7,i_slice))
-					psi_out = psi*trans
-				elseif(quick_shift) then
-												 
-					shiftx = floor(ifactorx*ran1(idum)) * nopix_ucell
-					shifty = floor(ifactory*ran1(idum)) * nopiy_ucell
-					trans = cshift(cshift(qep_grates(:,:,nran,i_slice),shifty,dim=1),shiftx,dim=2)
-					psi_out = psi*trans
-				elseif(phase_ramp_shift) then                       !randomly shift phase grate
-												 
-					shiftx = floor(ifactorx*ran1(idum)) + 1
-					shifty = floor(ifactory*ran1(idum)) + 1
-					call phase_shift_array(qep_grates(:,:,nran,i_slice),trans,shift_arrayy,shift_arrayx)
-																																		   
-																	  
-					psi_out = psi*trans
-				else
-												 
-					psi_out = psi*qep_grates(:,:,nran,i_slice)
-				endif
-                
-				!propagate
-                call fft2(nopiy,nopix,psi_out,nopiy,psi,nopiy)
-				psi_out = prop(:,:,i_slice)*psi
-				call ifft2(nopiy,nopix,psi_out,nopiy,psi,nopiy)
+				
+                  call qep_multislice_iteration(psi,prop(:,:,i_slice),qep_grates(:,:,:,i_slice),nopiy,nopix,ifactory,ifactorx,idum,n_qep_grates,qep_mode,shift_arrayy,shift_arrayx)
 
 
             enddo ! End loop over slices
@@ -352,21 +329,17 @@ prop_d=prop
 					psi_elastic(:,:,z_indx(1)) = psi_elastic(:,:,z_indx(1)) + psi
 
 					! Accumulate exit surface intensity
-																					  
 					total_intensity(:,:,z_indx(1)) = total_intensity(:,:,z_indx(1)) + abs(psi)**2
 					
 					! Accumulate diffaction pattern
 					temp=abs(psi_out)**2
 					cbed(:,:,z_indx(1)) = cbed(:,:,z_indx(1)) + temp
 					
-					  
 					! Accumulate image
                     if(pw_illum) then
 					do i=1,imaging_ndf
 						psi_temp = ctf(:,:,i)*psi_out
 						call ifft2(nopiy,nopix,psi_temp,nopiy,psi_temp,nopiy)
-															 
-																							
 						tem_image(:,:,z_indx(1),i) = tem_image(:,:,z_indx(1),i)+abs(psi_temp)**2
                     enddo
                     endif
@@ -384,7 +357,7 @@ prop_d=prop
     cbed = cbed_d
     psi_elastic = psi_elastic_d
     total_intensity = total_intensity_d
-	tem_image = tem_image_d
+	if(pw_illum) tem_image = tem_image_d
 #endif    
     delta = secnds(t1)
     
@@ -409,36 +382,40 @@ prop_d=prop
     write(*,*)
     
     cbed = cbed / n_qep_passes
-    total_intensity = total_intensity / n_qep_passes
     psi_elastic = psi_elastic / n_qep_passes
-    tem_image = tem_image / n_qep_passes
     
-    length = ceiling(log10(maxval(zarray)))
-	lengthdf = ceiling(log10(maxval(abs(imaging_df))))
-	if(any(imaging_df<0)) lengthdf = lengthdf+1
-   
+	if(pw_illum) then
+		total_intensity = total_intensity / n_qep_passes
+		tem_image = tem_image / n_qep_passes
+		length = ceiling(log10(maxval(zarray)))
+		lengthdf = ceiling(log10(maxval(abs(imaging_df))))
+		if(any(imaging_df<0)) lengthdf = lengthdf+1
+	endif
+	
 	do i=1,nz
 		filename = trim(adjustl(output_prefix))
 		if(nz>1) filename=trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(i)),length)//'_A'
 		
 		if(.not.output_thermal) then
-		call binary_out_unwrap(nopiy, nopix, cbed(:,:,i), trim(filename)//'_DiffPlane')
-		call binary_out(nopiy, nopix, total_intensity(:,:,i), trim(filename)//'_ExitSurface_Intensity')
+			call binary_out_unwrap(nopiy, nopix, cbed(:,:,i), trim(filename)//'_DiffPlane')
+			if(pw_illum) call binary_out(nopiy, nopix, total_intensity(:,:,i), trim(filename)//'_ExitSurface_Intensity')
 		else
-		call binary_out_unwrap(nopiy, nopix, cbed(:,:,i), trim(filename)//'_DiffPlaneTotal')
-		call fft2(nopiy, nopix, psi_elastic(:,:,i), nopiy, psi, nopiy)
-		image = abs(psi)**2
-		call binary_out_unwrap(nopiy, nopix, image, trim(filename)//'_DiffPlaneElastic')
-		
-		image = cbed(:,:,i) - image
-		call binary_out_unwrap(nopiy, nopix, image, trim(filename)//'_DiffPlaneTDS')
-		
-		if(pw_illum) call binary_out(nopiy, nopix, abs(psi_elastic(:,:,i))**2, trim(filename)//'_ExitSurface_IntensityElastic')
-		if(pw_illum) call binary_out(nopiy, nopix, atan2(imag(psi_elastic(:,:,i)), real(psi_elastic(:,:,i))), trim(filename)//'_ExitSurface_PhaseElastic')
-		if(pw_illum) call binary_out(nopiy, nopix, total_intensity(:,:,i), trim(filename)//'_ExitSurface_IntensityTotal')
-		
-		total_intensity(:,:,i) = total_intensity(:,:,i) - abs(psi_elastic(:,:,i))**2
-		if(pw_illum) call binary_out(nopiy, nopix, total_intensity(:,:,i), trim(filename)//'_ExitSurface_IntensityTDS')
+			call binary_out_unwrap(nopiy, nopix, cbed(:,:,i), trim(filename)//'_DiffPlaneTotal')
+			call fft2(nopiy, nopix, psi_elastic(:,:,i), nopiy, psi, nopiy)
+			image = abs(psi)**2
+			call binary_out_unwrap(nopiy, nopix, image, trim(filename)//'_DiffPlaneElastic')
+			
+			image = cbed(:,:,i) - image
+			call binary_out_unwrap(nopiy, nopix, image, trim(filename)//'_DiffPlaneTDS')
+			
+			if(pw_illum) then
+				call binary_out(nopiy, nopix, abs(psi_elastic(:,:,i))**2, trim(filename)//'_ExitSurface_IntensityElastic')
+				call binary_out(nopiy, nopix, atan2(imag(psi_elastic(:,:,i)), real(psi_elastic(:,:,i))), trim(filename)//'_ExitSurface_PhaseElastic')
+				call binary_out(nopiy, nopix, total_intensity(:,:,i), trim(filename)//'_ExitSurface_IntensityTotal')
+			
+				total_intensity(:,:,i) = total_intensity(:,:,i) - abs(psi_elastic(:,:,i))**2
+				call binary_out(nopiy, nopix, total_intensity(:,:,i), trim(filename)//'_ExitSurface_IntensityTDS')
+			endif
 		endif
 		if(pw_illum) then
 		do j=1,imaging_ndf

@@ -9,7 +9,7 @@
  Thickness
    29.0900000000000     
  scattering factor accuracy
-         1
+         2
  Tile supercell x
            2
  Tile supercell y

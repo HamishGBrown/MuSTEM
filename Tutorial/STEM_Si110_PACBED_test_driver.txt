@@ -13,7 +13,7 @@
  Thickness
    50:300:50     
 Scattering factor accuracy
-		1
+		2
  Tile supercell x
           28
  Tile supercell y

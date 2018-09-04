@@ -85,7 +85,7 @@ subroutine qep_stem(STEM,ionization,PACBED)
     integer(4) ::  count
     integer(4) ::  shifty,shiftx
     integer(4) ::  ny,nx,i_df,idet
-    integer(4) ::  total_slices,mode
+    integer(4) ::  total_slices
     
     !random variables
     integer(4) :: idum,nsliceoutput,z_indx(1)
@@ -132,7 +132,7 @@ subroutine qep_stem(STEM,ionization,PACBED)
     real(fp_kind),allocatable :: probe_intensity(:,:,:)
     character(1024) :: filename
     
-    real(fp_kind)::qep_stem_GPU_memory
+    real(fp_kind)::qep_stem_GPU_memory,const
     logical::elfourd
     integer*4::length,lengthdf
     
@@ -142,12 +142,14 @@ subroutine qep_stem(STEM,ionization,PACBED)
     
     
     call command_line_title_box('Pre-calculation setup')
-	lengthdf = ceiling(log10(maxval(abs(imaging_df))))
-	if(any(imaging_df<0)) lengthdf = lengthdf+1
 
     if(pacbed) then
         allocate(pacbed_pattern(nopiy,nopix,nz))
-        if(output_thermal) allocate(pacbed_elastic(nopiy,nopix,nz))
+        pacbed_pattern=0
+        if(output_thermal) then
+            allocate(pacbed_elastic(nopiy,nopix,nz))
+            pacbed_elastic = 0
+        endif
 	    elfourd = fourdSTEM.and.output_thermal
         length = ceiling(log10(maxval(zarray)))
     endif
@@ -166,7 +168,7 @@ subroutine qep_stem(STEM,ionization,PACBED)
 #endif
         
         projected_potential = make_qep_grates(idum)
-        call load_save_add_grates(idum,projected_potential,nopiy,nopix,n_qep_grates,n_slices,nt,nat_slice)
+        if(.not. load_grates) call load_save_add_grates(idum,projected_potential,nopiy,nopix,n_qep_grates,n_slices,nt,nat_slice)
         call make_local_inelastic_potentials(ionization)          !setup the REAL space inelastic potential (ionization and adf) for QUEP ADF is disabled
     
     endif
@@ -175,8 +177,8 @@ subroutine qep_stem(STEM,ionization,PACBED)
 	if(stem) then
 		do i=1,ndet/nseg
 		do j=1,nseg
-			if(nseg>1) masks(:,:,(i-1)*nseg+j) = make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx,2*pi*k/nseg-seg_det_offset,2*pi*(k+1)/nseg-seg_det_offset)
-			if(nseg==1) masks(:,:,(i-1)*nseg+j) = make_detector(nopiy,nopix,inner(i),outer(i),trimi(ig2,ss)/ifactory,trimi(ig1,ss)/ifactorx)
+			if(nseg>1) masks(:,:,(i-1)*nseg+j) = make_detector(nopiy,nopix,ifactory,ifactorx,ss,inner(i),outer(i),2*pi*j/nseg-seg_det_offset,2*pi/nseg)
+			if(nseg==1) masks(:,:,(i-1)*nseg+j) = make_detector(nopiy,nopix,ifactory,ifactorx,ss,inner(i),outer(i))
 		enddo
 		enddo
 	endif
@@ -189,9 +191,7 @@ subroutine qep_stem(STEM,ionization,PACBED)
     if(stem) stem_image = 0.0_fp_kind
     if(stem) stem_elastic_image = 0.0_fp_kind
 #ifdef GPU
-    if (on_the_fly.or.quick_shift.or.phase_ramp_shift) then
-        allocate(trans_d(nopiy,nopix))
-    endif
+    if (any([on_the_fly,quick_shift,phase_ramp_shift])) allocate(trans_d(nopiy,nopix))
 	! Plan the fourier transforms
     if(fp_kind.eq.8)then
 	    call cufftPlan(plan,nopix,nopiy,CUFFT_Z2Z)
@@ -203,6 +203,7 @@ subroutine qep_stem(STEM,ionization,PACBED)
         allocate(masks_d(nopiy,nopix,ndet))
         masks_d = masks
     endif
+
     if (ionization) then
 		allocate(ion_image_d(nopiy,nopix,num_ionizations))
 		if(.not.EDX) then
@@ -210,7 +211,6 @@ subroutine qep_stem(STEM,ionization,PACBED)
 			eels_correction_detector_d=eels_correction_detector
 		endif
     endif
-    
     if(pacbed) then
 		allocate(pacbed_pattern_d(nopiy,nopix,nz))
 		pacbed_pattern_d=0
@@ -251,8 +251,8 @@ subroutine qep_stem(STEM,ionization,PACBED)
         allocate(stem_ion_image(nysample,nxsample,probe_ndf,nz,num_ionizations))
 		stem_ion_image = 0.0_fp_kind
 		if (.not.EDX) eels_correction_image = 0.0_fp_kind
+        !call binary_out_unwrap(nopiy,nopix,eels_correction_detector,'eels_correction_detector')
 	endif
-
     if (output_probe_intensity) allocate(probe_intensity(nopiy,nopix,size(output_thickness_list)))
     intensity = 1.0d0
 
@@ -274,10 +274,8 @@ subroutine qep_stem(STEM,ionization,PACBED)
         prop_d=prop
         if(.not.on_the_fly) transf_d = qep_grates
 #endif        
- 
    lengthdf = ceiling(log10(maxval(abs(probe_df))))
    if(any(probe_df<0)) lengthdf = lengthdf+1
-
 	do i_df = 1, probe_ndf
 	do ny = 1, nysample
     do nx = 1, nxsample
@@ -294,10 +292,10 @@ subroutine qep_stem(STEM,ionization,PACBED)
 		psi_initial = make_ctf(probe_positions(:,ny,nx),probe_df(i_df),probe_cutoff,probe_aberrations,probe_apodisation)
         call ifft2(nopiy, nopix, psi_initial, nopiy, psi_initial, nopiy)
         psi_initial = psi_initial/sqrt(sum(abs(psi_initial)**2))
-
+        
         call tilt_wave_function(psi_initial)
         if (output_probe_intensity) probe_intensity = 0.0_fp_kind
-        
+        cbed=0_fp_kind
 #ifdef GPU
         
         cbed_d=0.0_fp_kind
@@ -331,12 +329,12 @@ subroutine qep_stem(STEM,ionization,PACBED)
                     if(on_the_fly) then
                         call cuda_fph_make_potential(trans_d,ccd_slice_array(j),tau_slice,nat_slice(:,j),j,prop_distance(j),idum,plan,fz_d,inverse_sinc_d,bwl_mat_d)
                         call cuda_multiplication<<<blocks,threads>>>(psi_d,trans_d, psi_out_d,1.0_fp_kind,nopiy,nopix)
-                    elseif(quick_shift) then
+                    elseif(qep_mode == 2) then
                         shiftx = floor(ifactorx*ran1(idum)) * nopix_ucell
                         shifty = floor(ifactory*ran1(idum)) * nopiy_ucell
                         call cuda_cshift<<<blocks,threads>>>(transf_d(:,:,nran,j),trans_d,nopiy,nopix,shifty,shiftx)
                         call cuda_multiplication<<<blocks,threads>>>(psi_d,trans_d, psi_out_d,1.0_fp_kind,nopiy,nopix)
-                    elseif(phase_ramp_shift) then                       !randomly shift phase grate
+                    elseif(qep_mode == 3) then                       !randomly shift phase grate
                         shiftx = floor(ifactorx*ran1(idum)) + 1
                         shifty = floor(ifactory*ran1(idum)) + 1
                         call cuda_make_shift_array<<<blocks,threads>>>(shift_array_d,shift_arrayy_d(:,shifty),shift_arrayx_d(:,shiftx),nopiy,nopix)     !make the qspace shift array
@@ -397,40 +395,16 @@ subroutine qep_stem(STEM,ionization,PACBED)
 			do idet = 1, ndet
 				stem_elastic_image(ny,nx,i_df,idet,iz)=cuda_stem_detector(temp_d,masks_d(:,:,idet))
 			enddo
-
-			if(pacbed) then
-			    !Output 4D STEM diffraction pattern
-			    if(fourDSTEM) then
-					    !Output total (elastic and inelastic) diffraction pattern
-					    filename = trim(adjustl(output_prefix))
-						if (probe_ndf>1) filename = trim(adjustl(filename))//defocus_string(probe_df(i_df),lengthdf)
-					    if (nz>1) filename = trim(adjustl(filename))//'_z='//to_string(int(zarray(iz)))//'_A'
-					    call binary_out_unwrap(nopiy, nopix, cbed(:,:,iz)/n_qep_passes, trim(adjustl(filename)) //'_pp_'//&
-										      &to_string(nx)//'_'//to_string(ny)//'_Diffraction_pattern',write_to_screen=.false.&
-                                              &,nopiyout=nopiyout,nopixout=nopixout)
-			    endif
-
-			    if(i_df==1) call cuda_addition<<<blocks,threads>>>(pacbed_pattern_d(:,:,iz),cbed_d(:,:,iz),pacbed_pattern_d(:,:,iz),1.0_fp_kind,nopiy,nopix)
-
-			    if (output_thermal.and.fourDSTEM) then 
-					    !Output elastic only diffraction pattern
-                        pacbed_elastic(:,:,iz) = abs(psi_elastic(:,:,iz))**2
-                        filename = trim(adjustl(output_prefix))
-						if (probe_ndf>1) filename = trim(adjustl(filename))//defocus_string(probe_df(i_df),lengthdf)
-					    if (nz>1) filename = trim(adjustl(filename))//'_z='//to_string(int(zarray(iz)))//'_A'
-					    filename = trim(adjustl(filename))//'_pp_'//to_string(nx)//'_'//to_string(ny)//'_Elastic_Diffraction_pattern'
-					    call binary_out_unwrap(nopiy, nopix, pacbed_elastic(:,:,iz)/n_qep_passes**2, filename,write_to_screen=.false.)
-                endif
-            endif
-		enddo
+			psi_out = psi_out_d*sqrt(normalisation)
+			
 #else
-                do i_qep_pass = 1, n_qep_passes 
+		psi_elastic=0_fp_kind
+			do i_qep_pass = 1, n_qep_passes 
 			if (ionization) ion_image=0.0_fp_kind
             ! Reset wavefunction
             psi = psi_initial
             
             do i = 1,maxval(ncells)
-              
 	            do j = 1, n_slices
                     ! Accumulate ionization cross section
 					if(ionization) then
@@ -440,7 +414,7 @@ subroutine qep_stem(STEM,ionization,PACBED)
                         enddo
 					endif
                     
-                  call qep_multislice_iteration(psi,prop(:,:,j),qep_grates(:,:,:,j),nopiy,nopix,ifactory,ifactorx,idum,n_qep_grates,mode,shift_arrayy,shift_arrayx)
+                  call qep_multislice_iteration(psi,prop(:,:,j),qep_grates(:,:,:,j),nopiy,nopix,ifactory,ifactorx,idum,n_qep_grates,qep_mode,shift_arrayy,shift_arrayx)
                     
 					if (output_probe_intensity) then
 						k = (i-1)*n_slices+j
@@ -453,20 +427,18 @@ subroutine qep_stem(STEM,ionization,PACBED)
                 !If this thickness corresponds to any of the output values then accumulate diffration pattern
 				if (any(i==ncells)) then
 					z_indx = minloc(abs(ncells-i))
-
-					! Accumulate elastic wave function
+                    
+                    ! Accumulate elastic wave function - this will be Fourier transformed later
 					psi_elastic(:,:,z_indx(1)) = psi_elastic(:,:,z_indx(1)) + psi
-
+                    
 					!Transform into diffraction space
 					call fft2(nopiy,nopix,psi,nopiy,psi_out,nopiy)
+                    
 					! Accumulate diffaction pattern
 					temp = abs(psi_out)**2
 					cbed(:,:,z_indx(1)) = cbed(:,:,z_indx(1)) + temp
 
-					if(ionization) then
-                        stem_ion_image(ny,nx,i_df,z_indx(1),:) = stem_ion_image(ny,nx,i_df,z_indx(1),:)+ sum(sum(ion_image,dim=2),dim=1)
-                        if(.not.EDX) eels_correction_image(ny,nx,i_df,z_indx(1)) = sum(temp*eels_correction_detector)
-                    endif
+					if(ionization) stem_ion_image(ny,nx,i_df,z_indx(1),:) = stem_ion_image(ny,nx,i_df,z_indx(1),:)+ sum(sum(ion_image,dim=2),dim=1)
                 endif
                 
             enddo ! End loop over cells
@@ -480,7 +452,8 @@ subroutine qep_stem(STEM,ionization,PACBED)
 			call fft2(nopiy,nopix,psi_elastic(:,:,iz),nopiy,psi_out,nopiy)
             if(stem) stem_image(ny,nx,i_df,1:ndet,iz) = sum(sum(spread(cbed(:,:,iz),dim=3,ncopies=ndet)*masks(:,:,:),dim=1),dim=1)
             if(stem) stem_elastic_image(ny,nx,i_df,1:ndet,iz)= sum(sum(spread(abs(psi_out)**2,dim=3,ncopies =ndet)*masks(:,:,1:ndet),dim=1),dim=1)
-            
+			if(ionization.and.(.not.EDX)) eels_correction_image(ny,nx,i_df,z_indx(1)) = sum(cbed(:,:,iz)*eels_correction_detector)
+#endif            
             if(pacbed) then
 			    !Output 4D STEM diffraction pattern
 			    if(fourDSTEM) then
@@ -493,20 +466,21 @@ subroutine qep_stem(STEM,ionization,PACBED)
                                               &,nopiyout=nopiyout,nopixout=nopixout)
 			    endif
 
-			    if(i_df==1) pacbed_pattern(:,:,iz) = pacbed_pattern(:,:,iz) + cbed(:,:,iz)
+			    if(i_df==1) pacbed_pattern(:,:,iz) = pacbed_pattern(:,:,iz) + cbed(:,:,iz)/n_qep_passes
+                if(output_thermal) pacbed_elastic(:,:,iz) =pacbed_elastic(:,:,iz) + abs(psi_out)**2/n_qep_passes**2
 
 			    if (output_thermal.and.fourDSTEM) then 
 					    !Output elastic only diffraction pattern
-                        pacbed_elastic(:,:,iz) = abs(psi_elastic(:,:,iz))**2
                         filename = trim(adjustl(output_prefix))
 						if (probe_ndf>1) filename = trim(adjustl(filename))//defocus_string(probe_df(i_df),lengthdf)
 					    if (nz>1) filename = trim(adjustl(filename))//'_z='//to_string(int(zarray(iz)))//'_A'
 					    filename = trim(adjustl(filename))//'_pp_'//to_string(nx)//'_'//to_string(ny)//'_Elastic_Diffraction_pattern'
-					    call binary_out_unwrap(nopiy, nopix, pacbed_elastic(:,:,iz)/n_qep_passes**2, filename,write_to_screen=.false.)
+					    call binary_out_unwrap(nopiy, nopix, abs(psi_out)**2/n_qep_passes**2, filename,write_to_screen=.false.&
+                                              &,nopiyout=nopiyout,nopixout=nopixout)
                 endif
             endif
 		enddo
-#endif			
+			
 
                 
 		if (output_probe_intensity) call probe_intensity_to_file(probe_intensity,i_df,ny,nx,n_qep_passes,probe_ndf,nysample,nxsample)
@@ -596,18 +570,17 @@ subroutine qep_stem(STEM,ionization,PACBED)
     endif
     
     if(pacbed) then
-#ifdef GPU
-		pacbed_pattern = pacbed_pattern_d
-#endif
+            const = float(nysample*nxsample)
         	do i=1,nz
+            
 		    filename = trim(adjustl(output_prefix))
             if (n_tilts_total>1) fnam = trim(adjustl(output_prefix))//tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2)
 		    if(nz>1) filename=trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(i)),length)//'_A_'
-		    call binary_out_unwrap(nopiy,nopix,pacbed_pattern(:,:,i),trim(adjustl(filename))//'_PACBED_Pattern')
+		    call binary_out_unwrap(nopiy,nopix,pacbed_pattern(:,:,i)/const,trim(adjustl(filename))//'_PACBED_Pattern')
         
             if(output_thermal) then
-                call binary_out_unwrap(nopiy,nopix,PACBED_elastic(:,:,i)/ n_qep_passes/n_qep_passes,trim(adjustl(filename))//'_elastic_PACBED_Pattern')    
-                call binary_out_unwrap(nopiy,nopix,pacbed_pattern(:,:,i)-PACBED_elastic(:,:,i)/ n_qep_passes/n_qep_passes,trim(adjustl(filename))//'_thermal_PACBED_Pattern')
+                call binary_out_unwrap(nopiy,nopix,PACBED_elastic(:,:,i)/const,trim(adjustl(filename))//'_elastic_PACBED_Pattern')    
+                call binary_out_unwrap(nopiy,nopix,pacbed_pattern(:,:,i)/const-PACBED_elastic(:,:,i)/const,trim(adjustl(filename))//'_thermal_PACBED_Pattern')
             endif
 	    enddo
     endif

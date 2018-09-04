@@ -51,6 +51,7 @@
         use m_potential
         use m_multislice
         use m_string
+        use m_electron
         
         implicit none
         
@@ -60,6 +61,8 @@
         character(512)::command_argument
         character(120)::fnam
         character(2):: symb
+        
+       
 108     write(6,109)
         109     format(&
        &1x,'|----------------------------------------------------------------------------|',/,&
@@ -109,7 +112,7 @@
 				ionic = .true.
             end select
         enddo
-       
+        
         if (.not. nopause) then
             write(*,*) ' Press enter to continue.'
             read(*,*)
@@ -236,7 +239,7 @@
         call make_bwl_mat                           
         
         ! Ask for QEP parameters
-        if (qep) call setup_qep_parameters(n_qep_grates,n_qep_passes,phase_ramp_shift,nran,quick_shift,ifactory,ifactorx)
+        if (qep) call setup_qep_parameters(n_qep_grates,n_qep_passes,nran,quick_shift,ifactory,ifactorx)
         
         ! Save/load transmission functions
         call prompt_save_load_grates
@@ -351,6 +354,9 @@
 		use m_lens
         use m_potential
         use m_multislice
+#ifdef GPU
+		use cuda_potential
+#endif
         if(allocated(Kz)                      ) deallocate(Kz)
         if(allocated(claue)                   ) deallocate(claue)
 		if(allocated(nat)                     ) deallocate(nat)    
@@ -385,4 +391,8 @@
 		if(allocated(adf_potential           )) deallocate(adf_potential           )  
 		if(allocated(ionization_potential    )) deallocate(ionization_potential    )  
 		if(allocated(eels_correction_detector)) deallocate(eels_correction_detector)
+#ifdef GPU
+		if(allocated(ccd_slice_array		 )) deallocate(ccd_slice_array)
+		if(allocated(Volume_array			 )) deallocate(Volume_array)
+#endif
 		end subroutine

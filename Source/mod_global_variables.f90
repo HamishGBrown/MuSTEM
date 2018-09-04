@@ -33,7 +33,7 @@
     real(fp_kind), allocatable :: bwl_mat(:,:)            !bandwidth limiting matrix
                                           
     integer(4), allocatable    :: nat(:)                     !number of each atom type in the unit celll
-	integer(4),allocatable	:: dz(:)					  !ionicity of each atom type
+	real(fp_kind), allocatable	:: dz(:)					  !ionicity of each atom type
     real(fp_kind), allocatable :: tau(:,:,:)              !position of the atoms in the unit cell
     real(fp_kind), allocatable :: atf(:,:)                !atomic number, occupancy and DWF (urms)
     real(fp_kind), allocatable :: atomf(:,:),fx(:)        !electron scattering factor parameterisation from elsa

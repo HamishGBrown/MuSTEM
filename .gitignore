@@ -2,3 +2,5 @@
 *.obj
 makefile
 WaasmeierKohl.f90
+*.orig
+*.db

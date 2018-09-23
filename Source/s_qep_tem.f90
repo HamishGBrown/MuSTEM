@@ -172,7 +172,7 @@ subroutine qep_tem
         allocate(transf_d(nopiy,nopix,n_qep_grates,n_slices))
         transf_d = qep_grates
         
-        if (phase_ramp_shift) then
+        if (qep_mode == 3) then
             allocate(shift_array_d(nopiy,nopix))
             allocate(shift_arrayx_d(nopix,ifactorx))
             allocate(shift_arrayy_d(nopiy,ifactory))
@@ -203,8 +203,8 @@ subroutine qep_tem
 		qep_grates(:,:,:,i) = exp(ci*pi*a0_slice(3,i)/Kz(ntilt)*projected_potential(:,:,:,i))
 		do j=1,n_qep_grates
 		call fft2(nopiy,nopix,qep_grates(:,:,j,i),nopiy,psi,nopiy)
-		if(phase_ramp_shift) qep_grates(:,:,j,i)= psi*bwl_mat
-		if(.not.phase_ramp_shift) call ifft2(nopiy,nopix,psi*bwl_mat,nopiy,qep_grates(:,:,j,i),nopiy)
+		if(qep_mode == 3) qep_grates(:,:,j,i)= psi*bwl_mat
+		if(qep_mode .ne. 3) call ifft2(nopiy,nopix,psi*bwl_mat,nopiy,qep_grates(:,:,j,i),nopiy)
 		enddo
 		endif
     enddo

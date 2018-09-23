@@ -193,7 +193,7 @@ subroutine absorptive_tem
 			filename = trim(adjustl(output_prefix))
 			if (nz>1) filename = trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(z_indx(1))),lengthz)//'_A'
             if (n_tilts_total>1) filename = trim(adjustl(filename))//tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2)
-			call binary_out_unwrap(nopiy, nopix, cbed, trim(adjustl(filename))//'_DiffractionPattern',write_to_screen=.false.)
+			call binary_out_unwrap(nopiy, nopix, cbed, trim(adjustl(filename))//'_DiffractionPattern')
 				
 			if(pw_illum) then
 			do i=1,imaging_ndf
@@ -204,7 +204,7 @@ subroutine absorptive_tem
 				tem_image = abs(psi)**2
 				fnam_df = trim(adjustl(filename))// '_Image'
 				if(imaging_ndf>1) fnam_df = trim(adjustl(fnam_df))//'_Defocus_'//zero_padded_int(int(imaging_df(i)),lengthdf)//'_Ang'
-				call binary_out(nopiy, nopix, tem_image, fnam_df,write_to_screen=.false.)
+				call binary_out(nopiy, nopix, tem_image, fnam_df)
 			enddo
 			endif
 		endif
@@ -227,12 +227,12 @@ subroutine absorptive_tem
 			filename = trim(adjustl(output_prefix))
 			if (nz>1) filename = trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(z_indx(1))),lengthz)//'_A'
             if (n_tilts_total>1) filename = trim(adjustl(filename))//tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2)
-			call binary_out_unwrap(nopiy, nopix, cbed, trim(adjustl(filename))//'_DiffractionPattern',write_to_screen=.false.)
+			call binary_out_unwrap(nopiy, nopix, cbed, trim(adjustl(filename))//'_DiffractionPattern')
             
             
 			if(pw_illum) then
-            call binary_out(nopiy, nopix, abs(psi)**2, trim(adjustl(filename))//'_exit_surface_intensity',write_to_screen=.false.)
-            call binary_out(nopiy, nopix, atan2(imag(psi),real(psi)), trim(adjustl(filename))//'_exit_surface_phase',write_to_screen=.false.)
+            call binary_out(nopiy, nopix, abs(psi)**2, trim(adjustl(filename))//'_exit_surface_intensity')
+            call binary_out(nopiy, nopix, atan2(imag(psi),real(psi)), trim(adjustl(filename))//'_exit_surface_phase')
 			do i=1,imaging_ndf
 			   
 				call fft2(nopiy, nopix, psi, nopiy, psi_out, nopiy)
@@ -242,7 +242,7 @@ subroutine absorptive_tem
 				tem_image = abs(psi_out)**2
 				fnam_df = trim(adjustl(filename))// '_Image'
 				if(imaging_ndf>1) fnam_df = trim(adjustl(fnam_df))//'_Defocus_'//zero_padded_int(int(imaging_df(i)),lengthdf)//'_Ang'
-				call binary_out(nopiy, nopix, tem_image, fnam_df,write_to_screen=.false.)
+				call binary_out(nopiy, nopix, tem_image, fnam_df)
             enddo
             endif
 		endif

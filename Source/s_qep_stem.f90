@@ -115,11 +115,11 @@ subroutine qep_stem(STEM,ionization,PACBED)
 #ifdef GPU
     !device variables
 	integer :: plan
-    complex(fp_kind),device,dimension(nopiy,nopix) :: psi_d,psi_out_d,psi_initial_d
+    complex(fp_kind),device,dimension(nopiy,nopix) :: psi_d,psi_out_d,psi_initial_d,trans_d
 	complex(fp_kind),device,dimension(nopiy,nopix,nz)::psi_elastic_d
     real(fp_kind),device :: cbed_d(nopiy,nopix,nz),temp_d(nopiy,nopix)
 	complex(fp_kind),device,allocatable :: prop_d(:,:,:),transf_d(:,:,:,:)
-	complex(fp_kind),device,allocatable,dimension(:,:) :: trans_d, shift_arrayx_d,shift_arrayy_d,shift_array_d
+	complex(fp_kind),device,allocatable,dimension(:,:) ::shift_arrayx_d,shift_arrayy_d,shift_array_d
     real(fp_kind),device,allocatable,dimension(:,:,:) :: masks_d,ion_image_d,pacbed_pattern_d
     real(fp_kind),device,allocatable :: eels_correction_detector_d(:,:),ion_potential_d(:,:,:,:)
     
@@ -191,7 +191,6 @@ subroutine qep_stem(STEM,ionization,PACBED)
     if(stem) stem_image = 0.0_fp_kind
     if(stem) stem_elastic_image = 0.0_fp_kind
 #ifdef GPU
-    if (any([on_the_fly,quick_shift,phase_ramp_shift])) allocate(trans_d(nopiy,nopix))
 	! Plan the fourier transforms
     if(fp_kind.eq.8)then
 	    call cufftPlan(plan,nopix,nopiy,CUFFT_Z2Z)
@@ -218,9 +217,7 @@ subroutine qep_stem(STEM,ionization,PACBED)
     allocate(prop_d(nopiy,nopix,n_slices))
     prop_d = prop
     if (on_the_fly) then
-        allocate(bwl_mat_d(nopiy,nopix))
-        allocate(inverse_sinc_d(nopiy,nopix))
-        allocate(fz_d(nopiy,nopix,nt))
+        allocate(bwl_mat_d(nopiy,nopix),inverse_sinc_d(nopiy,nopix),fz_d(nopiy,nopix,nt))
         fz_d = fz 
         if(ionization) then
             allocate(inelastic_potential_d(nopiy,nopix))
@@ -236,7 +233,7 @@ subroutine qep_stem(STEM,ionization,PACBED)
             allocate(ion_potential_d(nopiy,nopix,num_ionizations,n_slices))
             ion_potential_d = ionization_potential
         endif
-        if (phase_ramp_shift) then
+        if (qep_mode==3) then
             allocate(shift_array_d(nopiy,nopix))
             allocate(shift_arrayx_d(nopix,ifactorx))
             allocate(shift_arrayy_d(nopiy,ifactory))
@@ -265,8 +262,8 @@ subroutine qep_stem(STEM,ionization,PACBED)
             qep_grates(:,:,:,i) = exp(ci*pi*a0_slice(3,i)/Kz(ntilt)*projected_potential(:,:,:,i))
 			do j=1,n_qep_grates
 			call fft2(nopiy,nopix,qep_grates(:,:,j,i),nopiy,psi,nopiy)
-			if(phase_ramp_shift) qep_grates(:,:,j,i)= psi*bwl_mat
-			if(.not.phase_ramp_shift) call ifft2(nopiy,nopix,psi*bwl_mat,nopiy,qep_grates(:,:,j,i),nopiy)
+			if(qep_mode.eq.3) qep_grates(:,:,j,i)= psi*bwl_mat
+			if(qep_mode.ne.3) call ifft2(nopiy,nopix,psi*bwl_mat,nopiy,qep_grates(:,:,j,i),nopiy)
 			enddo
         enddo
         
@@ -297,33 +294,32 @@ subroutine qep_stem(STEM,ionization,PACBED)
         if (output_probe_intensity) probe_intensity = 0.0_fp_kind
         cbed=0_fp_kind
 #ifdef GPU
-        
         cbed_d=0.0_fp_kind
         psi_elastic_d=0.0_fp_kind
         psi_initial_d = psi_initial
         do i_qep_pass = 1, n_qep_passes 
+			! Reset wavefunction
+            psi_d = psi_initial_d
 			if (ionization) ion_image_d=0.0_fp_kind
         
-            ! Reset wavefunction
-            psi_d = psi_initial
             
             do i = 1,maxval(ncells)
 	            do j = 1, n_slices
                     ! Accumulate ionization cross section
                     if(ionization) then
                         
-						 do ii=1,num_ionizations
-						 call cuda_mod<<<blocks,threads>>>(psi_d,temp_d,1.0_fp_kind,nopiy,nopix) 
-						if(on_the_fly) then
-							call cuda_make_ion_potential(inelastic_potential_d,tau_slice(:,atm_indices(ii),:,j),nat_slice(atm_indices(ii),j),plan,&
-															&fz_mu_d(:,:,ii),inverse_sinc_d,Volume_array(j))
-							call cuda_multiplication<<<blocks,threads>>>(temp_d,inelastic_potential_d, temp_d,prop_distance(j),nopiy,nopix)
-						else
-							call cuda_multiplication<<<blocks,threads>>>(temp_d,ion_potential_d(:,:,ii,j), temp_d,prop_distance(j),nopiy,nopix)     !overlap
-						endif
-						call cuda_addition<<<blocks,threads>>>(temp_d,ion_image_d(:,:,ii),ion_image_d(:,:,ii),1.0_fp_kind,nopiy,nopix)                          !depth sum
-					enddo
-                endif
+					  do ii=1,num_ionizations
+							call cuda_mod<<<blocks,threads>>>(psi_d,temp_d,1.0_fp_kind,nopiy,nopix) 
+							if(on_the_fly) then
+								call cuda_make_ion_potential(inelastic_potential_d,tau_slice(:,atm_indices(ii),:,j),nat_slice(atm_indices(ii),j),plan,&
+																&fz_mu_d(:,:,ii),inverse_sinc_d,Volume_array(j))
+								call cuda_multiplication<<<blocks,threads>>>(temp_d,inelastic_potential_d, temp_d,prop_distance(j),nopiy,nopix)
+							else
+								call cuda_multiplication<<<blocks,threads>>>(temp_d,ion_potential_d(:,:,ii,j), temp_d,prop_distance(j),nopiy,nopix)     !overlap
+							endif
+							call cuda_addition<<<blocks,threads>>>(temp_d,ion_image_d(:,:,ii),ion_image_d(:,:,ii),1.0_fp_kind,nopiy,nopix)                          !depth sum
+						enddo
+					endif
                     ! Phase grate
 				    nran = floor(n_qep_grates*ran1(idum)) + 1
                     if(on_the_fly) then
@@ -339,7 +335,7 @@ subroutine qep_stem(STEM,ionization,PACBED)
                         shifty = floor(ifactory*ran1(idum)) + 1
                         call cuda_make_shift_array<<<blocks,threads>>>(shift_array_d,shift_arrayy_d(:,shifty),shift_arrayx_d(:,shiftx),nopiy,nopix)     !make the qspace shift array
                         call cuda_multiplication<<<blocks,threads>>>(transf_d(:,:,nran,j),shift_array_d, trans_d,1.0_fp_kind,nopiy,nopix) !multiply by the qspace shift array
-                        call cufftExec(plan,trans_d,trans_d,CUFFT_INVERSE)                                                                    !inverse fourier transform
+                        call cufftExec(plan,trans_d,trans_d,CUFFT_INVERSE)!inverse fourier transform
                         call cuda_multiplication<<<blocks,threads>>>(psi_d,trans_d, psi_out_d,sqrt(normalisation),nopiy,nopix)              !do the phase grate multiplication
                     else
                         call cuda_multiplication<<<blocks,threads>>>(psi_d,transf_d(:,:,nran,j), psi_out_d,1.0_fp_kind,nopiy,nopix)
@@ -356,7 +352,7 @@ subroutine qep_stem(STEM,ionization,PACBED)
 						endif
 					endif
 		        enddo ! End loop over slices
-                !If this thickness corresponds to any of the output values then accumulate diffration pattern
+                !If this thickness corresponds to any of the output values then accumulate diffraction pattern
 				if (any(i==ncells)) then
 					
 					call cufftExec(plan,psi_d,psi_out_d,CUFFT_FORWARD)
@@ -367,7 +363,7 @@ subroutine qep_stem(STEM,ionization,PACBED)
 					call cuda_addition<<<blocks,threads>>>(psi_elastic_d(:,:,z_indx(1)),psi_d,psi_elastic_d(:,:,z_indx(1)),1.0_fp_kind,nopiy,nopix)
 
 					! Accumulate diffaction pattern
-					call cufftExec(plan,psi_d,psi_out_d,CUFFT_FORWARD)
+					!call cufftExec(plan,psi_d,psi_out_d,CUFFT_FORWARD)
 					call cuda_addition<<<blocks,threads>>>(cbed_d(:,:,z_indx(1)),temp_d,cbed_d(:,:,z_indx(1)),1.0_fp_kind,nopiy,nopix)
 					
 					if(ionization) then
@@ -383,6 +379,7 @@ subroutine qep_stem(STEM,ionization,PACBED)
         cbed= cbed_d
 		if (output_thermal.and.fourDSTEM) psi_elastic=psi_elastic_d
 		do iz=1,nz
+
 			! Integrate the diffraction pattern
 			do idet = 1, ndet
 				stem_image(ny,nx,i_df,idet,iz) = cuda_stem_detector(cbed_d(:,:,iz),masks_d(:,:,idet))

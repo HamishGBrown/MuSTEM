@@ -549,11 +549,30 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
         
     
         integer :: i
-        call command_line_title_box('QEP model parameters')             	
+        call command_line_title_box('QEP model parameters')
+		
+		qep_mode=1
+		do while(qep_mode<2.or.qep_mode>4)
     10  write(*,*) 'Enter the number of distinct transmission functions to calculate:'
         call get_input("Number of phase grates calculated", n_qep_grates)
         write(*,*)
         
+			write(*,*) 'As implemented in muSTEM, the QEP multislice algorithm will randomly shift the'
+			write(*,*) 'unit cells in your supercell around to effectively generate new random '
+			write(*,*) 'transmission functions. This means the QEP calculation samples a larger ' 
+			write(*,*) 'effective number of random transmission functions than would otherwise be the'
+			write(*,*) 'case.'  
+			write(*,*)
+			write(*,*) 'If your choice of unit cell tiling and pixel grid size is such that each unit '
+			write(*,*) 'cell is an integer number of pixels, unit cell shifting can be achieved by '
+			write(*,*) 'circular shift of the transmission function arrays in memory (quick shifting).'
+			write(*,*) 'Otherwise the unit cells will have to be shifted with sub-pixel precision '
+			write(*,*) 'using the Fourier shift algorithm which will impact calculation speed. '
+			write(*,*)			
+			write(*,*) 'A third option is to not shift the unit cells around at all, but the user is'
+			write(*,*) 'advised that this requires a much larger number of distinct transmission '
+			write(*,*) 'functions to achieve convergence than would usually be the case.'
+			write(*,*)
         if (quick_shift) then
             write(6,100) to_string(ifactorx*ifactory), to_string(n_qep_grates), to_string(ifactorx*ifactory*n_qep_grates)
 100         format(' The choice of tiling and grid size permits quick shifting.',/,&
@@ -562,36 +581,32 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
             qep_mode=2
         else
             write(6,101)
-        101 format( ' The choice of tiling and grid size does not permit quick shifting ', /, &
-                    &' of the precalculated transmission functions. Shifting using ', /, &
-                    &' phase ramps can be performed but is time consuming. You may wish ', /, &
-                    &' to go back and calculate more distinct transmission functions, or ', /, &
-                    &' simply proceed without using phase ramp shifting. ' /)
-                
-        110 write(6,111)
-        111 format(  ' <1> Go back and choose a larger number', /, &
-                    &' <2> Proceed with phase ramp shifting', /, &
-                    &' <3> Proceed without phase ramp shifting', / &                
-                    )
-            call get_input("<1> choose more <2> phase ramp <3> no phase ramp", i)
-            write(*,*)
+        101 format( ' Your choice of tiling and grid size does not permit quick shifting ', /, &
+                    &' of the precalculated transmission functions. Shifting using the ', /, &
+                    &' Fourier shift algorithm can be performed but is time consuming. ', /, &
+                    &' You may wish to go back and calculate more distinct transmission ', /, &
+                    &' functions, or simply proceed without using phase ramp shifting. ' /)
+            
+			i=-1
+			do while(i<1.or.i>3)
+			110 write(6,111)
+			111 format(  ' <1> Go back and choose a larger number', /, &
+						&' <2> Proceed with phase ramp shifting', /, &
+						&' <3> Proceed without phase ramp shifting', / &                
+						)
+				call get_input("<1> choose more <2> phase ramp <3> no phase ramp", i)
+				write(*,*)
         
-            if (i.eq.1) then
-                goto 10
-            
-            elseif (i.eq.2 .and. (ifactory.gt.1 .or. ifactorx.gt.1)) then
-                qep_mode=3
-                call setup_phase_ramp_shifts
+				if (i.eq.2 .and. (ifactory.gt.1 .or. ifactorx.gt.1)) then
+					qep_mode=3
+					call setup_phase_ramp_shifts
                         
-            elseif (i.eq.3) then
-                qep_mode=4
-            else
-                goto 110
-            
-            endif
-              
+				elseif (i.eq.3) then
+					qep_mode=4
+				endif
+            enddo
         endif
-
+		enddo
         write(6,*) 'Enter the number of passes to perform for QEP calculation:'
         write(*,*) 'Warning: using only a single pass is usually NOT sufficient.'
         call get_input("Number of Monte Carlo calculated", n_qep_passes )

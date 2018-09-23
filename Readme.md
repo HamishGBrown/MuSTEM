@@ -31,6 +31,8 @@ Ultramicroscopy, Vol. 151, pp. 11-22, (2015).](http://www.sciencedirect.com/scie
 
 ## Precompiled executables
 
+Precompiled executables can be found in the [Executables](https://github.com/HamishGBrown/MuSTEM/raw/master/Executables) folder of the repository or by clicking the links below:
+
 * [**CPU** single precision](https://github.com/HamishGBrown/MuSTEM/raw/master/Executables/CPU_muSTEM_x64_v5.3_single_precision.zip)
 * [**CPU** double precision](https://github.com/HamishGBrown/MuSTEM/raw/master/Executables/CPU_muSTEM_x64_v5.3_double_precision.zip)
 * [**GPU** single precision](https://github.com/HamishGBrown/MuSTEM/raw/master/Executables/CUDA_muSTEM_x64_v5.3_single_precision.zip)

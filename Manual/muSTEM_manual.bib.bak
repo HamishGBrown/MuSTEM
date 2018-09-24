@@ -1,5 +1,4 @@
-% This file was created with JabRef 2.10.
-% Encoding: Cp1252
+% Encoding: windows-1252
 
 
 @Article{allen2014,
@@ -203,3 +202,4 @@
   Url                      = {http://scitation.aip.org/content/aip/journal/apl/103/14/10.1063/1.4823704}
 }
 
+@Comment{jabref-meta: databaseType:bibtex;}

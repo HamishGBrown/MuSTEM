@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.1415926-2.5-1.40.14 (MiKTeX 2.9 64-bit) (preloaded format=pdflatex 2016.12.12)  29 MAY 2018 16:03
+This is pdfTeX, Version 3.1415926-2.5-1.40.14 (MiKTeX 2.9 64-bit) (preloaded format=pdflatex 2016.12.12)  24 SEP 2018 14:55
 entering extended mode
 **muSTEM_manual.tex
 
@@ -757,20 +757,20 @@ File: lstlang1.sty 2014/09/06 1.5e listings language file
 )
 (Z:\Users\hbro0001\2017_4_4_MuSTEM_v_4_8\v_4_9_for_GIT\licensed\Manual\muSTEM_m
 anual.aux)
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 90.
-LaTeX Font Info:    ... okay on input line 90.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 90.
-LaTeX Font Info:    ... okay on input line 90.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 90.
-LaTeX Font Info:    ... okay on input line 90.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 90.
-LaTeX Font Info:    ... okay on input line 90.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 90.
-LaTeX Font Info:    ... okay on input line 90.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 90.
-LaTeX Font Info:    ... okay on input line 90.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 90.
-LaTeX Font Info:    ... okay on input line 90.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 91.
+LaTeX Font Info:    ... okay on input line 91.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 91.
+LaTeX Font Info:    ... okay on input line 91.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 91.
+LaTeX Font Info:    ... okay on input line 91.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 91.
+LaTeX Font Info:    ... okay on input line 91.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 91.
+LaTeX Font Info:    ... okay on input line 91.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 91.
+LaTeX Font Info:    ... okay on input line 91.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 91.
+LaTeX Font Info:    ... okay on input line 91.
  ("C:\Program Files\MiKTeX 2.9\tex\context\base\supp-pdf.mkii"
 [Loading MPS to PDF converter (version 2006.09.02).]
 \scratchcounter=\count144
@@ -825,7 +825,7 @@ Package caption Info: hyperref package is loaded.
 Package caption Info: listings package is loaded.
 Package caption Info: End \AtBeginDocument code.
 \AtBeginShipoutBox=\box57
-Package hyperref Info: Link coloring ON on input line 90.
+Package hyperref Info: Link coloring ON on input line 91.
 ("C:\Program Files\MiKTeX 2.9\tex\latex\hyperref\nameref.sty"
 Package: nameref 2012/10/27 v2.43 Cross-referencing by name of section
 
@@ -834,9 +834,9 @@ Package: gettitlestring 2010/12/03 v1.4 Cleanup title references (HO)
 )
 \c@section@level=\count150
 )
-LaTeX Info: Redefining \ref on input line 90.
-LaTeX Info: Redefining \pageref on input line 90.
-LaTeX Info: Redefining \nameref on input line 90.
+LaTeX Info: Redefining \ref on input line 91.
+LaTeX Info: Redefining \pageref on input line 91.
+LaTeX Info: Redefining \nameref on input line 91.
 
 (Z:\Users\hbro0001\2017_4_4_MuSTEM_v_4_8\v_4_9_for_GIT\licensed\Manual\muSTEM_m
 anual.out)
@@ -844,369 +844,407 @@ anual.out)
 anual.out)
 \@outlinefile=\write3
 \c@lstlisting=\count151
-LaTeX Font Info:    Try loading font information for U+msa on input line 100.
+LaTeX Font Info:    Try loading font information for U+msa on input line 101.
  ("C:\Program Files\MiKTeX 2.9\tex\latex\amsfonts\umsa.fd"
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Try loading font information for U+msb on input line 100.
+LaTeX Font Info:    Try loading font information for U+msb on input line 101.
 
 ("C:\Program Files\MiKTeX 2.9\tex\latex\amsfonts\umsb.fd"
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-LaTeX Font Info:    Try loading font information for OMS+cmr on input line 129.
+LaTeX Font Info:    Try loading font information for OMS+cmr on input line 130.
 
 
 ("C:\Program Files\MiKTeX 2.9\tex\latex\base\omscmr.fd"
 File: omscmr.fd 2014/09/29 v2.5h Standard LaTeX font definitions
 )
 LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <10.95> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 129.
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 130.
  [1
 
 {C:/ProgramData/MiKTeX/2.9/pdftex/config/pdftex.map}]
 (Z:\Users\hbro0001\2017_4_4_MuSTEM_v_4_8\v_4_9_for_GIT\licensed\Manual\muSTEM_m
-anual.toc)
+anual.toc [2])
 \tf@toc=\write4
- [2] [3]
-Underfull \hbox (badness 10000) in paragraph at lines 175--176
+ [3]
+Underfull \hbox (badness 10000) in paragraph at lines 176--177
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 177--178
+Underfull \hbox (badness 10000) in paragraph at lines 178--179
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 179--180
+Underfull \hbox (badness 10000) in paragraph at lines 180--181
 
  []
 
 [4] [5]
 LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <12> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 246.
- [6]
-Underfull \hbox (badness 10000) in paragraph at lines 322--335
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 247.
+ [6] [7]
+Underfull \hbox (badness 10000) in paragraph at lines 327--340
 
  []
 
-[7] <GPU.png, id=322, 318.43968pt x 210.7875pt>
-File: GPU.png Graphic file (type png)
- <use GPU.png>
-Package pdftex.def Info: GPU.png used on input line 356.
+<Figures/GPU.png, id=330, 318.43968pt x 210.7875pt>
+File: Figures/GPU.png Graphic file (type png)
+ <use Figures/GPU.png>
+Package pdftex.def Info: Figures/GPU.png used on input line 361.
 (pdftex.def)             Requested size: 238.82918pt x 158.09024pt.
 
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
-[8] <GPU_memory.png, id=330, 424.58624pt x 182.18062pt>
-File: GPU_memory.png Graphic file (type png)
- <use GPU_memory.png>
-Package pdftex.def Info: GPU_memory.png used on input line 377.
+[8] <Figures/GPU_memory.png, id=341, 424.58624pt x 182.18062pt>
+File: Figures/GPU_memory.png Graphic file (type png)
+
+<use Figures/GPU_memory.png>
+Package pdftex.def Info: Figures/GPU_memory.png used on input line 382.
 (pdftex.def)             Requested size: 318.4389pt x 136.63512pt.
+ [9 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/Figu
+res/GPU.png> <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Ma
+nual/Figures/GPU_memory.png>]
+<figures/thickness_series.png, id=349, 440.39531pt x 109.91063pt>
+File: figures/thickness_series.png Graphic file (type png)
 
-[9 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/GPU.p
-ng> <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/GPU_
-memory.png>]
-
-LaTeX Warning: Command \r invalid in math mode on input line 421.
-
-
-LaTeX Warning: Command \r invalid in math mode on input line 421.
-
-
-LaTeX Warning: Command \r invalid in math mode on input line 421.
-
-<thickness_series.png, id=339, 440.39531pt x 109.91063pt>
-File: thickness_series.png Graphic file (type png)
-
-<use thickness_series.png>
-Package pdftex.def Info: thickness_series.png used on input line 425.
+<use figures/thickness_series.png>
+Package pdftex.def Info: figures/thickness_series.png used on input line 422.
 (pdftex.def)             Requested size: 440.39423pt x 109.91034pt.
 
-<potential_method.png, id=340, 454.69875pt x 219.06844pt>
-File: potential_method.png Graphic file (type png)
 
-<use potential_method.png>
-Package pdftex.def Info: potential_method.png used on input line 437.
+LaTeX Warning: Command \r invalid in math mode on input line 433.
+
+
+LaTeX Warning: Command \r invalid in math mode on input line 433.
+
+
+LaTeX Warning: Command \r invalid in math mode on input line 433.
+
+[10 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/figu
+res/thickness_series.png>]
+<Figures/potential_method.png, id=357, 454.69875pt x 219.06844pt>
+File: Figures/potential_method.png Graphic file (type png)
+
+<use Figures/potential_method.png>
+Package pdftex.def Info: Figures/potential_method.png used on input line 442.
 (pdftex.def)             Requested size: 341.02322pt x 164.3009pt.
 
+<figures/SrTiO3_ionic.PNG, id=358, 421.575pt x 172.39406pt>
+File: figures/SrTiO3_ionic.PNG Graphic file (type png)
 
-LaTeX Warning: `!h' float specifier changed to `!ht'.
+<use figures/SrTiO3_ionic.PNG>
+Package pdftex.def Info: figures/SrTiO3_ionic.PNG used on input line 449.
+(pdftex.def)             Requested size: 421.57396pt x 172.39363pt.
 
-<illumination_choice.png, id=343, 424.58624pt x 86.57344pt>
-File: illumination_choice.png Graphic file (type png)
+<figures/illumination_choice.png, id=364, 424.58624pt x 86.57344pt>
+File: figures/illumination_choice.png Graphic file (type png)
 
-<use illumination_choice.png>
-Package pdftex.def Info: illumination_choice.png used on input line 458.
+<use figures/illumination_choice.png>
+Package pdftex.def Info: figures/illumination_choice.png used on input line 470
+.
 (pdftex.def)             Requested size: 318.4389pt x 64.9299pt.
- [10 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/thi
-ckness_series.png>]
-
-LaTeX Warning: Command \r invalid in math mode on input line 473.
-
-
-LaTeX Warning: Command \r invalid in math mode on input line 473.
-
-
-LaTeX Warning: Command \r invalid in math mode on input line 473.
-
-<lens_parameters.png, id=352, 350.81062pt x 285.31593pt>
-File: lens_parameters.png Graphic file (type png)
-
-<use lens_parameters.png>
-Package pdftex.def Info: lens_parameters.png used on input line 477.
-(pdftex.def)             Requested size: 350.80975pt x 285.31523pt.
 
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
-<aberrations.png, id=354, 1062.97125pt x 551.81157pt>
-File: aberrations.png Graphic file (type png)
- <use aberrations.png>
-Package pdftex.def Info: aberrations.png used on input line 487.
-(pdftex.def)             Requested size: 455.24411pt x 236.33131pt.
 
-[11 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/pote
-ntial_method.png> <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licens
-ed/Manual/illumination_choice.png>]
-<tilt_beam.png, id=365, 251.94125pt x 204.26312pt>
-File: tilt_beam.png Graphic file (type png)
- <use tilt_beam.png>
-Package pdftex.def Info: tilt_beam.png used on input line 499.
+LaTeX Warning: Command \r invalid in math mode on input line 485.
+
+
+LaTeX Warning: Command \r invalid in math mode on input line 485.
+
+
+LaTeX Warning: Command \r invalid in math mode on input line 485.
+
+<figures/lens_parameters.png, id=367, 350.81062pt x 146.79843pt>
+File: figures/lens_parameters.png Graphic file (type png)
+
+<use figures/lens_parameters.png>
+Package pdftex.def Info: figures/lens_parameters.png used on input line 489.
+(pdftex.def)             Requested size: 350.80975pt x 146.79807pt.
+
+<figures/aberrations.png, id=368, 1062.97125pt x 551.81157pt>
+File: figures/aberrations.png Graphic file (type png)
+
+<use figures/aberrations.png>
+Package pdftex.def Info: figures/aberrations.png used on input line 497.
+(pdftex.def)             Requested size: 455.24411pt x 236.33131pt.
+ [11 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/Fig
+ures/potential_method.png>]
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+[12 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/figu
+res/SrTiO3_ionic.PNG> <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/li
+censed/Manual/figures/illumination_choice.png>]
+<figures/sherzer.png, id=387, 447.17062pt x 281.55188pt>
+File: figures/sherzer.png Graphic file (type png)
+
+<use figures/sherzer.png>
+Package pdftex.def Info: figures/sherzer.png used on input line 513.
+(pdftex.def)             Requested size: 447.16953pt x 281.55118pt.
+
+<figures/tilt_beam.png, id=388, 251.94125pt x 204.26312pt>
+File: figures/tilt_beam.png Graphic file (type png)
+
+<use figures/tilt_beam.png>
+Package pdftex.def Info: figures/tilt_beam.png used on input line 521.
 (pdftex.def)             Requested size: 327.52357pt x 265.54202pt.
 
-<tilt_specimen.png, id=366, 250.9375pt x 125.97063pt>
-File: tilt_specimen.png Graphic file (type png)
- <use tilt_specimen.png>
-Package pdftex.def Info: tilt_specimen.png used on input line 507.
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+<figures/tilt_specimen.png, id=389, 250.9375pt x 125.97063pt>
+File: figures/tilt_specimen.png Graphic file (type png)
+
+<use figures/tilt_specimen.png>
+Package pdftex.def Info: figures/tilt_specimen.png used on input line 529.
 (pdftex.def)             Requested size: 326.21869pt x 163.76178pt.
 
-[12 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/lens
-_parameters.png> <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/license
-d/Manual/aberrations.png>] [13 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_f
-or_GIT/licensed/Manual/tilt_beam.png> <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/
-v_4_9_for_GIT/licensed/Manual/tilt_specimen.png>] [14] [15] [16]
-<save_grates.png, id=404, 402.75468pt x 304.88907pt>
-File: save_grates.png Graphic file (type png)
- <use save_grates.png>
-Package pdftex.def Info: save_grates.png used on input line 650.
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+[13 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/figu
+res/lens_parameters.png> <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT
+/licensed/Manual/figures/aberrations.png>] [14 <Z:/Users/hbro0001/2017_4_4_MuST
+EM_v_4_8/v_4_9_for_GIT/licensed/Manual/figures/sherzer.png> <Z:/Users/hbro0001/
+2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/figures/tilt_beam.png>]
+[15 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/figu
+res/tilt_specimen.png>] [16] [17]
+<figures/save_grates.png, id=432, 402.75468pt x 304.88907pt>
+File: figures/save_grates.png Graphic file (type png)
+
+<use figures/save_grates.png>
+Package pdftex.def Info: figures/save_grates.png used on input line 677.
 (pdftex.def)             Requested size: 302.06526pt x 228.66623pt.
 
-[17 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/save
-_grates.png>] <pw_abs_slicing.png, id=411, 387.69844pt x 317.68687pt>
-File: pw_abs_slicing.png Graphic file (type png)
 
-<use pw_abs_slicing.png>
-Package pdftex.def Info: pw_abs_slicing.png used on input line 685.
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+[18] <figures/pw_abs_slicing.png, id=441, 387.69844pt x 317.68687pt>
+File: figures/pw_abs_slicing.png Graphic file (type png)
+
+<use figures/pw_abs_slicing.png>
+Package pdftex.def Info: figures/pw_abs_slicing.png used on input line 712.
 (pdftex.def)             Requested size: 290.7731pt x 238.26456pt.
 
-<pw_abs_numerical.png, id=413, 417.05812pt x 243.91125pt>
-File: pw_abs_numerical.png Graphic file (type png)
 
-<use pw_abs_numerical.png>
-Package pdftex.def Info: pw_abs_numerical.png used on input line 700.
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+<figures/pw_abs_numerical.png, id=443, 417.05812pt x 243.91125pt>
+File: figures/pw_abs_numerical.png Graphic file (type png)
+
+<use figures/pw_abs_numerical.png>
+Package pdftex.def Info: figures/pw_abs_numerical.png used on input line 727.
 (pdftex.def)             Requested size: 312.79282pt x 182.93298pt.
 
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
-<pw_abs_lens.png, id=416, 442.65375pt x 328.97906pt>
-File: pw_abs_lens.png Graphic file (type png)
- <use pw_abs_lens.png>
-Package pdftex.def Info: pw_abs_lens.png used on input line 736.
+[19 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/figu
+res/save_grates.png>]
+<figures/pw_abs_lens.png, id=454, 442.65375pt x 328.97906pt>
+File: figures/pw_abs_lens.png Graphic file (type png)
+
+<use figures/pw_abs_lens.png>
+Package pdftex.def Info: figures/pw_abs_lens.png used on input line 763.
 (pdftex.def)             Requested size: 331.98949pt x 246.73369pt.
 
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
-[18 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/pw_a
-bs_slicing.png>] <pw_abs_calc.png, id=427, 448.67625pt x 173.89969pt>
-File: pw_abs_calc.png Graphic file (type png)
+[20 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/figu
+res/pw_abs_slicing.png> <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/
+licensed/Manual/figures/pw_abs_numerical.png>]
+<figures/pw_abs_calc.png, id=463, 448.67625pt x 173.89969pt>
+File: figures/pw_abs_calc.png Graphic file (type png)
 
-<use pw_abs_calc.png>
-Package pdftex.def Info: pw_abs_calc.png used on input line 758.
+<use figures/pw_abs_calc.png>
+Package pdftex.def Info: figures/pw_abs_calc.png used on input line 785.
 (pdftex.def)             Requested size: 336.50636pt x 130.42442pt.
 
+<figures/ImageJ_ImportRaw.png, id=465, 213.79875pt x 274.77657pt>
+File: figures/ImageJ_ImportRaw.png Graphic file (type png)
 
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
-[19 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/pw_a
-bs_numerical.png> <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licens
-ed/Manual/pw_abs_lens.png>]
-<ImageJ_ImportRaw.png, id=436, 213.79875pt x 274.77657pt>
-File: ImageJ_ImportRaw.png Graphic file (type png)
-
-<use ImageJ_ImportRaw.png>
-Package pdftex.def Info: ImageJ_ImportRaw.png used on input line 768.
+<use figures/ImageJ_ImportRaw.png>
+Package pdftex.def Info: figures/ImageJ_ImportRaw.png used on input line 795.
 (pdftex.def)             Requested size: 160.34866pt x 206.08191pt.
 
-<pw_abs_image.png, id=437, 201.75375pt x 231.86626pt>
-File: pw_abs_image.png Graphic file (type png)
- <use pw_abs_image.png>
-Package pdftex.def Info: pw_abs_image.png used on input line 769.
+<figures/pw_abs_image.png, id=466, 201.75375pt x 231.86626pt>
+File: figures/pw_abs_image.png Graphic file (type png)
+
+<use figures/pw_abs_image.png>
+Package pdftex.def Info: figures/pw_abs_image.png used on input line 796.
 (pdftex.def)             Requested size: 151.31493pt x 173.89925pt.
-
-<ImageJ_droplet.png, id=441, 322.95656pt x 63.98906pt>
-File: ImageJ_droplet.png Graphic file (type png)
-
-<use ImageJ_droplet.png>
-Package pdftex.def Info: ImageJ_droplet.png used on input line 778.
-(pdftex.def)             Requested size: 242.21681pt x 47.99167pt.
 
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
+<figures/ImageJ_droplet.png, id=470, 326.72063pt x 56.46094pt>
+File: figures/ImageJ_droplet.png Graphic file (type png)
 
-Overfull \hbox (2.64357pt too wide) in paragraph at lines 783--784
+<use figures/ImageJ_droplet.png>
+Package pdftex.def Info: figures/ImageJ_droplet.png used on input line 805.
+(pdftex.def)             Requested size: 245.03986pt x 42.34558pt.
+ [21 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/fig
+ures/pw_abs_lens.png> <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/li
+censed/Manual/figures/pw_abs_calc.png>]
+Overfull \hbox (2.64357pt too wide) in paragraph at lines 810--811
 \OT1/cmr/m/n/12 func-tions to open $\OML/cmm/m/it/12 $\OT1/cmr/m/n/12 STEM out
 -put in these lan-guages are also avail-able in the [][]\OT1/cmr/m/it/12 Auxili
 ary$[]$tools[][]
  []
 
-<pw_qep_numerical.png, id=444, 417.05812pt x 242.40562pt>
-File: pw_qep_numerical.png Graphic file (type png)
+<figures/pw_qep_numerical.png, id=480, 417.05812pt x 242.40562pt>
+File: figures/pw_qep_numerical.png Graphic file (type png)
 
-<use pw_qep_numerical.png>
-Package pdftex.def Info: pw_qep_numerical.png used on input line 797.
+<use figures/pw_qep_numerical.png>
+Package pdftex.def Info: figures/pw_qep_numerical.png used on input line 824.
 (pdftex.def)             Requested size: 312.79282pt x 181.80376pt.
- [20 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/pw_
-abs_calc.png> <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/M
-anual/ImageJ_ImportRaw.png> <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_
-GIT/licensed/Manual/pw_abs_image.png>]
-<pw_qep_qep_questions.png, id=457, 398.23781pt x 142.28156pt>
-File: pw_qep_qep_questions.png Graphic file (type png)
 
-<use pw_qep_qep_questions.png>
-Package pdftex.def Info: pw_qep_qep_questions.png used on input line 811.
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+<figures/pw_qep_qep_questions.png, id=484, 398.23781pt x 142.28156pt>
+File: figures/pw_qep_qep_questions.png Graphic file (type png)
+
+<use figures/pw_qep_qep_questions.png>
+Package pdftex.def Info: figures/pw_qep_qep_questions.png used on input line 83
+8.
 (pdftex.def)             Requested size: 298.67761pt x 106.71089pt.
 
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
-[21 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/Imag
-eJ_droplet.png> <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed
-/Manual/pw_qep_numerical.png>]
-<cb_abs_numerical.png, id=467, 411.78844pt x 243.15843pt>
-File: cb_abs_numerical.png Graphic file (type png)
+[22 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/figu
+res/ImageJ_ImportRaw.png> <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GI
+T/licensed/Manual/figures/pw_abs_image.png> <Z:/Users/hbro0001/2017_4_4_MuSTEM_
+v_4_8/v_4_9_for_GIT/licensed/Manual/figures/ImageJ_droplet.png>] [23 <Z:/Users/
+hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/figures/pw_qep_num
+erical.png> <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Man
+ual/figures/pw_qep_qep_questions.png>]
+<figures/cb_abs_numerical.png, id=502, 411.78844pt x 243.15843pt>
+File: figures/cb_abs_numerical.png Graphic file (type png)
 
-<use cb_abs_numerical.png>
-Package pdftex.def Info: cb_abs_numerical.png used on input line 854.
+<use figures/cb_abs_numerical.png>
+Package pdftex.def Info: figures/cb_abs_numerical.png used on input line 881.
 (pdftex.def)             Requested size: 308.84056pt x 182.36838pt.
 
+<figures/cb_abs_lens.png, id=504, 429.10312pt x 316.93407pt>
+File: figures/cb_abs_lens.png Graphic file (type png)
 
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
-<cb_abs_lens.png, id=469, 429.10312pt x 316.93407pt>
-File: cb_abs_lens.png Graphic file (type png)
- <use cb_abs_lens.png>
-Package pdftex.def Info: cb_abs_lens.png used on input line 875.
+<use figures/cb_abs_lens.png>
+Package pdftex.def Info: figures/cb_abs_lens.png used on input line 902.
 (pdftex.def)             Requested size: 321.82654pt x 237.69997pt.
+ [24 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/fig
+ures/cb_abs_numerical.png>]
+<figures/cb_abs_types.png, id=512, 374.90062pt x 173.14688pt>
+File: figures/cb_abs_types.png Graphic file (type png)
 
-[22 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/pw_q
-ep_qep_questions.png>] <cb_abs_types.png, id=476, 264.23718pt x 104.64093pt>
-File: cb_abs_types.png Graphic file (type png)
+<use figures/cb_abs_types.png>
+Package pdftex.def Info: figures/cb_abs_types.png used on input line 915.
+(pdftex.def)             Requested size: 281.17477pt x 129.85983pt.
+ [25 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/fig
+ures/cb_abs_lens.png> <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/li
+censed/Manual/figures/cb_abs_types.png>]
+<figures/probe_intensity.png, id=523, 310.15875pt x 340.27126pt>
+File: figures/probe_intensity.png Graphic file (type png)
 
-<use cb_abs_types.png>
-Package pdftex.def Info: cb_abs_types.png used on input line 888.
-(pdftex.def)             Requested size: 198.17738pt x 78.48048pt.
-
-
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
-[23 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/cb_a
-bs_numerical.png> <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licens
-ed/Manual/cb_abs_lens.png>]
-<cb_abs_defocus.png, id=485, 334.24875pt x 218.31563pt>
-File: cb_abs_defocus.png Graphic file (type png)
-
-<use cb_abs_defocus.png>
-Package pdftex.def Info: cb_abs_defocus.png used on input line 935.
-(pdftex.def)             Requested size: 250.68594pt x 163.7363pt.
-
-<probe_intensity.png, id=487, 310.15875pt x 340.27126pt>
-File: probe_intensity.png Graphic file (type png)
-
-<use probe_intensity.png>
-Package pdftex.def Info: probe_intensity.png used on input line 963.
+<use figures/probe_intensity.png>
+Package pdftex.def Info: figures/probe_intensity.png used on input line 968.
 (pdftex.def)             Requested size: 232.61848pt x 255.2028pt.
 
+<figures/Detectors.PNG, id=525, 423.83344pt x 451.6875pt>
+File: figures/Detectors.PNG Graphic file (type png)
+
+<use figures/Detectors.PNG>
+Package pdftex.def Info: figures/Detectors.PNG used on input line 982.
+(pdftex.def)             Requested size: 317.87428pt x 338.76479pt.
+
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
-[24 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/cb_a
-bs_types.png> <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/M
-anual/cb_abs_defocus.png>]
-<cb_abs_EELS.png, id=494, 479.54156pt x 466.74374pt>
-File: cb_abs_EELS.png Graphic file (type png)
- <use cb_abs_EELS.png>
-Package pdftex.def Info: cb_abs_EELS.png used on input line 979.
+<figures/cb_abs_EELS.png, id=526, 479.54156pt x 466.74374pt>
+File: figures/cb_abs_EELS.png Graphic file (type png)
+
+<use figures/cb_abs_EELS.png>
+Package pdftex.def Info: figures/cb_abs_EELS.png used on input line 993.
 (pdftex.def)             Requested size: 359.65529pt x 350.05695pt.
-
+ [26 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/fig
+ures/probe_intensity.png>]
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1001--1007
+Underfull \hbox (badness 10000) in paragraph at lines 1015--1021
 
  []
 
-[25 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/prob
-e_intensity.png>] <cb_abs_EDX.png, id=505, 478.03593pt x 351.56343pt>
-File: cb_abs_EDX.png Graphic file (type png)
+[27 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/figu
+res/Detectors.PNG>]
+<figures/cb_abs_EDX.png, id=543, 478.03593pt x 351.56343pt>
+File: figures/cb_abs_EDX.png Graphic file (type png)
 
-<use cb_abs_EDX.png>
-Package pdftex.def Info: cb_abs_EDX.png used on input line 1022.
+<use figures/cb_abs_EDX.png>
+Package pdftex.def Info: figures/cb_abs_EDX.png used on input line 1036.
 (pdftex.def)             Requested size: 358.52606pt x 263.67192pt.
 
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
-[26 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/cb_a
-bs_EELS.png>]
+[28 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/Manual/figu
+res/cb_abs_EELS.png>]
 (Z:\Users\hbro0001\2017_4_4_MuSTEM_v_4_8\v_4_9_for_GIT\licensed\Manual\muSTEM_m
-anual.bbl [27 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/M
-anual/cb_abs_EDX.png>])
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 1044.
- [28]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 1044.
+anual.bbl [29 <Z:/Users/hbro0001/2017_4_4_MuSTEM_v_4_8/v_4_9_for_GIT/licensed/M
+anual/figures/cb_abs_EDX.png>])
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 1058.
+ [30]
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 1058.
 
 (Z:\Users\hbro0001\2017_4_4_MuSTEM_v_4_8\v_4_9_for_GIT\licensed\Manual\muSTEM_m
 anual.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 1044.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 1044.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 1058.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 1058.
 
 Package rerunfilecheck Info: File `muSTEM_manual.out' has not changed.
-(rerunfilecheck)             Checksum: 8578DC2AD4FE572A15AAFABD36489465;3467.
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 1044.
+(rerunfilecheck)             Checksum: 8E4F470AA637DD5989E91715737BB03A;3620.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 1058.
  ) 
 Here is how much of TeX's memory you used:
- 11236 strings out of 493705
- 163469 string characters out of 3144560
- 301708 words of memory out of 3000000
- 14213 multiletter control sequences out of 15000+200000
+ 11266 strings out of 493705
+ 164759 string characters out of 3144560
+ 300715 words of memory out of 3000000
+ 14229 multiletter control sequences out of 15000+200000
  22861 words of font info for 86 fonts, out of 3000000 for 9000
  1025 hyphenation exceptions out of 8191
  44i,12n,58p,731b,1084s stack positions out of 5000i,500n,10000p,200000b,50000s
 <C:/Program Files/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmbx12.pfb><C:/Pr
-ogram Files/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmmi10.pfb><C:/Program Fi
-les/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmmi12.pfb><C:/Program Files/MiKT
-eX 2.9/fonts/type1/public/amsfonts/cm/cmmi8.pfb><C:/Program Files/MiKTeX 2.9/fo
-nts/type1/public/amsfonts/cm/cmmib10.pfb><C:/Program Files/MiKTeX 2.9/fonts/typ
-e1/public/amsfonts/cm/cmr10.pfb><C:/Program Files/MiKTeX 2.9/fonts/type1/public
-/amsfonts/cm/cmr12.pfb><C:/Program Files/MiKTeX 2.9/fonts/type1/public/amsfonts
-/cm/cmr17.pfb><C:/Program Files/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmr6.
-pfb><C:/Program Files/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmr7.pfb><C:/Pr
-ogram Files/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmr8.pfb><C:/Program File
-s/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmss12.pfb><C:/Program Files/MiKTeX
- 2.9/fonts/type1/public/amsfonts/cm/cmss17.pfb><C:/Program Files/MiKTeX 2.9/fon
-ts/type1/public/amsfonts/cm/cmsy10.pfb><C:/Program Files/MiKTeX 2.9/fonts/type1
-/public/amsfonts/cm/cmsy8.pfb><C:/Program Files/MiKTeX 2.9/fonts/type1/public/a
-msfonts/cm/cmti12.pfb><C:/Program Files/MiKTeX 2.9/fonts/type1/public/amsfonts/
-cm/cmtt12.pfb>
-Output written on muSTEM_manual.pdf (28 pages, 619809 bytes).
+ogram Files/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmex10.pfb><C:/Program Fi
+les/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmmi10.pfb><C:/Program Files/MiKT
+eX 2.9/fonts/type1/public/amsfonts/cm/cmmi12.pfb><C:/Program Files/MiKTeX 2.9/f
+onts/type1/public/amsfonts/cm/cmmi8.pfb><C:/Program Files/MiKTeX 2.9/fonts/type
+1/public/amsfonts/cm/cmmib10.pfb><C:/Program Files/MiKTeX 2.9/fonts/type1/publi
+c/amsfonts/cm/cmr10.pfb><C:/Program Files/MiKTeX 2.9/fonts/type1/public/amsfont
+s/cm/cmr12.pfb><C:/Program Files/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmr1
+7.pfb><C:/Program Files/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmr6.pfb><C:/
+Program Files/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmr7.pfb><C:/Program Fi
+les/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmr8.pfb><C:/Program Files/MiKTeX
+ 2.9/fonts/type1/public/amsfonts/cm/cmss12.pfb><C:/Program Files/MiKTeX 2.9/fon
+ts/type1/public/amsfonts/cm/cmss17.pfb><C:/Program Files/MiKTeX 2.9/fonts/type1
+/public/amsfonts/cm/cmsy10.pfb><C:/Program Files/MiKTeX 2.9/fonts/type1/public/
+amsfonts/cm/cmsy8.pfb><C:/Program Files/MiKTeX 2.9/fonts/type1/public/amsfonts/
+cm/cmti12.pfb><C:/Program Files/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmtt1
+2.pfb>
+Output written on muSTEM_manual.pdf (30 pages, 688030 bytes).
 PDF statistics:
- 608 PDF objects out of 1000 (max. 8388607)
- 138 named destinations out of 1000 (max. 500000)
- 491 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 652 PDF objects out of 1000 (max. 8388607)
+ 147 named destinations out of 1000 (max. 500000)
+ 517 words of extra memory for PDF output out of 10000 (max. 10000000)
 

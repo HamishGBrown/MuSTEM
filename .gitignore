@@ -4,3 +4,10 @@ makefile
 WaasmeierKohl.f90
 *.orig
 *.db
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.synctex.gz
+*.toc

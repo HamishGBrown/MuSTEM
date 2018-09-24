@@ -78,6 +78,7 @@
 \newenvironment{myenv}{\begin{samepage}\begin{adjustwidth}{2cm}{}}{\end{adjustwidth}\end{samepage}}
 
 \newcommand{\by}{$\times$}
+\newcommand{\version}{v5.3\ }
 
 \usepackage{listings}
 \lstset{language=[90]Fortran,
@@ -97,7 +98,7 @@
 
 \vspace*{5mm}
 
-{\Huge{\bf $\bbox{\mu}$STEM}\\ v5.2}\\ 
+{\Huge{\bf $\bbox{\mu}$STEM}\\ \version}\\ 
 
 \vspace{15mm} 
 
@@ -248,11 +249,15 @@ Version 5.2:
 	\item Includes scattering factor parametrizations for ions (Peng's 1998 parametrization) 
 \end{itemize}
 
+\subsubsection{Version 5.3 improvements}
+
+Version 5.3 allows multiple STEM simulations (e.g. PACBED, EDX and HAADF) to be done concurrently and allows multiple diffraction plane detectors to be used in absorptive STEM calculations.
+
 
 \subsection{System requirements}
 \subsubsection{GPU versions}
 The program runs on Windows 64-bit operating systems, and a CUDA-capable graphics co-processor is required. The graphics card must be at least compute class 3.0 capable.
-For more details refer to \href{https://developer.nvidia.com/cuda-gpus}{this website}. $\mu$STEM v5.2 has been compiled using the CUDA 9.0 Toolkit. The first thing to check if a calculation will not start is that you have the latest driver for your graphics card and have the \emph{correct} version of the \href{https://developer.nvidia.com/cuda-toolkit-archive}{NVIDIA CUDA toolkit}.
+For more details refer to \href{https://developer.nvidia.com/cuda-gpus}{this website}. $\mu$STEM \version has been compiled using the CUDA 9.0 Toolkit. The first thing to check if a calculation will not start is that you have the latest driver for your graphics card and have the \emph{correct} version of the \href{https://developer.nvidia.com/cuda-toolkit-archive}{NVIDIA CUDA toolkit}.
 \subsubsection{CPU versions}
 The program runs on Windows 64-bit operating systems. The \href{https://github.com/HamishGBrown/MuSTEM}{source code} has been succesfully compiled Linux. 
 
@@ -337,7 +342,7 @@ The user is then required to amend the user input file, or alternatively, record
 %
 \subsection{Output}\label{output}
 Two dimensional images are output as single (32-bit) or double (64-bit) precision floating-point binary files in big-endian format.
-The precision of the output is determined by the version of the software that has been executed. These can be viewed easily in the free software \href{http://imagej.nih.gov/ij/}{ImageJ}.
+The precision of the output is determined by the version of the software that has been executed. These can be viewed easily in the free software \href{http://imagej.nih.gov/ij/}{ImageJ} as detailed in Sec.~\ref{sec:abs_hrtem}.
 Line scans along a single dimension are output as text files.
 
 
@@ -353,7 +358,7 @@ You may also wish to run multiple instances of this program simultaneously on di
 
 \begin{figure}[!h]
 \begin{center}
-\includegraphics[scale=0.75]{GPU.png}
+\includegraphics[scale=0.75]{Figures/GPU.png}
 \caption{An example of how the GPU selection summary might appear, depending on your system.}
 \label{fig:GPU}
 \end{center}
@@ -374,7 +379,7 @@ Figure \ref{fig:GPU_memory} depicts a situation where there appears to be enough
 
 \begin{figure}[!h]
 \begin{center}
-\includegraphics[scale=0.75]{GPU_memory.png}
+\includegraphics[scale=0.75]{Figures/GPU_memory.png}
 \caption{GPU memory requirements}
 \label{fig:GPU_memory}
 \end{center}
@@ -385,7 +390,7 @@ Figure \ref{fig:GPU_memory} depicts a situation where there appears to be enough
 The user may specify a prefix which is used for all data files outputted by the program.
 This is helpful to keep datasets organised.
 
-{\bf Recommendation}: $\mu$STEM can be directed to output to a different directiory by adding the relative path to the output filename prefix, use this to better organise $\mu$STEM outputs.
+{\bf Recommendation}: $\mu$STEM can be directed to output to a different directory by adding the relative path to the output filename prefix, use this to better organise $\mu$STEM outputs.
 
 \subsection{Specimen input}
 
@@ -412,6 +417,13 @@ As an example, for SrTiO$_3$ oriented down the [001] zone axis the unit cell is 
 Fortunately in this case there are two ``natural'' depths at which atoms occur, namely 0.0 and 0.5.
 Slicing the unit cell at these depths will yield an accuate multislice solution, assuming other parameters such as unit cell tiling and grid size are sufficient.
 
+\begin{figure}[!h]
+	\begin{center}
+		\includegraphics[scale=1.0]{figures/thickness_series.png}
+		\caption{User input to $\mu$STEM to perform a thickness series.}
+		\label{fig:thickness_series}
+	\end{center}
+\end{figure}
 The specimen thickness is entered in \AA{}ngstr\"om units.
 This will be rounded to the nearest thickness that is an integer number of unit cell repeats in the $z$-direction.
 Thicknesses can be entered as a single value, a list
@@ -420,13 +432,6 @@ or a sequence
 ($ z_{\rm initial}:z_{\rm final}:z_{\rm step}  $).
 As an example a thickness series in steps of 100 \AA\, entered as a sequence ($ z_{\rm initial}=100\AA:z_{\rm final}=1000\AA:z_{\rm step}=100\AA  $), is demonstrated in Fig.~\ref{fig:thickness_series}.
 
-\begin{figure}[!h]
-	\begin{center}
-		\includegraphics[scale=1.0]{thickness_series.png}
-		\caption{Choice between potential calculation methods.}
-		\label{fig:thickness_series}
-	\end{center}
-\end{figure}
 
 
 \subsection{Potential calculation method}
@@ -434,19 +439,26 @@ As an example a thickness series in steps of 100 \AA\, entered as a sequence ($ 
 
 \begin{figure}[!h]
 \begin{center}
-    \includegraphics[scale=0.75]{potential_method.png}
+    \includegraphics[scale=0.75]{Figures/potential_method.png}
 \caption{Choice between potential calculation methods.}
 \label{fig:potential_method}
 \end{center}
 \end{figure}
-
+\begin{figure}
+	\centering
+	\includegraphics{figures/SrTiO3_ionic.PNG}
+	\caption{A \texttt{*.xtl} crystal input file modified to include the ionic state of the atoms within the crystal\label{fig:ionicxtl}}
+\end{figure}
 Two methods are provided for calculating the potentials: the reciprocal space method and the hybrid method \cite{VDB}.
 The reciprocal space method is accurate, while the hybrid method is considerably faster but is not as accurate.
 For rapid computations we recommend the hybrid approach, which can be subsequently checked with the reciprocal space method.
 
 Note that if the memory on your graphics card is insufficient for storing pre-calculated potentials for QEP model calculations, then potentials will be calculated ``on-the-fly'' using the hybrid approach.
 
-
+\subsection{Ionic potentials}
+%
+By default atomic potentials are calculated within an isolated atom approximation (IAM) using the parametrization of Waasmaier and Kirfel~\cite{WK1}. Ionic bonding can be approximated in $\mu$STEM using by running the program with the command line option \texttt{ionic}. In this case the atomic potentials will be calculated using the parametrisation of Peng~\cite{peng1998electron}, the \texttt{*.xtl} crystal input file will need to be modified to include the ionic state of the atoms within the crystal as shown in Fig.~\ref{fig:ionicxtl}
+%
 
 
 \subsection{Choice of illumination}
@@ -455,7 +467,7 @@ The user will next be presented with a choice between plane wave and convergent-
 
 \begin{figure}[!h]
 \begin{center}
-    \includegraphics[scale=0.75]{illumination_choice.png}
+    \includegraphics[scale=0.75]{figures/illumination_choice.png}
 \caption{Choice of illumination.}
 \label{fig:illum_choice}
 \end{center}
@@ -474,41 +486,56 @@ As an example a defocus series in steps of 20 \AA\, entered as a sequence ($ \De
 %
 \begin{figure}[!h]
 	\begin{center}
-		\includegraphics[scale=1.0]{lens_parameters.png}
+		\includegraphics[scale=1.0]{figures/lens_parameters.png}
 		\caption{Choice of lens parameters.}
 		\label{fig:lens_parameters}
 	\end{center}
 \end{figure}
-
-The menu also offers the option to output the lens constrast transfer function, this is demonstrated for the example of a 24 mrad probe forming aperture with 5000 \AA\ of coma in Fig.~\ref{fig:aberrations}. The phase of the contrast transfer function and the intensity of the real space point-spread function associated with the lens is outputted. In the case of STEM imaging the intensity of the real space point spread function represents the intensity of the STEM probe on the surface of the sample.
 %
 \begin{figure}[!h]
 	\begin{center}
-		\includegraphics[width=\textwidth]{aberrations.png}
+		\includegraphics[width=\textwidth]{figures/aberrations.png}
 		\caption{Example output for the phase of the lens contrast transfer function and the intensity of the point spread function. The scale bars were added in ImageJ.}
 		\label{fig:aberrations}
+	\end{center}
+\end{figure}
+The menu also offers the option to output the lens constrast transfer function, this is demonstrated for the example of a 24 mrad probe forming aperture with 5000 \AA\ of coma in Fig.~\ref{fig:aberrations}. The phase of the contrast transfer function and the intensity of the real space point-spread function associated with the lens is outputted. In the case of STEM imaging the intensity of the real space point spread function represents the intensity of the STEM probe on the surface of the sample.
+
+There are two things to keep in mind regarding input of aberrations:
+\begin{itemize}
+	\item The magnitude of all aberrations is in \AA ngstr\"om units for consistency and this can be inconvenient for aberrations above first order such as spherical aberration $C_{30}$ (for which mm is a more convenient unit). Here it is best to use the exponent symbol ``E'' for input, so 1.2 mm of $C_{30}$ is inputted as ``1.2E7'' \AA.
+	\item For an uncorrected instrument with significant 3$^{\rm rd}$ order spherical aberration $C_{30}$,  $C_{30}$ should be balanced with defocus $\Delta f $ in the Sherzer condition:
+	\begin{align}
+	\Delta f = -\mathrm{sgn}(C_{30})\sqrt{4|C_{30}|/3}
+	\end{align}
+	Where $\mathrm{sgn}(C_{30})$ is the sign of the 3$^{\rm rd}$ order spherical aberration coefficient. As shown in Fig.~\ref{fig:sherzer}, if $C_{30}$ is adjusted, $\Delta f $ should be changed again and $\mu$STEM will automatically suggest the appropriate Sherzer condition.
+	\begin{figure}
+		\includegraphics{figures/sherzer.png}
+		\caption{For a given 3$^{\rm rd}$ order spherical aberration $C_{30}$ $\mu$STEM will suggest the appropriate Sherzer defocus condition\label{fig:sherzer}}
+	\end{figure}
+\end{itemize}
+
+%
+\begin{figure}[!h]
+	\begin{center}
+		\includegraphics[scale=1.3]{figures/tilt_beam.png}
+		\caption{Tilting the beam (illumination)}
+		\label{fig:tilt_beam}
+	\end{center}
+\end{figure}
+%
+\begin{figure}[!h]
+	\begin{center}
+		\includegraphics[scale=1.3]{figures/tilt_specimen.png}
+		\caption{Tilting the specimen.}
+		\label{fig:tilt_specimen}
 	\end{center}
 \end{figure}
 
 \subsubsection{Tilting the beam (illumination) and/or specimen}
 
 The beam (illumination) can be tilted away from the optical axis and/or the specimen can be tilted (new feature in v4.6). In Fig. \ref{fig:tilt_beam} we show an example where the beam is tilted and in Fig. \ref{fig:tilt_specimen} the specimen is tilted. Tilts of up to a few degrees can be handled in this way.
-%
-\begin{figure}[!h]
-\begin{center}
-    \includegraphics[scale=1.3]{tilt_beam.png}
-\caption{Tilting the beam (illumination)}
-\label{fig:tilt_beam}
-\end{center}
-\end{figure}
-%
-\begin{figure}[!h]
-\begin{center}
-    \includegraphics[scale=1.3]{tilt_specimen.png}
-\caption{Tilting the specimen.}
-\label{fig:tilt_specimen}
-\end{center}
-\end{figure}
+
 
 
 \subsection{Thermal scattering model}
@@ -647,7 +674,7 @@ In a subsequent calculation, the user can choose to load these transmission func
 
 \begin{figure}[!h]
 \begin{center}
-    \includegraphics[scale=0.75]{save_grates.png}
+    \includegraphics[scale=0.75]{figures/save_grates.png}
 \caption{Saving transmission functions to file}
 \label{fig:save_grates}
 \end{center}
@@ -662,7 +689,7 @@ The choices remaining to the user are specific to each type of calculation, and 
 
 \section{Case studies}
 
-In this section we present a few case studies with specific details about what typical choices of parameters might be.
+In this section we present a few case studies with specific details about what typical choices of parameters might be. For more worked examples of $\mu$STEM calculations and a simple worksheet see the \href{https://github.com/HamishGBrown/MuSTEM/tree/master/Tutorial}{Tutorials} folder on the GitHub.
 
 \subsection{Plane wave illumination with the absorptive model}
 \label{sec:abs_hrtem}
@@ -682,7 +709,7 @@ In this case, rounding to the nearest thickness corresponding to a whole number 
     
 \begin{figure}[!h]
 \begin{center}
-    \includegraphics[scale=0.75]{pw_abs_slicing.png}
+    \includegraphics[scale=0.75]{figures/pw_abs_slicing.png}
 \caption{Slicing choices}
 \label{fig:pw_abs_slicing}
 \end{center}
@@ -697,7 +724,7 @@ At this point you will be prompted to enter details of unit cell tiling and grid
 %
 \begin{figure}[!h]
 \begin{center}
-\includegraphics[scale=0.75]{pw_abs_numerical.png}
+\includegraphics[scale=0.75]{figures/pw_abs_numerical.png}
 \caption{A summary of a smeared HRTEM calculation supercell setup.}
 \label{fig:pw_abs_numerical}
 \end{center}
@@ -733,7 +760,7 @@ The user is encouraged to check that the grid size is sufficient by running a ca
 
 \begin{figure}[!h]
 \begin{center}
-    \includegraphics[scale=0.75]{pw_abs_lens.png}
+    \includegraphics[scale=0.75]{figures/pw_abs_lens.png}
 \caption{A summary of the image forming lens parameters.}
 \label{fig:pw_abs_lens}
 \end{center}
@@ -755,7 +782,7 @@ where \verb|NX| and \verb|NY| are the dimensions of the 2D image.
 
 \begin{figure}[!h]
 \begin{center}
-    \includegraphics[scale=0.75]{pw_abs_calc.png}
+    \includegraphics[scale=0.75]{figures/pw_abs_calc.png}
 \caption{Calculation output.}
 \label{fig:pw_abs_calc}
 \end{center}
@@ -765,8 +792,8 @@ To load these files in ImageJ, go to File $\rightarrow$ Import $\rightarrow$ Raw
 
 \begin{figure}[!h]
 \begin{center}
-    \includegraphics[scale=0.75]{ImageJ_ImportRaw.png}
-    \includegraphics[scale=0.75]{pw_abs_image.png}
+    \includegraphics[scale=0.75]{figures/ImageJ_ImportRaw.png}
+    \includegraphics[scale=0.75]{figures/pw_abs_image.png}
 \caption{Loading a binary file in ImageJ. The HRTEM image is displayed.}
 \label{fig:ImageJ_ImportRaw}
 \end{center}
@@ -775,7 +802,7 @@ To load these files in ImageJ, go to File $\rightarrow$ Import $\rightarrow$ Raw
 A more convenient way to load the files is using the \href{http://imagejdocu.tudor.lu/doku.php?id=plugin:utilities:droplet:start}{Droplet: Drag and Drop file processor} plugin written by Jerome Mutterer and Wayne Rasband for ImageJ. Follow the link and download instructions therein for the Droplet Plugin then add the contents of the \href{https://github.com/HamishGBrown/MuSTEM/tree/master/Auxiliary_tools/Droplet Actions}{\emph{Droplet Actions}} folder from the muSTEM github to the folder of the same name in the \emph{plugins} directory of your ImageJ directory. A screenshot of the droplet app is shown in Fig.~\ref{fig:ImageJ_Droplet}.
 \begin{figure}[h!]
 	\begin{center}
-		\includegraphics[scale=0.75]{ImageJ_droplet.png}
+		\includegraphics[scale=0.75]{figures/ImageJ_droplet.png}
 		\caption{The ImageJ droplet with scripts to open $\mu$STEM output: a much more convenient way of viewing data\label{fig:ImageJ_Droplet}}
 	\end{center}
 \end{figure}
@@ -794,7 +821,7 @@ The differences between the two calculation approaches will be discussed present
 
 \begin{figure}[!h]
 \begin{center}
-    \includegraphics[scale=0.75]{pw_qep_numerical.png}
+    \includegraphics[scale=0.75]{figures/pw_qep_numerical.png}
 \caption{Numerical parameters for plane wave illumination and QEP model}
 \label{fig:pw_qep_numerical}
 \end{center}
@@ -808,7 +835,7 @@ As discussed in Sec. \ref{sec:qep} this speeds up the calculation and saves memo
 
 \begin{figure}[!h]
 \begin{center}
-    \includegraphics[scale=0.75]{pw_qep_qep_questions.png}
+    \includegraphics[scale=0.75]{figures/pw_qep_qep_questions.png}
 \caption{QEP parameters}
 \label{fig:pw_qep_qep_questions}
 \end{center}
@@ -851,7 +878,7 @@ A calculation using a convergent beam and the absorptive model proceeds similarl
 
 \begin{figure}[!h]
 \begin{center}
-    \includegraphics[scale=0.75]{cb_abs_numerical.png}
+    \includegraphics[scale=0.75]{figures/cb_abs_numerical.png}
 \caption{Typical numerical parameters for a convergent beam calculation using the absorptive model.}
 \label{fig:cb_abs_numerical}
 \end{center}
@@ -872,7 +899,7 @@ These parameters are depicted in Fig. \ref{fig:cb_abs_numerical}.
 
 \begin{figure}[!h]
 \begin{center}
-    \includegraphics[scale=0.75]{cb_abs_lens.png}
+    \includegraphics[scale=0.75]{figures/cb_abs_lens.png}
 \caption{Parameters for the probe-forming lens.}
 \label{fig:cb_abs_lens}
 \end{center}
@@ -885,7 +912,7 @@ In this case we have assumed an aberration-corrected probe with a convergence se
 
 \begin{figure}[!h]
 \begin{center}
-    \includegraphics[scale=0.75]{cb_abs_types.png}
+    \includegraphics[scale=0.75]{figures/cb_abs_types.png}
 \caption{Choosing the type of convergent-beam calculation to perform.}
 \label{fig:cb_abs_types}
 \end{center}
@@ -930,28 +957,6 @@ The PACBED pattern will be outputted with the filename in the form
 
 \subsubsection{STEM images}
 
-\begin{figure}[!h]
-\begin{center}
-    \includegraphics[scale=0.75]{cb_abs_defocus.png}
-\caption{Explicitly choosing a defocus series.}
-\label{fig:cb_abs_defocus}
-\end{center}
-\end{figure}
-
-%This option deprecated with Version 5.1
-%When calculating STEM images, an option is provided for calculating a defocus series.
-%The number of defocus steps can be chosen as well as the defocus step size.
-%The code will \emph{reduce} the focal power by this amount at each step from the initial defocus value entered.
-%The sign convention for defocus is such that a positive value indicates more `focusing' power.
-%In other words the wave is brought to a focus before the entrance surface of the specimen.
-%Negative indicates that the probe is brought to a focus into or after the specimen.  
-%Therefore, the defocus series will focus the illumination progressively further in the \emph{positive} $z$-direction/beam direction (starting at the value originally specified).
-%The default step size is the specimen thickness divided by the number of defocus steps.
-
-%In the present calculation we choose a defocus series with two steps spaced 100 \AA{} apart.
-%Explicitly, this means that the probe will be focussed first at the specimen entrance surface (corresponding to the zero defocus chosen in Fig. \ref{fig:cb_abs_lens}) and then 100 \AA{} \emph{into} the specimen.
-%These choices are depicted in Fig. \ref{fig:cb_abs_defocus}.
-
 The STEM probe intensity can optionally be outputted as a function of thickness at each probe position.
 This is depicted in Fig. \ref{fig:probe_intensity}.
 The resulting dataset may be very large.
@@ -960,23 +965,32 @@ The resulting dataset may be very large.
 
 \begin{figure}[!h]
 \begin{center}
-    \includegraphics[scale=0.75]{probe_intensity.png}
+    \includegraphics[scale=0.75]{figures/probe_intensity.png}
 \caption{Outputting the STEM probe intensity.}
 \label{fig:probe_intensity}
 \end{center}
 \end{figure}
 
-When calculating \emph{any} type of STEM image, the user can choose the inner and outer angles for a detector in the diffraction plane, so that for example a STEM HAADF image can be simultaneously calculated.
-These angles can be chosen to simulate a broad range of imaging modes, including bright-field (BF), annular bright field (ABF) and annular dark field (ADF).
+When calculating \emph{any} type of STEM image, the user can choose the inner and outer angles for a number of detectors in the diffraction plane, so that for example a STEM HAADF image can be simultaneously calculated.
+These angles can be chosen to simulate a broad range of imaging modes, including bright-field (BF), annular bright field (ABF) and annular dark field (ADF) simultaneously.
+Segmented detectors are also a possibility and can be accessed by inputting the number of detector annular and angular segments seperated by a comma.
+Input for a 4 annulus \by 4 segment detector system is shown by way of example in Fig.~\ref{fig:detectors}.
 For all examples in the following sections, we specify a HAADF detector with inner and outer angles of 60 and 180 mrad respectively.
 
+\begin{figure}[!h]
+	\begin{center}
+		\includegraphics[scale=0.75]{figures/Detectors.PNG}
+		\caption{Choosing STEM detectors in $\mu$STEM.}
+		\label{fig:detectors}
+	\end{center}
+\end{figure}
 
 
 \subsubsection{STEM EELS images}
 
 \begin{figure}[!h]
 \begin{center}
-    \includegraphics[scale=0.75]{cb_abs_EELS.png}
+    \includegraphics[scale=0.75]{figures/cb_abs_EELS.png}
 \caption{Parameters for an EELS calculation}
 \label{fig:cb_abs_EELS}
 \end{center}
@@ -1019,7 +1033,7 @@ Figure \ref{fig:cb_abs_EDX} depicts the parameters we have chosen for this examp
 
 \begin{figure}[!h]
 \begin{center}
-    \includegraphics[scale=0.75]{cb_abs_EDX.png}
+    \includegraphics[scale=0.75]{figures/cb_abs_EDX.png}
 \caption{Parameters for an EDX calculation}
 \label{fig:cb_abs_EDX}
 \end{center}

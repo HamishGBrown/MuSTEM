@@ -70,6 +70,7 @@ subroutine absorptive_tem
     integer(4) :: count
        
     !probe variables
+	complex(fp_kind),allocatable::Vg(:,:,:)
     complex(fp_kind),dimension(nopiy,nopix)  :: psi,psi_initial,psi_out
     complex(fp_kind) :: lens_ctf(nopiy,nopix,imaging_ndf)
     complex(fp_kind),dimension(nopiy,nopix,n_slices)::projected_potential,prop,transf_absorptive
@@ -91,7 +92,7 @@ subroutine absorptive_tem
     
     !device variables for on the fly potentials
     complex(fp_kind),device,allocatable,dimension(:,:) :: bwl_mat_d,inverse_sinc_d,trans_d
-    complex(fp_kind),device,allocatable,dimension(:,:,:) :: fz_d,fz_dwf_d,fz_abs_d
+    complex(fp_kind),device,allocatable,dimension(:,:,:) :: fz_d,fz_dwf_d,fz_abs_d,Vg_d
         
     real(fp_kind) :: absorptive_tem_GPU_memory
 
@@ -115,8 +116,8 @@ subroutine absorptive_tem
         psi_initial = psi_initial/sqrt(sum(abs(psi_initial)**2))
     endif
     call tilt_wave_function(psi_initial)
-    if(.not.load_grates) projected_potential = make_absorptive_grates(nopiy,nopix,n_slices)
-    call load_save_add_grates(projected_potential,nopiy,nopix,n_slices)
+    if(.not.load_grates.and.(.not.on_the_fly)) projected_potential = make_absorptive_grates(nopiy,nopix,n_slices)
+    if(.not.on_the_fly) call load_save_add_grates(projected_potential,nopiy,nopix,n_slices)
     
 
 	t1 = secnds(0.0)
@@ -130,13 +131,23 @@ subroutine absorptive_tem
     
     !Copy host arrays to the device
     if (on_the_fly) then
-        allocate(bwl_mat_d(nopiy,nopix),inverse_sinc_d(nopiy,nopix))
-        allocate(trans_d(nopiy,nopix),fz_d(nopiy,nopix,nt))
-        allocate(fz_dwf_d(nopiy,nopix,nt),fz_abs_d(nopiy,nopix,nt))
-        fz_d=fz 
-        fz_dwf_d=fz_dwf
-        fz_abs_d = ci*absorptive_scattering_factors(ig1,ig2,ifactory,ifactorx,nopiy,nopix,nt,a0,ss,atf,nat, ak, relm, orthog, 0.0_8, 4.0d0*atan(1.0d0))*2*ak  !make the potential absorptive
-        inverse_sinc_d=inverse_sinc
+       !allocate(bwl_mat_d(nopiy,nopix),inverse_sinc_d(nopiy,nopix))
+       !allocate(trans_d(nopiy,nopix),fz_d(nopiy,nopix,nt))
+       !allocate(fz_dwf_d(nopiy,nopix,nt),fz_abs_d(nopiy,nopix,nt))
+        !fz_d=fz 
+        !fz_dwf_d=fz_dwf
+		!
+		!if(include_absorption) then
+		!	fz_abs_d = ci*absorptive_scattering_factors(ig1,ig2,ifactory,ifactorx,nopiy,nopix,nt,a0,ss,atf,nat, ak, relm, orthog, 0.0_8, 4.0d0*atan(1.0d0))*2*ak  !make the potential absorptive
+		!else
+		!	fz_abs_d= 0
+		!endif
+        !inverse_sinc_d=inverse_sinc
+        !bwl_mat_d = bwl_mat
+		allocate(trans_d(nopiy,nopix),Vg(nopiy,nopix,nt),Vg_d(nopiy,nopix,nt),bwl_mat_d(nopiy,nopix))
+	    Vg = fz
+		if(include_absorption) Vg = Vg +ci*absorptive_scattering_factors(ig1,ig2,ifactory,ifactorx,nopiy,nopix,nt,a0,ss,atf,nat, ak, relm, orthog, 0.0_8, 4.0d0*atan(1.0d0))*2*ak  !make the potential absorptive
+		Vg_d = Vg*fz_dwf*spread(inverse_sinc,ncopies=nt,dim=3)
         bwl_mat_d = bwl_mat
     else
 	    allocate(transf_d(nopiy,nopix,n_slices))
@@ -173,7 +184,8 @@ subroutine absorptive_tem
         do i_slice = 1, n_slices
 			
             if(on_the_fly) then
-                call cuda_make_abs_potential(trans_d,ccd_slice_array(i_slice),tau_slice(:,:,:,i_slice),nat_slice(:,i_slice),prop_distance(i_slice),plan,fz_d,fz_dwf_d,fz_abs_d,inverse_sinc_d,bwl_mat_d,Volume_array(i_slice))
+                !call cuda_make_abs_potential(trans_d,ccd_slice_array(i_slice),tau_slice(:,:,:,i_slice),nat_slice(:,i_slice),prop_distance(i_slice),plan,fz_d,fz_dwf_d,fz_abs_d,inverse_sinc_d,bwl_mat_d,Volume_array(i_slice))
+				call cuda_make_abs_potential_new(trans_d,ccd_slice_array(i_slice),tau_slice(:,:,:,i_slice),nat_slice(:,i_slice),prop_distance(i_slice),plan,Vg_d,bwl_mat_d,Volume_array(i_slice))
                 call cuda_multiplication<<<blocks,threads>>>(psi_d,trans_d, psi_out_d,1.0_fp_kind,nopiy,nopix)
             else
                 call cuda_multiplication<<<blocks,threads>>>(psi_d,transf_d(:,:,i_slice), psi_out_d,1.0_fp_kind,nopiy,nopix)

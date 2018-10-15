@@ -859,6 +859,34 @@ module m_potential
         enddo;enddo
 
     end subroutine
+	      
+    subroutine make_propagator_components(nopiy,nopix,propy,propx,ak1,ss,ig1,ig2,claue,ifactorx,ifactory)
+
+        use m_precision, only: fp_kind
+        use m_crystallography, only: trimr,make_g_vec_array
+            
+        implicit none
+
+        integer(4) :: nopiy,nopix
+        complex(fp_kind) :: propy(nopiy),propx(nopix)
+        real(fp_kind) :: ak1, ss(7), claue(3), dz, g_vec_array(3,nopiy,nopix)
+        integer(4) :: ifactorx, ifactory, ig1(3), ig2(3)
+
+        real(fp_kind),parameter :: pi = atan(1.0d0)*4.0d0
+        integer(4) :: ny, nx
+        
+        
+        call make_g_vec_array(g_vec_array,ifactory,ifactorx)
+
+        do ny = 1, nopiy;
+            propy(ny) = -pi*trimr(g_vec_array(:,ny,1),ss)**2/ak1
+        enddo
+
+		do nx = 1, nopix
+			propx(nx) = -pi*trimr(g_vec_array(:,1,nx),ss)**2/ak1
+		enddo
+
+    end subroutine
        
     function make_qep_grates(idum) result(projected_potential)
     

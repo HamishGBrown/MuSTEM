@@ -1,4 +1,3 @@
-#  μSTEM <img src="https://github.com/HamishGBrown/MuSTEM/blob/master/350x350_inelastic_cbed.png" width="64" height="64" />
 
 μSTEM is a transmission electron microscopy (TEM) simulation suite, in particular for scanning transmission electron microscopy (STEM) images, that was developed mainly at the University of Melbourne. The computing suite is based on the multislice
 method. More detail can be found in the [manual](https://github.com/HamishGBrown/MuSTEM/raw/master/Manual/muSTEM_manual.pdf) and the following scientific paper:

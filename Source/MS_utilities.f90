@@ -466,9 +466,11 @@
 			read(dstring(:comaindex),*) ndet
 			read(dstring(comaindex+1:),*) nseg
             ndet = ndet*nseg
-            write(*,*) 'Please input orientation offset for segmented detectors in degrees'
-            call get_input('Segment orientation offset (degrees)', seg_det_offset)
-            seg_det_offset = seg_det_offset/180*pi !Convert from degrees to mrad
+			if(nseg>1) then
+				write(*,*) 'Please input orientation offset for segmented detectors in degrees'
+				call get_input('Segment orientation offset (degrees)', seg_det_offset)
+				seg_det_offset = seg_det_offset/180*pi !Convert from degrees to mrad
+			endif
 		else
 			read(dstring,*) ndet
 			nseg = 1

@@ -575,7 +575,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
             call output_stem_image(stem_ion_image(:,:,:,:,ii), filename,probe_df)
 
             filename =  trim(adjustl(fnam))//'_'//trim(adjustl(substance_atom_types(atm_indices(ii))))&
-						   &//'_'//trim(adjustl(Ion_description(ii)))//'_orbital_EELS_Corrected'            
+						   &//'_'//trim(adjustl(Ion_description(ii)))//'_orbital_EELS_Corrected' 
             call output_stem_image(stem_ion_image(:,:,:,:,ii)*eels_correction_image, filename,probe_df)
         endif
         enddo
@@ -585,7 +585,12 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
         endif
        
     endif
-    
+#ifdef GPU
+	if(double_channeling)
+		filename =  trim(adjustl(fnam))//'_double_channeling_EELS'
+		call output_stem_image(Hn0_eels_dc, filename,probe_df)
+	endif
+#endif    
     if (pacbed) then
 #ifdef GPU
 	pacbed_pattern = pacbed_pattern_d

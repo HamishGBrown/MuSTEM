@@ -131,19 +131,6 @@ subroutine absorptive_tem
     
     !Copy host arrays to the device
     if (on_the_fly) then
-       !allocate(bwl_mat_d(nopiy,nopix),inverse_sinc_d(nopiy,nopix))
-       !allocate(trans_d(nopiy,nopix),fz_d(nopiy,nopix,nt))
-       !allocate(fz_dwf_d(nopiy,nopix,nt),fz_abs_d(nopiy,nopix,nt))
-        !fz_d=fz 
-        !fz_dwf_d=fz_dwf
-		!
-		!if(include_absorption) then
-		!	fz_abs_d = ci*absorptive_scattering_factors(ig1,ig2,ifactory,ifactorx,nopiy,nopix,nt,a0,ss,atf,nat, ak, relm, orthog, 0.0_8, 4.0d0*atan(1.0d0))*2*ak  !make the potential absorptive
-		!else
-		!	fz_abs_d= 0
-		!endif
-        !inverse_sinc_d=inverse_sinc
-        !bwl_mat_d = bwl_mat
 		allocate(trans_d(nopiy,nopix),Vg(nopiy,nopix,nt),Vg_d(nopiy,nopix,nt),bwl_mat_d(nopiy,nopix))
 	    Vg = fz
 		if(include_absorption) Vg = Vg +ci*absorptive_scattering_factors(ig1,ig2,ifactory,ifactorx,nopiy,nopix,nt,a0,ss,atf,nat, ak, relm, orthog, 0.0_8, 4.0d0*atan(1.0d0))*2*ak  !make the potential absorptive

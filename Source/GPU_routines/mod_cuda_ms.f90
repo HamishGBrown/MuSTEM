@@ -38,9 +38,49 @@ module cuda_ms
     contains
 
 
-    
+	attributes(host) subroutine cuda_image(psi_d,ctf_d,image_d,normalisation, nopiy, nopix,plan,rspacein)
+		use CUFFT_wrapper
+       use cuda_array_library, only: blocks, threads
+		implicit none
+
+		complex(fp_kind),intent(in),dimension(nopiy,nopix),device::psi_d,ctf_d
+		real(fp_kind),intent(out),dimension(nopiy,nopix),device::image_d
+		integer(4),intent(in)::nopiy,nopix
+		real(fp_kind),intent(in),value::normalisation
+		integer,value::plan
+		logical,intent(in)::rspacein
+
+		complex(fp_kind),dimension(nopiy,nopix),device::psi_temp_d
+
+		if(rspacein)  then 
+			call cufftExec(plan, psi_d, psi_temp_d, CUFFT_FORWARD)
+		else
+			psi_temp_d = psi_d
+		endif
+		call cuda_multiplication<<<blocks,threads>>>(psi_temp_d, ctf_d, psi_temp_d, sqrt(normalisation), nopiy, nopix)
+        call cufftExec(plan, psi_temp_d, psi_temp_d, CUFFT_INVERSE)
+		call cuda_mod<<<blocks,threads>>>(psi_temp_d, image_d, normalisation, nopiy, nopix)
+	end subroutine
+
+	attributes(host) subroutine cuda_multislice_iteration(psi_d, transf_d, prop_d, normalisation, nopiy, nopix,plan)
+		use CUFFT_wrapper
+       use cuda_array_library, only: blocks, threads
+		implicit none
+
+		complex(fp_kind),device,dimension(nopiy,nopix)::psi_d, transf_d, prop_d,psi_out_d
+		integer(4):: nopiy, nopix
+		real(fp_kind),intent(in),value::normalisation
+		integer,value::plan
+
+			call cuda_multiplication<<<blocks,threads>>>(psi_d,transf_d, psi_out_d,1.0_fp_kind,nopiy,nopix)
+            call cufftExec(plan,psi_out_d,psi_d,CUFFT_FORWARD)
+            call cuda_multiplication<<<blocks,threads>>>(psi_d,prop_d, psi_out_d,normalisation,nopiy,nopix)
+            call cufftExec(plan,psi_out_d,psi_d,CUFFT_INVERSE)
+
+	end subroutine
+	    
     attributes(global) subroutine cuda_phase_shift(shift_array, ifactory, ifactorx, ig1, ig2, n, m, coord)
-    
+		
         implicit none
     
         integer(4), value :: n,m,ix,iy
@@ -72,32 +112,33 @@ module cuda_ms
 
     end subroutine cuda_phase_shift
 
-	attributes(host) subroutine cuda_accumulate_intensity(psi,intensity)
+	attributes(host) subroutine cuda_accumulate_intensity(psi,intensity, nopiy, nopix)
 		use cuda_array_library, only: blocks, threads
 		complex(fp_kind),device,dimension(nopiy,nopix)::psi
 		real(fp_kind),device,dimension(nopiy,nopix)::intensity,temp
+		integer(4):: nopiy, nopix
 		call cuda_mod<<<blocks,threads>>>(psi, temp, 1.0_fp_kind, nopiy, nopix)
         call cuda_addition<<<blocks,threads>>>(intensity, temp, intensity, 1.0_fp_kind, nopiy, nopix)                  
 	end subroutine
-
-	attributes(host) subroutine cuda_multislice_iteration(psi_d,transf_d,prop_d,plan)
-		use CUFFT_wrapper
-        use cuda_array_library, only: blocks, threads
-
-		implicit none
-
-		integer,value::plan
-		complex(fp_kind),device,dimension(nopiy,nopix)::psi_d,transf_d,prop_d
-		complex(fp_kind),device::psi_out_d(nopiy,nopix)
-
-		! Transmission
-		call cuda_multiplication<<<blocks,threads>>>(psi_d, transf_d, psi_out_d, 1.0_fp_kind, nopiy, nopix)
-                
-		! Propagate
-		call cufftExec(plan, psi_out_d, psi_d, CUFFT_FORWARD)
-		call cuda_multiplication<<<blocks,threads>>>(psi_d, prop_d, psi_out_d, normalisation, nopiy, nopix)
-		call cufftExec(plan, psi_out_d, psi_d, CUFFT_INVERSE)
-	end subroutine
+   !
+	!attributes(host) subroutine cuda_multislice_iteration(psi_d,transf_d,prop_d,plan)
+	!	use CUFFT_wrapper
+   !    use cuda_array_library, only: blocks, threads
+   !
+	!	implicit none
+   !
+	!	integer,value::plan
+	!	complex(fp_kind),device,dimension(nopiy,nopix)::psi_d,transf_d,prop_d
+	!	complex(fp_kind),device::psi_out_d(nopiy,nopix)
+   !
+	!	! Transmission
+	!	call cuda_multiplication<<<blocks,threads>>>(psi_d, transf_d, psi_out_d, 1.0_fp_kind, nopiy, nopix)
+   !            
+	!	! Propagate
+	!	call cufftExec(plan, psi_out_d, psi_d, CUFFT_FORWARD)
+	!	call cuda_multiplication<<<blocks,threads>>>(psi_d, prop_d, psi_out_d, normalisation, nopiy, nopix)
+	!	call cufftExec(plan, psi_out_d, psi_d, CUFFT_INVERSE)
+	!end subroutine
     
     attributes(host) function cuda_stem_detector_wavefunction(psi_d, mask_d)
     

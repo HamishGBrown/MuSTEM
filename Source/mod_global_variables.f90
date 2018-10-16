@@ -97,7 +97,7 @@
     logical :: on_the_fly = .false.
     logical :: high_accuracy
 	logical :: ionic = .false.
-    
+    logical :: double_channeling,istem
 	contains
      
     

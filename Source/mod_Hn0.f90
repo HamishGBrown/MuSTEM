@@ -53,7 +53,7 @@ module m_Hn0
 	real(fp_kind),allocatable :: ion_tau(:,:)
     
 
-	logical::efistem,eftem,hn0_calc,istem
+	logical::efistem,eftem,hn0_calc
     contains 
       
     

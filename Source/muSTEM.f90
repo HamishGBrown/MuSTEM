@@ -141,8 +141,10 @@
 #ifdef GPU
         ! Set up GPU
         call setup_GPU
+		double_channeling =.true. !Double channeling possible with GPU calculation
 #else
         open(6,carriagecontrol ='fortran')
+		double_channeling =.false. !Double channeling not possible with CPU calculation
 #endif
         
         call command_line_title_box('Dataset output')
@@ -268,13 +270,14 @@
                     call place_probe(probe_initial_position)
                 case (2)
                     ! STEM images
-                    call STEM_options(STEM,ionization,PACBED)
+                    call STEM_options(STEM,ionization,PACBED,istem,double_channeling)
                     fourdSTEM= .false.
                     if(pacbed) call fourD_STEM_options(fourdSTEM,nopiyout,nopixout,nopiy,nopix)
                     call setup_probe_scan(PACBED.and.(.not.(ionization.or.STEM)))
                     call prompt_output_probe_intensity
                     if(STEM) call setup_integration_measurements
                     adf = STEM.and.(.not.qep)
+					if(istem) call setup_lens_parameters('Image',imaging_aberrations,imaging_cutoff)
                     
                     ! Precalculate the scattering factors on a grid
                     call precalculate_scattering_factors()

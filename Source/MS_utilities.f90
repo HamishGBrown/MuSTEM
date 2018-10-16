@@ -480,7 +480,7 @@
         
         if (ndet.eq.0) return
         
-        call get_cbed_detector_info(outer,inner,ndet/nseg,ak1)
+        call get_cbed_detector_info(ndet/nseg,ak1,outer,inner)
 
 		if(outputdetectors) then
 			do i=1,ndet/nseg
@@ -495,91 +495,6 @@
     
 
     
-    subroutine get_cbed_detector_info(outer,inner,ndet,k)
-    
-        use m_precision, only: fp_kind
-        use m_user_input, only: get_input
-        use m_string, only: to_string
-        
-        implicit none
-    
-        integer(4)   ndet,ichoice,i
-		integer*4:: mrad
-        real(fp_kind)      outer(ndet),inner(ndet),k,dummy
-    
-        real(fp_kind) :: inner_mrad(ndet), outer_mrad(ndet)
-        
-        write(*,*) 'Select a method for choosing inner and outer angles:'
-        write(*,*) '<1> Manual',char(10),' <2> Automatic'
-    
-        call get_input("manual detector <1> auto <2>",ichoice)
-        write(*,*)
-        mrad =-1
-		do while(.not.((mrad==1).or.(mrad==2)))
-			write(*,*) 'Select how angles will be specified:'
-			write(*,*) '<1> mrad',char(10),' <2> inverse Angstroms'
-			call get_input("<1> mrad <2> inv A", mrad)
-			write(*,*)
-		enddo
-    
-        if(ichoice.eq.1) then
-              do i = 1, ndet
-                    write(*,*) char(10),' Detector ', to_string(i),char(10),' Inner angle:'
-                    call get_input("inner",dummy)
-                    if(mrad.eq.1) inner_mrad(i) = dummy
-					if(mrad.eq.2) inner(i) =  dummy
-					write(*,*) "Outer angle:"
-                    call get_input("outer",dummy)
-                    if(mrad.eq.1) outer_mrad(i) = dummy
-					if(mrad.eq.2) outer(i) =  dummy 
-              enddo
-        else
-              write(*,*) "Initial inner angle:"
-              call get_input("initial inner angle", dummy)
-			  if(mrad.eq.1) inner_mrad(1) = dummy
-			  if(mrad.eq.2) inner(1) = dummy
-              write(*,*) "Initial outer angle:"
-              call get_input("initial outer angle", dummy)
-			  if(mrad.eq.1) outer_mrad(1) = dummy
-			  if(mrad.eq.2) outer(1) = dummy
-			  
-              write(*,*) "Increment (both angles incremented by this amount):"
-              call get_input("increment", dummy)
-              write(*,*)
-
-			  if(mrad.eq.1) then
-				inner_mrad(2:) = (/((i-1)*dummy+inner_mrad(1), i=2,ndet,1)/)
-				outer_mrad(2:) = (/((i-1)*dummy+outer_mrad(1), i=2,ndet)/)
-			  else
-				inner(2:) = (/((i-1)*dummy+inner(1), i=2,ndet)/)
-				outer(2:) = (/((i-1)*dummy+outer(1), i=2,ndet)/)
-			  endif
-
-        endif
-		if(mrad.eq.2) then
-			outer_mrad = 1000*atan(outer/k)
-			inner_mrad = 1000*atan(inner/k)
-		else
-			inner = k*tan(inner_mrad/1000.0_fp_kind)
-			outer = k*tan(outer_mrad/1000.0_fp_kind)
-		endif
-        
-        write(*,*) 'Summary of diffraction plane detectors:'
-        write(*,*)
-        
-        write(*,*) '         inner    outer'
-        write(*,*) '  --------------------------------'
-        do i = 1, ndet
-            write(*,50) i, inner_mrad(i), outer_mrad(i)
-            write(*,55) inner(i), outer(i), char(143)
-            write(*,60) 
-        enddo
-50          format(1x, i5, ' | ', f6.2, ' | ', f6.2, '   (mrad)')
-55          format(1x, 5x, ' | ', f6.2, ' | ', f6.2, '   (', a1, '^-1)')        
-60          format(1x, 5x, ' | ', 6x, ' | ')
-        write(*,*)
-        
-    end subroutine
 
 
     
@@ -752,16 +667,19 @@
     
     end
     
-    subroutine STEM_options(STEM,ionization,PACBED)
+    subroutine STEM_options(STEM,ionization,PACBED,istem,double_channeling)
         use m_string
         use m_user_input
-        logical,intent(out)::STEM,ionization,PACBED
+        logical,intent(out)::STEM,ionization,PACBED,istem
+		logical,intent(inout)::double_channeling
+		logical::dc_init
         
         integer*4::i
         
         STEM= .false.
         ionization = .false.
         PACBED = .false.
+		dc_init = double_channeling
         
         i=-1
         
@@ -775,6 +693,9 @@
             write(*,*)'<1> Conventional STEM (ADF,ABF,BF etc.)      | ',logical_to_yn(STEM)
             write(*,*)'<2> Ionization based STEM (EELS and EDX)     | ',logical_to_yn(ionization)
             write(*,*)'<3> Diffraction (PACBED and 4D-STEM)         | ',logical_to_yn(PACBED)
+			write(*,*)'<4> Imaging STEM (iSTEM)                     | ',logical_to_yn(istem)
+			if(dc_init)&
+		   &write(*,*)'<5> STEM EELS with double channeling         | ',logical_to_yn(double_channeling)
             write(*,*)'<0> Continue',char(10)
             write(*,*)'-----------------------------------------------------------'
             
@@ -784,7 +705,9 @@
             if(i==1) STEM = .not.STEM
             if(i==2) ionization = .not.ionization
             if(i==3) PACBED = .not.PACBED
-            if(i==0.and.(.not.any([STEM,ionization,PACBED]))) then
+			if(i==4) istem = .not.istem
+			if(dc_init.and.i==5) double_channeling = .not.double_channeling
+            if(i==0.and.(.not.any([STEM,ionization,PACBED,double_channeling,istem]))) then
                 write(*,*) "You must choose at least one imaging mode to proceed"
                 i=-1
             endif

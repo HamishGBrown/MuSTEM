@@ -875,7 +875,139 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
     
 	end subroutine        
         
- 
-	    
+    subroutine get_cbed_detector_info(ndet,k,outer,inner)
+    
+        use m_precision, only: fp_kind
+        use m_user_input, only: get_input
+        use m_string, only: to_string
+        
+        implicit none
+    
+        integer(4)   ndet,ichoice,i,mrad
+        real(fp_kind),dimension(ndet) :: outer,inner,inner_mrad,outer_mrad
+		optional::inner
+        real(fp_kind) :: k,dummy
+		logical::getinner
+
+		getinner = present(inner)
+
+        write(*,*) 'Select a method for choosing detector angles:'
+        write(*,*) '<1> Manual',char(10),' <2> Automatic'
+    
+        call get_input("manual detector <1> auto <2>",ichoice)
+        write(*,*)
+        mrad =-1
+		do while(.not.((mrad==1).or.(mrad==2)))
+			write(*,*) 'Select how angles will be specified:'
+			write(*,*) '<1> mrad',char(10),' <2> inverse Angstroms'
+			call get_input("<1> mrad <2> inv A", mrad)
+			write(*,*)
+		enddo
+    
+        if(ichoice.eq.1) then
+              do i = 1, ndet
+                    write(*,*) char(10),' Detector ', to_string(i)
+					if(getinner) then
+						write(*,*)' Inner angle:'
+						call get_input("inner",dummy)
+						if(mrad.eq.1) inner_mrad(i) = dummy
+						if(mrad.eq.2) inner(i) =  dummy
+					endif
+					write(*,*) "Outer angle:"
+                    call get_input("outer",dummy)
+                    if(mrad.eq.1) outer_mrad(i) = dummy
+					if(mrad.eq.2) outer(i) =  dummy 
+              enddo
+        else	
+			  if(getinner) then
+				  write(*,*) "Initial inner angle:"
+				  call get_input("initial inner angle", dummy)
+				  if(mrad.eq.1) inner_mrad(1) = dummy
+				  if(mrad.eq.2) inner(1) = dummy
+			  endif
+
+              write(*,*) "Initial outer angle:"
+              call get_input("initial outer angle", dummy)
+			  if(mrad.eq.1) outer_mrad(1) = dummy
+			  if(mrad.eq.2) outer(1) = dummy
+			  
+              if(getinner) write(*,*) "Increment (both angles incremented by this amount):"
+			  if(.not.getinner)  write(*,*) "Increment:"
+              call get_input("increment", dummy)
+              write(*,*)
+
+			  if(mrad.eq.1) then
+				if(getinner) inner_mrad(2:) = (/((i-1)*dummy+inner_mrad(1), i=2,ndet,1)/)
+				outer_mrad(2:) = (/((i-1)*dummy+outer_mrad(1), i=2,ndet)/)
+			  else
+				if(getinner) inner(2:) = (/((i-1)*dummy+inner(1), i=2,ndet)/)
+				outer(2:) = (/((i-1)*dummy+outer(1), i=2,ndet)/)
+			  endif
+
+        endif
+		if(mrad.eq.2) then
+			outer_mrad = 1000*atan(outer/k)
+			if(getinner) inner_mrad = 1000*atan(inner/k)
+		else
+			if(getinner) inner = k*tan(inner_mrad/1000.0_fp_kind)
+			outer = k*tan(outer_mrad/1000.0_fp_kind)
+		endif
+        
+        write(*,*) 'Summary of diffraction plane detectors:'
+        write(*,*)
+        
+        if(getinner) write(*,*) '         inner    outer'
+		if(.not.getinner) write(*,*) ' outer angle'
+        write(*,*) '  --------------------------------'
+        if(getinner) then
+		do i = 1, ndet
+            write(*,50) i, inner_mrad(i), outer_mrad(i)
+            write(*,55) inner(i), outer(i), char(143)
+            write(*,60) 
+        enddo
+		else
+		do i = 1, ndet
+            write(*,65) i, outer_mrad(i)
+            write(*,70) outer(i), char(143)
+            write(*,60) 
+        enddo
+		endif
+
+50          format(1x, i5, ' | ', f6.2, ' | ', f6.2, '   (mrad)')
+55          format(1x, 5x, ' | ', f6.2, ' | ', f6.2, '   (', a1, '^-1)')        
+60          format(1x, 5x, ' | ', 6x, ' | ')
+65          format(1x, i5, ' | ', f6.2,  '   (mrad)')
+70          format(1x, 5x, ' | ', f6.2, '   (', a1, '^-1)')        
+
+        write(*,*)
+		
+
+        
+    end subroutine
+	
+
+	function make_image(nopiy,nopix,psi,ctf,rspacein) result(image)
+		use CUFFT_wrapper
+		implicit none
+		integer*4,intent(in)::nopiy,nopix
+		complex(fp_kind),dimension(nopiy,nopix),intent(in)::ctf,psi
+		logical,intent(in),optional::rspacein
+		real(fp_kind)::image(nopiy,nopix)
+
+		complex(fp_kind),dimension(nopiy,nopix)::psi_temp2,psi_temp
+
+		if(present(rspacein)) then
+			if(rspacein)call fft2(nopiy,nopix,psi,nopiy,psi_temp,nopiy)
+			if(.not.rspacein) psi_temp = psi
+		else
+			call fft2(nopiy,nopix,psi,nopiy,psi_temp,nopiy)
+		endif
+
+		psi_temp = psi_temp*ctf
+		call ifft2(nopiy,nopix,psi_temp,nopiy,psi_temp2,nopiy)
+		image = abs(psi_temp2)**2
+
+	end function
+
 end module
 

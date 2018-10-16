@@ -204,6 +204,7 @@ implicit none
         
       end function
 
+
 	function to_upper(strIn) result(strOut)
 		! Adapted from http://www.star.le.ac.uk/~cgp/fortran.html (25 May 2012)
 		! Original author: Clive Page

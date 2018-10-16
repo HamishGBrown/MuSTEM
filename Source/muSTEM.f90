@@ -52,6 +52,7 @@
         use m_multislice
         use m_string
         use m_electron
+		use m_Hn0
         
         implicit none
         
@@ -282,6 +283,7 @@
                     ! Precalculate the scattering factors on a grid
                     call precalculate_scattering_factors()
                     if(ionization) call setup_inelastic_ionization_types
+					if(double_channeling) call ionizer_init(.true.)
                     
                 case default
                     goto 115

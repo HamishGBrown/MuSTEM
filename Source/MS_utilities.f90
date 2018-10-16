@@ -682,6 +682,7 @@
         ionization = .false.
         PACBED = .false.
 		dc_init = double_channeling
+		double_channeling=.false.
         
         i=-1
         

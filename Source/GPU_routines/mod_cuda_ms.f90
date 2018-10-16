@@ -78,7 +78,12 @@ module cuda_ms
             call cufftExec(plan,psi_out_d,psi_d,CUFFT_INVERSE)
 
 	end subroutine
-	    
+	 
+	!
+	!shiftx = floor(ifactorx*ran1(idum)) * nopix_ucell
+    !                   shifty = floor(ifactory*ran1(idum)) * nopiy_ucell
+    !                   call cuda_cshift<<<blocks,threads>>>(transf_d(:,:,nran,j),trans_d,nopiy,nopix,shifty,shiftx)
+    !                   call cuda_multiplication<<<blocks,threads>>>(psi_d,trans_d, psi_out_d,1.0_fp_kind,nopiy,nopix)
     attributes(global) subroutine cuda_phase_shift(shift_array, ifactory, ifactorx, ig1, ig2, n, m, coord)
 		
         implicit none
@@ -147,7 +152,7 @@ module cuda_ms
         implicit none
     
         real(fp_kind) :: cuda_stem_detector_wavefunction
-        complex(fp_kind), device, dimension(nopiy,nopix) :: psi_d
+        complex(fp_kind), device, dimension(nopiy,nopix),intent(in) :: psi_d
         real(fp_kind), device, dimension(nopiy,nopix) :: mask_d, cbed_d
 
         call cuda_mod<<<blocks,threads>>>(psi_d,cbed_d,normalisation,nopiy,nopix)

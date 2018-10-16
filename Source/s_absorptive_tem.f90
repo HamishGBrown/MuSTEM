@@ -57,10 +57,7 @@ subroutine absorptive_tem
     use cuda_potential
     use cuda_setup
 #endif
-    use m_tilt
-    use m_multislice
-    use m_potential
-    use m_string
+    use m_tilt;use m_multislice;use m_potential;use m_string;use m_hn0
     implicit none
     
     !dummy variables
@@ -83,24 +80,38 @@ subroutine absorptive_tem
     
     !output variables
     character(120) :: filename,fnam_df
+	logical::manyz,manytilt
+	integer*4::length
     
 #ifdef GPU
     !device variables
 	integer :: plan
 	complex(fp_kind),device,allocatable :: prop_d(:,:,:),transf_d(:,:,:)
     complex(fp_kind),device,dimension(nopiy,nopix) :: psi_d, psi_out_d
+	real(fp_kind),device,dimension(:,:),allocatable::temp_d
     
     !device variables for on the fly potentials
     complex(fp_kind),device,allocatable,dimension(:,:) :: bwl_mat_d,inverse_sinc_d,trans_d
     complex(fp_kind),device,allocatable,dimension(:,:,:) :: fz_d,fz_dwf_d,fz_abs_d,Vg_d
-        
+    
+	!Double channeling variables
+	complex(fp_kind),device,allocatable,dimension(:,:) ::psi_inel_d
+	complex(fp_kind),device,allocatable,dimension(:,:,:)::tmatrix_states_d,Hn0_shifty_coord_d,Hn0_shiftx_coord_d,ctf_d
+	real(fp_kind),device,allocatable,dimension(:,:)::cbed_inel_dc_d,eftem_image_d
+	real(fp_kind),allocatable,dimension(:,:,:)::tmatrix_states
+	integer::jj,l,i_target,j,k,ii,i_df
+
     real(fp_kind) :: absorptive_tem_GPU_memory
 
     call GPU_memory_message(absorptive_tem_GPU_memory(), on_the_fly)
 #else
 	on_the_fly=.false.
 #endif    
-    
+    manyz = nz>1
+	manytilt = n_tilts_total>1
+    length = calculate_padded_string_length(zarray,nz)
+    lengthdf = calculate_padded_string_length(imaging_df,probe_ndf)
+
     call command_line_title_box('Pre-calculation setup')
 	do i=1,imaging_ndf
         if(pw_illum) lens_ctf(:,:,i) =  make_ctf([0.0_fp_kind,0.0_fp_kind,0.0_fp_kind],imaging_df(i),imaging_cutoff,imaging_aberrations,imaging_apodisation)
@@ -128,7 +139,20 @@ subroutine absorptive_tem
 	else
           call cufftPlan(plan,nopix,nopiy,CUFFT_C2C)
     endif
-    
+
+ #ifdef GPU
+	if(double_channeling) then
+        allocate(tmatrix_states_d(nopiy,nopix,nstates),psi_inel_d(nopiy,nopix),cbed_inel_dc_d(nopiy,nopix),tmatrix_states(nopiy,nopix,nstates))
+        tmatrix_states_d = setup_ms_hn0_tmatrices(nopiy,nopix,nstates)*alpha_n
+        allocate(Hn0_shifty_coord_d(nopiy,maxval(natoms_slice_total),n_slices))
+        allocate(Hn0_shiftx_coord_d(nopix,maxval(natoms_slice_total),n_slices))
+        Hn0_shiftx_coord_d = Hn0_shiftx_coord
+        Hn0_shifty_coord_d = Hn0_shifty_coord
+		allocate(eftem_image_d(nopiy,nopix),ctf_d(nopiy,nopix,imaging_ndf))
+		ctf_d = 0
+    endif
+#endif  
+ 
     !Copy host arrays to the device
     if (on_the_fly) then
 		allocate(trans_d(nopiy,nopix),Vg(nopiy,nopix,nt),Vg_d(nopiy,nopix,nt),bwl_mat_d(nopiy,nopix))
@@ -170,17 +194,52 @@ subroutine absorptive_tem
     do i_cell = 1, maxval(ncells)
         do i_slice = 1, n_slices
 			
+			if(double_channeling) then
+                    
+                do i_target = 1, natoms_slice_total(j) ! Loop over targets
+							
+                    ! Calculate inelastic transmission matrix
+					call cuda_make_shift_array<<<blocks,threads>>>(psi_out_d,Hn0_shifty_coord_d(:,i_target,j),Hn0_shiftx_coord_d(:,i_target,j),nopiy,nopix)
+					
+					do k = 1, nstates
+							
+					call cuda_multiplication<<<blocks,threads>>>(tmatrix_states_d(:,:,k),psi_out_d, psi_out_d,1.0_fp_kind,nopiy,nopix)
+                    call cufftExec(plan,psi_out_d,psi_out_d,CUFFT_INVERSE)
+					call cuda_multiplication<<<blocks,threads>>>(psi_d,psi_out_d,psi_inel_d,sqrt(normalisation),nopiy,nopix)
+					
+                        ! Scatter the inelastic wave through the remaining slices in the cell
+                        do jj = i_slice, n_slices   
+							call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,jj), prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
+                        enddo
+                        ! Scatter the inelastic wave through the remaining cells
+                        do ii = i_cell+1, n_cells
+                            do jj = 1, n_slices;call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,jj),prop_d(:,:,jj), normalisation, nopiy, nopix,plan);enddo
+
+							if (any(ii==ncells)) then
+								z_indx = minloc(abs(ncells-ii))
+								call cufftExec(plan, psi_inel_d, psi_out_d, CUFFT_FORWARD)
+								
+								! Accumulate EFTEM images
+								if (istem.and.i_df==1) then;do l = 1, imaging_ndf
+									call cuda_image(psi_out_d,ctf_d(:,:,l),temp_d,normalisation, nopiy, nopix,plan,.false.)
+									tem_image = temp_d
+									call output_TEM_result(output_prefix,tem_image,'EFTEM',nopiy,nopix,manyz,.false.,manytilt,zarray(i)&
+														 &,lengthz=length,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2))			
+								enddo;endif;
+							endif
+                        enddo
+						enddo
+				enddo
+			endif  ! End loop over cells,targets and states and end double_channeling section
+
+
             if(on_the_fly) then
                 !call cuda_make_abs_potential(trans_d,ccd_slice_array(i_slice),tau_slice(:,:,:,i_slice),nat_slice(:,i_slice),prop_distance(i_slice),plan,fz_d,fz_dwf_d,fz_abs_d,inverse_sinc_d,bwl_mat_d,Volume_array(i_slice))
 				call cuda_make_abs_potential_new(trans_d,ccd_slice_array(i_slice),tau_slice(:,:,:,i_slice),nat_slice(:,i_slice),prop_distance(i_slice),plan,Vg_d,bwl_mat_d,Volume_array(i_slice))
-                call cuda_multiplication<<<blocks,threads>>>(psi_d,trans_d, psi_out_d,1.0_fp_kind,nopiy,nopix)
+                call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,i_slice), normalisation, nopiy, nopix,plan)
             else
-                call cuda_multiplication<<<blocks,threads>>>(psi_d,transf_d(:,:,i_slice), psi_out_d,1.0_fp_kind,nopiy,nopix)
+				call cuda_multislice_iteration(psi_d, transf_d(:,:,i_slice), prop_d(:,:,i_slice), normalisation, nopiy, nopix,plan)
             endif
-            
-            call cufftExec(plan,psi_out_d,psi_d,CUFFT_FORWARD)
-            call cuda_multiplication<<<blocks,threads>>>(psi_d,prop_d(:,:,i_slice), psi_out_d,normalisation,nopiy,nopix)
-            call cufftExec(plan,psi_out_d,psi_d,CUFFT_INVERSE)
         enddo ! End loop over slices
         
 		!If this thickness corresponds to any of the output values then output images

@@ -81,7 +81,6 @@ subroutine absorptive_tem
     !output variables
     character(120) :: filename,fnam_df
 	logical::manyz,manytilt
-	integer*4::length
     
 #ifdef GPU
     !device variables
@@ -95,10 +94,11 @@ subroutine absorptive_tem
     complex(fp_kind),device,allocatable,dimension(:,:,:) :: fz_d,fz_dwf_d,fz_abs_d,Vg_d
     
 	!Double channeling variables
-	complex(fp_kind),device,allocatable,dimension(:,:) ::psi_inel_d
+	complex(fp_kind),device,allocatable,dimension(:,:) ::psi_inel_d,shiftarray,tmatrix_d,q_tmatrix_d
 	complex(fp_kind),device,allocatable,dimension(:,:,:)::tmatrix_states_d,Hn0_shifty_coord_d,Hn0_shiftx_coord_d,ctf_d
-	real(fp_kind),device,allocatable,dimension(:,:)::cbed_inel_dc_d,eftem_image_d
-	real(fp_kind),allocatable,dimension(:,:,:)::tmatrix_states
+	real(fp_kind),device,allocatable,dimension(:,:)::cbed_inel_dc_d
+	real(fp_kind),device,allocatable,dimension(:,:,:)::tmatrix_states
+	real(fp_kind),device,allocatable,dimension(:,:,:,:)::eftem_image_d
 	integer::jj,l,i_target,j,k,ii,i_df
 
     real(fp_kind) :: absorptive_tem_GPU_memory
@@ -109,13 +109,14 @@ subroutine absorptive_tem
 #endif    
     manyz = nz>1
 	manytilt = n_tilts_total>1
-    length = calculate_padded_string_length(zarray,nz)
-    lengthdf = calculate_padded_string_length(imaging_df,probe_ndf)
+    lengthz = calculate_padded_string_length(zarray,nz)
+    lengthdf = calculate_padded_string_length(imaging_df,imaging_ndf)
 
     call command_line_title_box('Pre-calculation setup')
 	do i=1,imaging_ndf
         if(pw_illum) lens_ctf(:,:,i) =  make_ctf([0.0_fp_kind,0.0_fp_kind,0.0_fp_kind],imaging_df(i),imaging_cutoff,imaging_aberrations,imaging_apodisation)
 	enddo
+	if(pw_illum) allocate(temp_d(nopiy,nopix))
     ! Precalculate the scattering factors on a grid
     call precalculate_scattering_factors()
 	
@@ -143,13 +144,14 @@ subroutine absorptive_tem
  #ifdef GPU
 	if(double_channeling) then
         allocate(tmatrix_states_d(nopiy,nopix,nstates),psi_inel_d(nopiy,nopix),cbed_inel_dc_d(nopiy,nopix),tmatrix_states(nopiy,nopix,nstates))
+		allocate(shiftarray(nopiy,nopix),tmatrix_d(nopiy,nopix),q_tmatrix_d(nopiy,nopix),temp_d(nopiy,nopix))
         tmatrix_states_d = setup_ms_hn0_tmatrices(nopiy,nopix,nstates)*alpha_n
         allocate(Hn0_shifty_coord_d(nopiy,maxval(natoms_slice_total),n_slices))
         allocate(Hn0_shiftx_coord_d(nopix,maxval(natoms_slice_total),n_slices))
         Hn0_shiftx_coord_d = Hn0_shiftx_coord
         Hn0_shifty_coord_d = Hn0_shifty_coord
-		allocate(eftem_image_d(nopiy,nopix),ctf_d(nopiy,nopix,imaging_ndf))
-		ctf_d = 0
+		allocate(eftem_image_d(nopiy,nopix,imaging_ndf,nz),ctf_d(nopiy,nopix,imaging_ndf))
+		ctf_d = lens_ctf;eftem_image_d=0
     endif
 #endif  
  
@@ -184,29 +186,24 @@ subroutine absorptive_tem
         psi = psi * bwl_mat
         call ifft2(nopiy, nopix, psi, nopiy, transf_absorptive(:,:,i), nopiy)
     enddo
-   lengthz = ceiling(log10(maxval(abs(zarray))))
-   lengthdf = ceiling(log10(maxval(abs(imaging_df))))
-   if(any(imaging_df<0)) lengthdf = lengthdf+1
+   
 #ifdef GPU
     if(.not.on_the_fly) transf_d=transf_absorptive
     psi_d = psi_initial
     prop_d = prop
     do i_cell = 1, maxval(ncells)
         do i_slice = 1, n_slices
-			
 			if(double_channeling) then
-                    
-                do i_target = 1, natoms_slice_total(j) ! Loop over targets
-							
-                    ! Calculate inelastic transmission matrix
-					call cuda_make_shift_array<<<blocks,threads>>>(psi_out_d,Hn0_shifty_coord_d(:,i_target,j),Hn0_shiftx_coord_d(:,i_target,j),nopiy,nopix)
+                do i_target = 1, natoms_slice_total(i_slice) ! Loop over targets
+                ! Calculate inelastic transmission matrix
+					call cuda_make_shift_array<<<blocks,threads>>>(shiftarray,Hn0_shifty_coord_d(:,i_target,i_slice),Hn0_shiftx_coord_d(:,i_target,i_slice),nopiy,nopix)
 					
 					do k = 1, nstates
 							
-					call cuda_multiplication<<<blocks,threads>>>(tmatrix_states_d(:,:,k),psi_out_d, psi_out_d,1.0_fp_kind,nopiy,nopix)
-                    call cufftExec(plan,psi_out_d,psi_out_d,CUFFT_INVERSE)
-					call cuda_multiplication<<<blocks,threads>>>(psi_d,psi_out_d,psi_inel_d,sqrt(normalisation),nopiy,nopix)
-					
+					call cuda_multiplication<<<blocks,threads>>>(tmatrix_states_d(:,:,k),shiftarray, q_tmatrix_d,1.0_fp_kind,nopiy,nopix)
+                    call cufftExec(plan,q_tmatrix_d,tmatrix_d,CUFFT_INVERSE)
+					call cuda_multiplication<<<blocks,threads>>>(psi_d,tmatrix_d,psi_inel_d,sqrt(normalisation),nopiy,nopix)
+						
                         ! Scatter the inelastic wave through the remaining slices in the cell
                         do jj = i_slice, n_slices   
 							call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,jj), prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
@@ -214,18 +211,17 @@ subroutine absorptive_tem
                         ! Scatter the inelastic wave through the remaining cells
                         do ii = i_cell+1, n_cells
                             do jj = 1, n_slices;call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,jj),prop_d(:,:,jj), normalisation, nopiy, nopix,plan);enddo
-
+							
 							if (any(ii==ncells)) then
 								z_indx = minloc(abs(ncells-ii))
 								call cufftExec(plan, psi_inel_d, psi_out_d, CUFFT_FORWARD)
 								
 								! Accumulate EFTEM images
-								if (istem.and.i_df==1) then;do l = 1, imaging_ndf
+								do l = 1, imaging_ndf
 									call cuda_image(psi_out_d,ctf_d(:,:,l),temp_d,normalisation, nopiy, nopix,plan,.false.)
-									tem_image = temp_d
-									call output_TEM_result(output_prefix,tem_image,'EFTEM',nopiy,nopix,manyz,.false.,manytilt,zarray(i)&
-														 &,lengthz=length,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2))			
-								enddo;endif;
+									
+									call cuda_addition<<<blocks,threads>>>(eftem_image_d(:,:,l,z_indx(1)), temp_d, eftem_image_d(:,:,l,z_indx(1)), 1.0_fp_kind, nopiy, nopix)
+								enddo
 							endif
                         enddo
 						enddo
@@ -248,21 +244,20 @@ subroutine absorptive_tem
 			call fft2(nopiy, nopix, psi, nopiy, psi, nopiy)
 			cbed = abs(psi)**2
 			z_indx = minloc(abs(ncells-i_cell))
-			filename = trim(adjustl(output_prefix))
-			if (nz>1) filename = trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(z_indx(1))),lengthz)//'_A'
-            if (n_tilts_total>1) filename = trim(adjustl(filename))//tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2)
-			call binary_out_unwrap(nopiy, nopix, cbed, trim(adjustl(filename))//'_DiffractionPattern')
-				
+			call output_TEM_result(output_prefix,cbed,'Diffraction_pattern',nopiy,nopix,manyz,.false.,manytilt,z=zarray(z_indx(1))&
+								&,lengthz=lengthz,lengthdf=lengthdf,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2)&
+								&,nopiyout=nopiy*2/3,nopixout=nopix*2/3)				
 			if(pw_illum) then
 			do i=1,imaging_ndf
-				psi = psi_d
-				call fft2(nopiy, nopix, psi, nopiy, psi, nopiy)
-				psi = psi*lens_ctf(:,:,i)
-				call ifft2(nopiy, nopix, psi, nopiy, psi, nopiy)
-				tem_image = abs(psi)**2
-				fnam_df = trim(adjustl(filename))// '_Image'
-				if(imaging_ndf>1) fnam_df = trim(adjustl(fnam_df))//'_Defocus_'//zero_padded_int(int(imaging_df(i)),lengthdf)//'_Ang'
-				call binary_out(nopiy, nopix, tem_image, fnam_df)
+				call cuda_image(psi_d,ctf_d(:,:,i),temp_d,normalisation, nopiy, nopix,plan,.false.)
+				tem_image = temp_d
+				call output_TEM_result(output_prefix,tem_image,'Image',nopiy,nopix,manyz,imaging_ndf>1,manytilt,z=zarray(z_indx(1))&
+								&,lengthz=lengthz,lengthdf=lengthdf,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2),df = imaging_df(i))
+				if(double_channeling) then
+				tem_image = eftem_image_d(:,:,i,z_indx(1))
+				call output_TEM_result(output_prefix,tile_out_image(tem_image,ifactory,ifactorx),'energy_filtered_image',nopiy,nopix,manyz,imaging_ndf>1,manytilt,z=zarray(z_indx(1))&
+								&,lengthz=lengthz,lengthdf=lengthdf,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2),df = imaging_df(i))
+				endif
 			enddo
 			endif
 		endif

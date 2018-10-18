@@ -56,7 +56,7 @@
         
         implicit none
         
-        integer :: i_illum, i_tds_model, i_cb_menu, i_cb_calc_type,ifile,nfiles,i_arg,idum,i
+        integer :: i_illum, i_tds_model, i_cb_menu, i_cb_calc_type,ifile,nfiles,i_arg,idum,i,ieftem
         
         logical :: nopause = .false.,there,ionization,stem,pacbed
         character(512)::command_argument
@@ -250,6 +250,12 @@
         ! Set up the imaging lens
         if (pw_illum) then
 			 call setup_lens_parameters('Image',imaging_aberrations,imaging_cutoff)
+#ifdef GPU
+			write(*,*) 'Calculate an energy-filtered TEM (EFTEM) image? <1> Yes <2> No'
+			call get_input('Do EFTEM? <1> Yes <2> No',ieftem)
+			double_channeling = ieftem == 1
+			if(double_channeling) call ionizer_init(.false.)
+#endif
 		else
 			imaging_ndf = 1
 		endif

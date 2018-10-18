@@ -399,9 +399,6 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 								if (istem.and.i_df==1) then;do l = 1, imaging_ndf
 									call cuda_image(psi_out_d,ctf_d(:,:,l),temp_d,normalisation, nopiy, nopix,plan,.false.)
 									call cuda_addition<<<blocks,threads>>>(efistem_image_d(:,:,l,z_indx(1)), temp_d, efistem_image_d(:,:,l,z_indx(1)), 1.0_fp_kind, nopiy, nopix)
-									!temp = temp_d
-									!call binary_out(nopiy,nopix,temp,'contribution_'//to_string(l))
-									
 								enddo;endif;
 								!stop
 							endif
@@ -590,12 +587,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
        
     endif
 #ifdef GPU
-	if(double_channeling) then
-	do l=1,numeels
-		filename =  trim(adjustl(fnam))//'_double_channeling_EELS_'//zero_padded_int(l,2)
-		call output_stem_image(Hn0_eels_dc(:,:,:,:,l), filename,probe_df)
-	enddo
-	endif
+
 #endif    
     if (pacbed) then
 #ifdef GPU
@@ -614,15 +606,22 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 			temp = istem_image_d(:,:,l,i)
 			call output_TEM_result(output_prefix,tile_out_image(temp,ifactory,ifactorx),'ISTEM',nopiy,nopix,manyz,imaging_ndf>1,manytilt,z=zarray(i)&
 								&,lengthz=length,lengthdf=lengthimdf,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2),df = imaging_df(l))			
+		enddo;enddo;endif
 #ifdef GPU
-			if(double_channeling) then
+			if(double_channeling.and.istem) then
+			do i=1,nz;do l=1,imaging_ndf
 			temp = efistem_image_d(:,:,l,i)
 			call output_TEM_result(output_prefix,tile_out_image(temp,ifactory,ifactorx),'energy_filtered_ISTEM',nopiy,nopix,manyz,imaging_ndf>1,manytilt,z=zarray(i)&
-								&,lengthz=length,lengthdf=lengthimdf,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2),df = imaging_df(l));endif
-#endif		
-		enddo;enddo
-
-
+								&,lengthz=length,lengthdf=lengthimdf,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2),df = imaging_df(l))
+		enddo;enddo;endif	
+		
+if(double_channeling) then
+	do l=1,numeels
+		filename =  trim(adjustl(fnam))//'_double_channeling_EELS_'//zero_padded_int(l,2)
+		call output_stem_image(Hn0_eels_dc(:,:,:,:,l), filename,probe_df)
+	enddo
 	endif
+#endif
+
     enddo !End loop over tilts
 end subroutine absorptive_stem

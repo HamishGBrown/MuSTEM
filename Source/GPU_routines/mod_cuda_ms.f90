@@ -35,8 +35,30 @@ module cuda_ms
         module procedure cuda_stem_detector_cbed
     end interface
     
+	interface cuda_multislice_iteration
+		module procedure cuda_multislice_iteration_fractorized_prop
+		module procedure cuda_multislice_iteration_single_prop
+		module procedure cuda_multislice_iteration_new
+	end interface
     contains
 
+	attributes(host) subroutine cuda_phase_shift_from_1d_factor_arrays(arrayin,arrayout,shift_arrayy_d,shift_arrayx_d,nopiy,nopix,plan)
+		use CUFFT_wrapper
+       use cuda_array_library, only: blocks, threads
+		complex(fp_kind),intent(in),device::arrayin(nopiy,nopix),shift_arrayy_d(nopiy),shift_arrayx_d(nopix)
+		integer(4),intent(in)::nopiy,nopix
+		integer,value::plan
+
+		complex(fp_kind),intent(out),device::arrayout(nopiy,nopix)
+
+		complex(fp_kind),device::shift_array_d(nopiy,nopix)
+
+		integer*4::shifty,shiftx		
+
+			call cuda_make_shift_array<<<blocks,threads>>>(shift_array_d,shift_arrayy_d,shift_arrayx_d,nopiy,nopix)     !make the qspace shift array
+            call cuda_multiplication<<<blocks,threads>>>(arrayin,shift_array_d, arrayout,1.0_fp_kind,nopiy,nopix) !multiply by the qspace shift array
+            call cufftExec(plan,arrayout,arrayout,CUFFT_INVERSE)!inverse fourier transform
+	end subroutine
 
 	attributes(host) subroutine cuda_image(psi_d,ctf_d,image_d,normalisation, nopiy, nopix,plan,rspacein)
 		use CUFFT_wrapper
@@ -62,7 +84,7 @@ module cuda_ms
 		call cuda_mod<<<blocks,threads>>>(psi_temp_d, image_d, normalisation, nopiy, nopix)
 	end subroutine
 
-	attributes(host) subroutine cuda_multislice_iteration(psi_d, transf_d, prop_d, normalisation, nopiy, nopix,plan)
+	attributes(host) subroutine cuda_multislice_iteration_single_prop(psi_d, transf_d, prop_d, normalisation, nopiy, nopix,plan)
 		use CUFFT_wrapper
        use cuda_array_library, only: blocks, threads
 		implicit none
@@ -78,12 +100,52 @@ module cuda_ms
             call cufftExec(plan,psi_out_d,psi_d,CUFFT_INVERSE)
 
 	end subroutine
+
+	attributes(host) subroutine cuda_multislice_iteration_fractorized_prop(psi_d, transf_d, propy_d, propx_d,normalisation, nopiy, nopix,plan)
+		use CUFFT_wrapper
+       use cuda_array_library, only: blocks, threads
+		implicit none
+
+		complex(fp_kind),device,dimension(nopiy,nopix)::psi_d, transf_d
+		complex(fp_kind),device::propy_d(nopiy),propx_d(nopix)
+		integer(4):: nopiy, nopix
+		real(fp_kind),intent(in),value::normalisation
+		integer,value::plan
+
+			call cuda_multiplication<<<blocks,threads>>>(psi_d,transf_d, psi_d,1.0_fp_kind,nopiy,nopix)
+            call cufftExec(plan,psi_d,psi_d,CUFFT_FORWARD)
+            call cuda_multiplication<<<blocks,threads>>>(psi_d,propy_d,propx_d, psi_d,normalisation,nopiy,nopix)
+            call cufftExec(plan,psi_d,psi_d,CUFFT_INVERSE)
+
+	end subroutine
+
+	attributes(host) subroutine cuda_multislice_iteration_new(psi_d, transf_d, prop_d,prop_distance,even_slicing, normalisation, nopiy, nopix,plan)
+		use CUFFT_wrapper
+       use cuda_array_library, only: blocks, threads
+		implicit none
+
+		complex(fp_kind),device,dimension(nopiy,nopix)::psi_d, transf_d, prop_d,psi_out_d
+		complex(fp_kind),device,allocatable:: propp_d(:,:)
+		integer(4):: nopiy, nopix
+		real(fp_kind),intent(in),value::normalisation,prop_distance
+		logical,intent(in)::even_slicing
+		integer,value::plan
+			
+			
+			call cuda_multiplication<<<blocks,threads>>>(psi_d,transf_d, psi_out_d,1.0_fp_kind,nopiy,nopix)
+            call cufftExec(plan,psi_out_d,psi_d,CUFFT_FORWARD)
+			if(even_slicing) then
+				call cuda_multiplication<<<blocks,threads>>>(psi_d,prop_d, psi_out_d,normalisation,nopiy,nopix)
+			else
+				allocate(propp_d(nopiy,nopix))
+				call cuda_complex_exponentiation<<<blocks,threads>>>(propp_d, prop_d,prop_distance, nopiy, nopix)
+				call cuda_multiplication<<<blocks,threads>>>(psi_d,propp_d, psi_out_d,normalisation,nopiy,nopix)
+			endif
+            call cufftExec(plan,psi_out_d,psi_d,CUFFT_INVERSE)
+
+	end subroutine
 	 
-	!
-	!shiftx = floor(ifactorx*ran1(idum)) * nopix_ucell
-    !                   shifty = floor(ifactory*ran1(idum)) * nopiy_ucell
-    !                   call cuda_cshift<<<blocks,threads>>>(transf_d(:,:,nran,j),trans_d,nopiy,nopix,shifty,shiftx)
-    !                   call cuda_multiplication<<<blocks,threads>>>(psi_d,trans_d, psi_out_d,1.0_fp_kind,nopiy,nopix)
+	
     attributes(global) subroutine cuda_phase_shift(shift_array, ifactory, ifactorx, ig1, ig2, n, m, coord)
 		
         implicit none

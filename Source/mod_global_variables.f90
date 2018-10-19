@@ -29,6 +29,7 @@
     integer(4) :: ifactorx,ifactory             !unit cell tilings
     real(fp_kind) :: deltay,deltax              !real space spacing between pixels in x and y
     real(fp_kind) :: normalisation
+	
     
     real(fp_kind), allocatable :: bwl_mat(:,:)            !bandwidth limiting matrix
                                           
@@ -51,6 +52,7 @@
 	integer(4),allocatable::ncells(:)
 	integer(4)::nz
     integer(4) :: n_cells  
+	logical::even_slicing
 
     complex(fp_kind), allocatable :: fz(:,:,:)            !the scattering factors, in reciprocal space, calculated on the grid (supercell)
     complex(fp_kind), allocatable :: fz_DWF(:,:,:)        !the DWF smear_array, in reciprocal space, calculated on the grid (supercell)

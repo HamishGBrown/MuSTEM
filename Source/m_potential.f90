@@ -725,6 +725,7 @@ module m_potential
     function potential_from_scattering_factors(scattering_factor,atom_posn,nat_layer,nopiy,nopix,high_accuracy) result(slice_potential)
     use m_precision
     use cufft_wrapper
+	use output
     
     implicit none
     
@@ -753,6 +754,9 @@ module m_potential
         else
             call make_site_factor_hybrid(site_term, atom_posn)        
         endif
+		!call ifft2(nopiy,nopix,site_term,nopiy,site_term,nopiy)
+		!call binary_out(nopiy,nopix,site_term,'site_term')
+		!stop
         slice_potential = site_term*scattering_factor
         ! Get realspace potential
         call ifft2(nopiy,nopix,slice_potential,nopiy,slice_potential,nopiy)
@@ -836,7 +840,7 @@ module m_potential
         end function seed_rng
 
       
-    subroutine make_propagator(nopiy,nopix,prop,dz,ak1,ss,ig1,ig2,claue,ifactorx,ifactory)
+    subroutine make_propagator(nopiy,nopix,prop,dz,ak1,ss,ig1,ig2,claue,ifactorx,ifactory,exponentiate)
 
         use m_precision, only: fp_kind
         use m_crystallography, only: trimr,make_g_vec_array
@@ -847,20 +851,26 @@ module m_potential
         complex(fp_kind) :: prop(nopiy,nopix)        
         real(fp_kind) :: ak1, ss(7), claue(3), dz, g_vec_array(3,nopiy,nopix)
         integer(4) :: ifactorx, ifactory, ig1(3), ig2(3)
-
+		logical,intent(in),optional::exponentiate
+		
+		logical::exp_
         real(fp_kind),parameter :: pi = atan(1.0d0)*4.0d0
         integer(4) :: ny, nx
         
+		exp_=.true.
+		if(present(exponentiate)) exp_ = exponentiate
         
         call make_g_vec_array(g_vec_array,ifactory,ifactorx)
 
         do ny = 1, nopiy;do nx = 1, nopix
-            prop(ny,nx) = exp(cmplx(0.0d0, -pi*dz*trimr(g_vec_array(:,ny,nx)-claue,ss)**2/ak1, fp_kind ))
+            prop(ny,nx) = cmplx(0.0d0, -pi*dz*trimr(g_vec_array(:,ny,nx)-claue,ss)**2/ak1, fp_kind )
         enddo;enddo
+
+		if(exp_) prop = exp(prop)
 
     end subroutine
 	      
-    subroutine make_propagator_components(nopiy,nopix,propy,propx,ak1,ss,ig1,ig2,claue,ifactorx,ifactory)
+    subroutine make_propagator_components(nopiy,nopix,propy,propx,dz,ak1,ss,ig1,ig2,ifactorx,ifactory)
 
         use m_precision, only: fp_kind
         use m_crystallography, only: trimr,make_g_vec_array
@@ -869,7 +879,7 @@ module m_potential
 
         integer(4) :: nopiy,nopix
         complex(fp_kind) :: propy(nopiy),propx(nopix)
-        real(fp_kind) :: ak1, ss(7), claue(3), dz, g_vec_array(3,nopiy,nopix)
+        real(fp_kind) :: ak1, ss(7), dz, g_vec_array(3,nopiy,nopix)
         integer(4) :: ifactorx, ifactory, ig1(3), ig2(3)
 
         real(fp_kind),parameter :: pi = atan(1.0d0)*4.0d0
@@ -879,11 +889,11 @@ module m_potential
         call make_g_vec_array(g_vec_array,ifactory,ifactorx)
 
         do ny = 1, nopiy;
-            propy(ny) = -pi*trimr(g_vec_array(:,ny,1),ss)**2/ak1
+            propy(ny) = exp(cmplx(0.0_fp_kind,-pi*dz*trimr(g_vec_array(:,ny,1),ss)**2/ak1))
         enddo
 
 		do nx = 1, nopix
-			propx(nx) = -pi*trimr(g_vec_array(:,1,nx),ss)**2/ak1
+			propx(nx) = exp(cmplx(0.0_fp_kind,-pi*dz*trimr(g_vec_array(:,1,nx),ss)**2/ak1))
 		enddo
 
     end subroutine

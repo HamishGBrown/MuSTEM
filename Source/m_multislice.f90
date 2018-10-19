@@ -748,7 +748,7 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
     end subroutine
     
     subroutine calculate_slices
-        use global_variables, only: nat, ifactory, ifactorx, nt, a0, deg, tau, nm
+        use global_variables, only: nat, ifactory, ifactorx, nt, a0, deg, tau, nm,even_slicing,even_slicing
         use m_crystallography, only: cryst
         
         implicit none
@@ -781,7 +781,7 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
         enddo
         
         prop_distance = a0_slice(3,:)
-        
+        even_slicing = all(abs(prop_distance - sum(prop_distance)/n_slices)<1e-3)
     end subroutine
     
 	subroutine calculate_tau_nat_slice( depth1, depth2, tau, tau_slice, nm, nt, nat, nat_slice, ifactorx, ifactory )

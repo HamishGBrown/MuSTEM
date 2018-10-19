@@ -160,7 +160,9 @@ module cuda_setup
         write(*,*) '|-----------------------|'
         write(*,*)
             
-        write(*,'(1x, a, f9.3, a)') 'This calculation requires a GPU with roughly ', required_memory/10.0**6, ' MB of memory.'
+        if(required_memory/10.0**6<10.0**5) then ;write(*,'(1x, a, f9.3, a)') 'This calculation requires a GPU with roughly ', required_memory/10.0**6, ' MB of memory.'
+		else; write(*,'(1x, a, f9.0, a)') 'This calculation requires a GPU with > ', 10.0**5, ' MB of memory.';endif
+
         write(*,*) 'The selected device has access to ', usable_GPU_memory/10.0**6, ' MB of memory.'
         write(*,*)
         

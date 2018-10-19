@@ -53,7 +53,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     use cuda_array_library, only: cuda_multiplication, cuda_addition, cuda_mod, blocks, threads
     use cudafor, only: dim3
     use cuda_ms
-    use cuda_potential, only: volume_array, ccd_slice_array, cuda_setup_many_phasegrate, cuda_make_adf_potential, cuda_make_ion_potential, cuda_make_abs_potential
+    use cuda_potential
     use cufft, only: cufft_z2z, cufft_c2c, cufft_forward, cufft_inverse, cufftplan, cufftexec
     use cuda_setup, only: GPU_memory_message
 #endif
@@ -69,8 +69,9 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     integer(4) :: i, j, k, i_df, ny, nx,z_indx(1),ii,length,idum,ntilt,lengthdf,idet
 
     !probe variables
-    complex(fp_kind),dimension(nopiy,nopix) :: psi,qpsi,psi_out
-    complex(fp_kind),dimension(nopiy,nopix,n_slices)::projected_potential,prop,transf_absorptive
+	complex(fp_kind),allocatable::Vg(:,:,:),propy(:),propx(:)
+    complex(fp_kind),dimension(nopiy,nopix) :: psi,qpsi,psi_out,prop
+    complex(fp_kind),dimension(nopiy,nopix,n_slices)::projected_potential,transf_absorptive
 	complex(fp_kind),dimension(:,:,:),allocatable::ctf
 
     !output/detectors
@@ -80,27 +81,29 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 
     real(fp_kind),dimension(nysample,nxsample,probe_ndf,nz)::eels_correction_image
 	real(fp_kind),allocatable :: probe_intensity(:,:,:),stem_ion_image(:,:,:,:,:),pacbed_pattern(:,:,:)&
-                               &,adf_image(:,:,:),ion_image(:,:,:),masks(:,:,:),istem_image(:,:,:,:)
+                               &,adf_image(:,:,:),ion_image(:,:,:),masks(:,:,:),istem_image(:,:,:,:),adf_cont(:)
 	real(8)::thmin,thmax
+
 
     !diagnostic variables
     real(fp_kind) :: intens, t1, delta
     
     !output variables
     character(120) :: filename,fnam,fnam_det
-    logical:: many_df,manyz,dodf,manytilt
+    logical:: many_df,manyz,dodf,manytilt,factorized_propagator
     
 #ifdef GPU
     !device variables
     integer :: plan
     complex(fp_kind),device,dimension(nopiy,nopix) :: psi_d,psi_out_d
-    real(fp_kind),device,dimension(nopiy,nopix) :: temp_d
-    real(fp_kind),device, allocatable,dimension(:,:) :: psi_intensity_d,eels_correction_detector_d,inelastic_potential_d
+
+    real(fp_kind),device, allocatable,dimension(:,:) :: psi_intensity_d,eels_correction_detector_d,inelastic_potential_d,temp_d
     real(fp_kind),device,allocatable,dimension(:,:,:) :: adf_image_d,ion_image_d,pacbed_pattern_d,masks_d
 	real(fp_kind),device,allocatable,dimension(:,:,:,:) :: adf_potential_d,ion_potential_d
     
     !device variables for on the fly potentials
-    complex(fp_kind),device,allocatable,dimension(:,:) :: bwl_mat_d,inverse_sinc_d,trans_d
+	complex(fp_kind),device,allocatable,dimension(:) :: propy_d,propx_d
+    complex(fp_kind),device,allocatable,dimension(:,:) :: inverse_sinc_d,trans_d
     complex(fp_kind),device,allocatable,dimension(:,:,:) :: fz_d,fz_dwf_d,fz_abs_d,fz_mu_d, prop_d,transf_d
 	complex(fp_kind),device,allocatable,dimension(:,:,:,:) :: fz_adf_d
 
@@ -150,7 +153,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     if(pacbed) then;allocate(pacbed_pattern(nopiy,nopix,nz)); pacbed_pattern= 0;endif
 #ifdef GPU
 	if(double_channeling) then
-        allocate(tmatrix_states_d(nopiy,nopix,nstates),psi_inel_d(nopiy,nopix),cbed_inel_dc_d(nopiy,nopix),tmatrix_states(nopiy,nopix,nstates))
+        allocate(tmatrix_states_d(nopiy,nopix,nstates),psi_inel_d(nopiy,nopix),cbed_inel_dc_d(nopiy,nopix),tmatrix_states(nopiy,nopix,nstates),temp_d(nopiy,nopix))
 		allocate(shiftarray(nopiy,nopix),tmatrix_d(nopiy,nopix),q_tmatrix_d(nopiy,nopix))
         tmatrix_states_d = setup_ms_hn0_tmatrices(nopiy,nopix,nstates)*alpha_n
         allocate(Hn0_shifty_coord_d(nopiy,maxval(natoms_slice_total),n_slices))
@@ -209,45 +212,40 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     endif
     
     ! Copy host arrays to the device
+	factorized_propagator = all(abs(claue)<1e-2).and.on_the_fly.and.even_slicing
+	factorized_propagator = .false.
     if (on_the_fly) then
-        ! Set up device variables for on-the-fly potentials
-        
-        allocate(bwl_mat_d(nopiy,nopix),inverse_sinc_d(nopiy,nopix)&
-				&,trans_d(nopiy,nopix),fz_d(nopiy,nopix,nt)&
-				&,fz_dwf_d(nopiy,nopix,nt),fz_abs_d(nopiy,nopix,nt))
+        allocate(Vg(nopiy,nopix,nt))!,Vg_d(nopiy,nopix,nt)
+
+	    Vg = fz*fz_dwf
+		if(include_absorption) Vg = Vg +ci*absorptive_scattering_factors(ig1,ig2,ifactory,ifactorx,nopiy,nopix,nt,a0,ss,atf,nat, ak, relm&
+			&, orthog, 0.0_8, 4.0d0*atan(1.0d0))*2*ak*tp * ak*ss(7)/relm  !make the potential absorptive
+		Vg = Vg*spread(inverse_sinc,ncopies=nt,dim=3)
 		
-        fz_d = fz 
-        fz_dwf_d = fz_dwf
+		if(factorized_propagator) then
+			allocate(propy_d(nopiy),propx_d(nopix))
+		endif
 		if(stem.and.adf)  then
-			allocate(fz_adf_d(nopiy,nopix,nt,ndet))
 			do k=1,ndet/nseg
 			  thmin =  atan(inner((k-1)*nseg+1)/ak)
 			  thmax =  atan(outer((k-1)*nseg+1)/ak)
 		  
 			  !Note that the absorptive calculations do not take into account the directionality of inelastic scattering, the absorptive scattering
 			  !factors are assumed isotropic and this is only an approximation for inelastic scattering to segmented detectors
-			  fz_adf_d(:,:,:,(k-1)*nseg+1:k*nseg) = spread(cmplx(absorptive_scattering_factors(ig1,ig2,ifactory,ifactorx,nopiy,nopix,nt,a0,ss&
+			  fz_adf(:,:,:,(k-1)*nseg+1:k*nseg) = spread(cmplx(absorptive_scattering_factors(ig1,ig2,ifactory,ifactorx,nopiy,nopix,nt,a0,ss&
 															&,atf,nat, ak, relm, orthog,thmin,thmax)/nseg,0.0_fp_kind)*4*pi,dim=4,ncopies=nseg)/nseg
 			enddo
 		endif
-		
-		fz_abs_d=0
-        if(include_absorption) fz_abs_d = ci*absorptive_scattering_factors(ig1,ig2,ifactory,ifactorx,nopiy,nopix,nt,a0,ss,atf,nat,&
-																	& ak, relm, orthog, 0.0_8, 4.0d0*atan(1.0d0))*2*ak  !make the potential absorptive
 		
         if (ionization) then
            allocate(fz_mu_d(nopiy,nopix,num_ionizations))
             fz_mu_d = ionization_mu
         endif
         
-        if (ionization.or.adf) allocate(inelastic_potential_d(nopiy,nopix))
-        
-        inverse_sinc_d = inverse_sinc
-        bwl_mat_d = bwl_mat
-        
+        if (ionization) allocate(inelastic_potential_d(nopiy,nopix))
     else
         ! Set up device variables for precalculated potentials
-        if (stem.and.adf) then
+        if (stem.and.adf.and.(.not.on_the_fly)) then
             allocate(adf_potential_d(nopiy,nopix,n_slices,ndet))
             adf_potential_d = adf_potential
         endif
@@ -256,14 +254,12 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
             allocate(ion_potential_d(nopiy,nopix,num_ionizations,n_slices))
             ion_potential_d = ionization_potential
         endif
-        
+        allocate(transf_d(nopiy,nopix,n_slices))
     endif
     if (adf.or.ionization) allocate(psi_intensity_d(nopiy,nopix))
-    if (stem.and.adf) allocate(adf_image_d(nopiy,nopix,ndet))
+    if (stem.and.adf.and.(.not.on_the_fly)) allocate(adf_image_d(nopiy,nopix,ndet))
     if (ionization) allocate(ion_image_d(nopiy,nopix,num_ionizations))
 	if (pacbed) allocate(pacbed_pattern_d(nopiy,nopix,nz)) 
-    allocate(prop_d(nopiy,nopix,n_slices),transf_d(nopiy,nopix,n_slices))
-    prop_d = prop
     if (stem) allocate(masks_d(nopiy,nopix,ndet))
     if (stem) masks_d = masks
     
@@ -283,21 +279,28 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     do ntilt=1,n_tilts_total
 	!Have to redo transmission functions and propagator for each tilt
 	
-    
+    if(even_slicing.and.(.not.factorized_propagator)) then
+		call make_propagator(nopiy,nopix,prop,prop_distance(1),Kz(ntilt),ss,ig1,ig2,claue(:,ntilt),ifactorx,ifactory,exponentiate = .true.)
+		prop = prop*bwl_mat
+	elseif(.not.factorized_propagator) then
+		call make_propagator(nopiy,nopix,prop,1.0_fp_kind,Kz(ntilt),ss,ig1,ig2,claue(:,ntilt),ifactorx,ifactory,exponentiate = .false.)
+	endif
+	if(.not.on_the_fly) then
 	do i = 1, n_slices
         transf_absorptive(:,:,i) = exp(ci*pi*a0_slice(3,i)/Kz(ntilt)*projected_potential(:,:,i))
-	    call make_propagator(nopiy,nopix,prop(:,:,i),prop_distance(i),Kz(ntilt),ss,ig1,ig2,claue(:,ntilt),ifactorx,ifactory)
-	    prop(:,:,i) = prop(:,:,i) * bwl_mat
+	    !call make_propagator(nopiy,nopix,prop(:,:,i),prop_distance(i),Kz(ntilt),ss,ig1,ig2,claue(:,ntilt),ifactorx,ifactory)
+	    !prop(:,:,i) = prop(:,:,i) * bwl_mat
         !! Bandwith limit the phase grate, psi is used for temporary storage
         call fft2(nopiy, nopix, transf_absorptive(:,:,i), nopiy, psi, nopiy)
         psi = psi * bwl_mat
         call ifft2(nopiy, nopix, psi, nopiy, transf_absorptive(:,:,i), nopiy)
     enddo
-    
+    endif
+	
 	pacbed_pattern = 0
 #ifdef GPU
     if(pacbed) pacbed_pattern_d = 0
-	prop_d = prop
+	!prop_d = prop
 	transf_d = transf_absorptive
 #endif
     do ny = 1, nysample
@@ -334,17 +337,17 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 
 #ifdef GPU
         if (adf) adf_image_d = 0.0_fp_kind
+		if(stem.and.adf.and.on_the_fly) adf_cont=0
         if (ionization) ion_image_d = 0.0_fp_kind
         psi_d = psi
         do i = 1,maxval(ncells);do j = 1, n_slices
             
 			! Calculate inelastic cross sections
-			if ((stem.and.adf).or.ionization) call cuda_mod<<<blocks,threads>>>(psi_d,psi_intensity_d,1.0_fp_kind,nopiy,nopix)
+			if ((stem.and.adf.and.(.not.on_the_fly)).or.ionization) call cuda_mod<<<blocks,threads>>>(psi_d,psi_intensity_d,1.0_fp_kind,nopiy,nopix)
 			if((stem.and.adf)) then
 				do k=1,ndet
 				if(on_the_fly) then
-					call cuda_make_adf_potential(inelastic_potential_d,tau_slice(:,:,:,j),nat_slice(:,j),plan,fz_adf_d(:,:,:,k),inverse_sinc_d,Volume_array(j))
-					call cuda_multiplication<<<blocks,threads>>>(psi_intensity_d,inelastic_potential_d, temp_d,prop_distance(j),nopiy,nopix)
+					adf_cont(k) = adf_cont(k) + cuda_adf_crossection_on_the_fly(psi_d,tau_slice(:,:,:,j),nat_slice(:,j),plan,fz_adf(:,:,:,k),Volume_array(j))
 				else
 					call cuda_multiplication<<<blocks,threads>>>(psi_intensity_d,adf_potential_d(:,:,j,k), temp_d,prop_distance(j),nopiy,nopix)     !overlap
 				endif
@@ -409,8 +412,8 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 
 			! Transmit through slice potential
 			if(on_the_fly) then
-				call cuda_make_abs_potential(trans_d,ccd_slice_array(j),tau_slice(:,:,:,j),nat_slice(:,j),prop_distance(j),plan,fz_d,fz_dwf_d,fz_abs_d,inverse_sinc_d,bwl_mat_d,Volume_array(j))
-				call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,j), normalisation, nopiy, nopix,plan)
+				if(.not.factorized_propagator) call cuda_on_the_fly_abs_multislice(psi_d,ccd_slice_array(j),tau_slice(:,:,:,j),nat_slice(:,j),prop_distance(j),plan,Vg,Volume_array(j),prop_d = prop_d)
+				if(factorized_propagator) call cuda_on_the_fly_abs_multislice(psi_d,ccd_slice_array(j),tau_slice(:,:,:,j),nat_slice(:,j),prop_distance(j),plan,Vg,Volume_array(j),propy_d, propx_d)
 			else
 				call cuda_multislice_iteration(psi_d, transf_d(:,:,j), prop_d(:,:,j), normalisation, nopiy, nopix,plan)
 			endif
@@ -432,7 +435,8 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 				if(pacbed.and.(i_df==1)) call cuda_addition<<<blocks,threads>>>(temp_d,pacbed_pattern_d(:,:,z_indx(1)),pacbed_pattern_d(:,:,z_indx(1)),1.0_fp_kind,nopiy,nopix)
 				do ii=1,ndet
 					if(stem) stem_elastic_image(ny,nx,i_df,z_indx(1),ii) = cuda_stem_detector(temp_d,masks_d(:,:,ii))
-					if(stem.and.adf) stem_inelastic_image(ny,nx,i_df,z_indx(1),ii) = get_sum(adf_image_d(:,:,ii))
+					if(stem.and.adf.and.on_the_fly) stem_inelastic_image(ny,nx,i_df,z_indx(1),ii) = adf_cont(ii)
+					if(stem.and.adf.and.(.not.on_the_fly)) stem_inelastic_image(ny,nx,i_df,z_indx(1),ii) = get_sum(adf_image_d(:,:,ii))
 				enddo
 				if(ionization) then
 					do ii=1,num_ionizations

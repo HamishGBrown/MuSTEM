@@ -711,7 +711,11 @@ module output
 		if(dodf) fnam = trim(adjustl(fnam)) // '_df='//zero_padded_int(nint(df),lengthdf)//'_A'
         if (dotilts) fnam = trim(adjustl(fnam))//trim(adjustl(tiltstring))
 		if(present(pp)) fnam = trim(adjustl(fnam))//'_pp_'//to_string(pp(2))//'_'//to_string(pp(1))
-		call binary_out_unwrap(nopiy, nopix, arrayin, fnam,write_to_screen=write_to_screen_,nopiyout=nopiy_,nopixout=nopix_)
+		if(nopiy==nopiy_.and.nopix==nopix_) then
+			call binary_out(nopiy, nopix, arrayin, fnam,write_to_screen=write_to_screen_)
+		else
+			call binary_out_unwrap(nopiy, nopix, arrayin, fnam,write_to_screen=write_to_screen_,nopiyout=nopiy_,nopixout=nopix_)
+		endif
 
      end subroutine
 

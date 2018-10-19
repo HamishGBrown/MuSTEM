@@ -62,31 +62,17 @@ subroutine qep_stem(STEM,ionization,PACBED)
     use m_precision
     use output
 #ifdef GPU	
-    use cuda_array_library
-    use cudafor
-    use cuda_ms
-    use CUFFT
-    use cuda_potential
-    use cuda_setup
+    use cuda_array_library;use cudafor;use cuda_ms;use CUFFT;use cuda_potential;use cuda_setup
 #endif
-	use cufft_wrapper
-	use m_crystallography
-    use m_tilt
-    use m_string
-    use m_multislice!, only: make_qep_grates, output_probe_intensity, output_cell_list, cell_map, output_thickness_list, setup_propagators
-    use m_potential
-	use m_numerical_tools
+	use cufft_wrapper;use m_Hn0
+	use m_crystallography;use m_tilt;use m_string;use m_multislice;use m_potential;use m_numerical_tools
     
     implicit none
     
 	logical,intent(in)::STEM,ionization,PACBED
     !dummy variables
-    integer(4) ::  i,j,l,m,i_qep_pass,iz,k,ii,jj,ntilt
-    integer(4) ::  count
-    integer(4) ::  shifty,shiftx
-    integer(4) ::  ny,nx,i_df,idet
-    integer(4) ::  total_slices
-    
+    integer(4) ::  i,j,l,m,i_qep_pass,iz,k,ii,jj,ntilt,count,shifty,shiftx,ny,nx,i_df,idet,total_slices
+
     !random variables
     integer(4) :: idum,nsliceoutput,z_indx(1)
     !real(fp_kind) :: ran1
@@ -96,6 +82,7 @@ subroutine qep_stem(STEM,ionization,PACBED)
     complex(fp_kind),dimension(nopiy,nopix) :: psi,trans,psi_initial,psi_out,temp_image
      complex(fp_kind),dimension(nopiy,nopix,nz)::psi_elastic
      complex(fp_kind),dimension(nopiy,nopix,n_qep_grates,n_slices)::projected_potential,qep_grates
+	 complex(fp_kind),allocatable::ctf(:,:,:)
     !output
     real(fp_kind),dimension(nopiy,nopix) :: image,temp
     
@@ -104,7 +91,7 @@ subroutine qep_stem(STEM,ionization,PACBED)
     real(fp_kind),dimension(nysample,nxsample,probe_ndf,ndet,nz) :: stem_image,stem_elastic_image&
 																  &,stem_inelastic_image
 	real(fp_kind),dimension(nysample,nxsample,probe_ndf,nz) :: eels_correction_image
-    real(fp_kind),allocatable :: ion_image(:,:,:),stem_ion_image(:,:,:,:,:),pacbed_pattern(:,:,:),pacbed_elastic(:,:,:)
+    real(fp_kind),allocatable :: ion_image(:,:,:),stem_ion_image(:,:,:,:,:),pacbed_pattern(:,:,:),pacbed_elastic(:,:,:),istem_image(:,:,:,:)
     
     !diagnostic variables
     real(fp_kind) :: intensity
@@ -127,15 +114,26 @@ subroutine qep_stem(STEM,ionization,PACBED)
     complex(fp_kind),device,allocatable,dimension(:,:) :: bwl_mat_d,inverse_sinc_d,fz_dwf_d
     complex(fp_kind),device,allocatable,dimension(:,:,:) :: fz_d,fz_mu_d
     real(fp_kind),device,allocatable :: inelastic_potential_d(:,:)
+
+	!Double channeling variables
+	complex(fp_kind),device,allocatable,dimension(:,:) ::psi_inel_d,shiftarray,tmatrix_d,q_tmatrix_d
+	complex(fp_kind),device,allocatable,dimension(:,:,:)::tmatrix_states_d,Hn0_shifty_coord_d,Hn0_shiftx_coord_d,ctf_d
+	real(fp_kind),device,allocatable,dimension(:,:)::cbed_inel_dc_d
+	real(fp_kind),device,allocatable,dimension(:,:,:)::Hn0_eels_detector_d
+	real(fp_kind),device,allocatable,dimension(:,:,:,:)::efistem_image_d,istem_image_d
+	real(fp_kind),allocatable,dimension(:,:,:,:,:)::Hn0_eels_dc
+	real(fp_kind),allocatable,dimension(:,:,:)::tmatrix_states
+	integer::i_target,lengthimdf
 #endif
 
     real(fp_kind),allocatable :: probe_intensity(:,:,:)
     character(1024) :: filename
     
     real(fp_kind)::qep_stem_GPU_memory,const
-    logical::elfourd
+    logical::elfourd,manytilt,manyz,many_df
     integer*4::length,lengthdf
     
+	
 #ifdef GPU    
     call GPU_memory_message(qep_stem_GPU_memory(), on_the_fly)
 #endif
@@ -153,6 +151,42 @@ subroutine qep_stem(STEM,ionization,PACBED)
 	    elfourd = fourdSTEM.and.output_thermal
         length = ceiling(log10(maxval(zarray)))
     endif
+
+	#ifdef GPU
+	if(double_channeling) then
+        allocate(tmatrix_states_d(nopiy,nopix,nstates),psi_inel_d(nopiy,nopix),cbed_inel_dc_d(nopiy,nopix),tmatrix_states(nopiy,nopix,nstates))
+		allocate(shiftarray(nopiy,nopix),tmatrix_d(nopiy,nopix),q_tmatrix_d(nopiy,nopix))
+        tmatrix_states_d = setup_ms_hn0_tmatrices(nopiy,nopix,nstates)*alpha_n
+        allocate(Hn0_shifty_coord_d(nopiy,maxval(natoms_slice_total),n_slices))
+        allocate(Hn0_shiftx_coord_d(nopix,maxval(natoms_slice_total),n_slices))
+        Hn0_shiftx_coord_d = Hn0_shiftx_coord
+        Hn0_shifty_coord_d = Hn0_shifty_coord
+		allocate(Hn0_eels_dc(nysample,nxsample,probe_ndf,nz,numeels))
+		allocate(Hn0_eels_detector_d(nopiy,nopix,numeels),Hn0_eels_detector(nopiy,nopix,numeels))
+		do l=1,numeels
+			Hn0_eels_detector(:,:,l) = make_detector(nopiy,nopix,ifactory,ifactorx,ss,0.0_fp_kind,outerrad(l))
+			
+		enddo
+		Hn0_eels_detector_d = Hn0_eels_detector
+		Hn0_eels_dc = 0.0_fp_kind
+		if(istem) then; allocate(efistem_image_d(nopiy,nopix,imaging_ndf,nz));efistem_image_d=0;endif
+    endif
+	if(istem) then; allocate(istem_image_d(nopiy,nopix,imaging_ndf,nz));istem_image_d=0;endif
+#endif
+	if(istem) then; allocate(ctf(nopiy,nopix,imaging_ndf),istem_image(nopiy,nopix,imaging_ndf,nz));istem_image=0
+			lengthimdf = calculate_padded_string_length(imaging_df,imaging_ndf)
+			do i=1,imaging_ndf
+				ctf(:,:,i) =  make_ctf([0.0_fp_kind,0.0_fp_kind,0.0_fp_kind],imaging_df(i),imaging_cutoff,imaging_aberrations,imaging_apodisation)
+			enddo
+#ifdef GPU
+		allocate(ctf_d(nopiy,nopix,imaging_ndf),istem_image_d(nopiy,nopix,imaging_ndf,nz));ctf_d=ctf;istem_image_d=0
+#endif
+		endif
+	manyz = nz>1
+	manytilt = n_tilts_total>1
+	many_df = probe_ndf .gt. 1
+    length = calculate_padded_string_length(zarray,nz)
+    lengthdf = calculate_padded_string_length(probe_df,probe_ndf)
     
 ! Precalculate the scattering factors on a grid
     call precalculate_scattering_factors()
@@ -320,30 +354,96 @@ subroutine qep_stem(STEM,ionization,PACBED)
 							call cuda_addition<<<blocks,threads>>>(temp_d,ion_image_d(:,:,ii),ion_image_d(:,:,ii),1.0_fp_kind,nopiy,nopix)                          !depth sum
 						enddo
 					endif
-                    ! Phase grate
+
+!Double channeling
+
+			if(double_channeling) then
+                    
+                do i_target = 1, natoms_slice_total(j) ! Loop over targets
+							
+                    ! Calculate inelastic transmission matrix
+					call cuda_make_shift_array<<<blocks,threads>>>(shiftarray,Hn0_shifty_coord_d(:,i_target,j),Hn0_shiftx_coord_d(:,i_target,j),nopiy,nopix)
+					
+					do k = 1, nstates
+							
+					call cuda_multiplication<<<blocks,threads>>>(tmatrix_states_d(:,:,k),shiftarray, q_tmatrix_d,1.0_fp_kind,nopiy,nopix)
+                    call cufftExec(plan,q_tmatrix_d,tmatrix_d,CUFFT_INVERSE)
+					call cuda_multiplication<<<blocks,threads>>>(psi_d,tmatrix_d,psi_inel_d,sqrt(normalisation),nopiy,nopix)
+					
+                        ! Scatter the inelastic wave through the remaining slices in the cell
+                        do jj = j, n_slices   
+							! QEP multislice
+							nran = floor(n_qep_grates*ran1(idum)) + 1
+							shiftx = floor(ifactorx*ran1(idum));shifty = floor(ifactory*ran1(idum))
+							if(on_the_fly) then
+								call cuda_fph_make_potential(trans_d,ccd_slice_array(jj),tau_slice,nat_slice(:,jj),jj,prop_distance(jj),idum,plan,fz_d,inverse_sinc_d,bwl_mat_d)
+								call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
+							elseif(qep_mode == 2) then
+								call cuda_cshift<<<blocks,threads>>>(transf_d(:,:,nran,jj),trans_d,nopiy,nopix,shifty* nopiy_ucell,shiftx* nopix_ucell)
+								call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
+							elseif(qep_mode == 3) then                       !randomly shift phase grate
+								call cuda_phase_shift_from_1d_factor_arrays(transf_d(:,:,nran,jj),trans_d,shift_arrayy_d(:,shifty+1),shift_arrayx_d(:,shiftx+1),nopiy,nopix,plan)
+								call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
+							else
+								call cuda_multislice_iteration(psi_d, transf_d(:,:,nran,jj), prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
+							endif
+                        enddo
+                        ! Scatter the inelastic wave through the remaining cells
+                        do ii = i+1, n_cells
+                            do jj = 1, n_slices
+								! QEP multislice
+								nran = floor(n_qep_grates*ran1(idum)) + 1
+								shiftx = floor(ifactorx*ran1(idum));shifty = floor(ifactory*ran1(idum))
+								if(on_the_fly) then
+									call cuda_fph_make_potential(trans_d,ccd_slice_array(jj),tau_slice,nat_slice(:,jj),jj,prop_distance(jj),idum,plan,fz_d,inverse_sinc_d,bwl_mat_d)
+									call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
+								elseif(qep_mode == 2) then
+									call cuda_cshift<<<blocks,threads>>>(transf_d(:,:,nran,jj),trans_d,nopiy,nopix,shifty* nopiy_ucell,shiftx* nopix_ucell)
+									call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
+								elseif(qep_mode == 3) then                       !randomly shift phase grate
+									call cuda_phase_shift_from_1d_factor_arrays(transf_d(:,:,nran,jj),trans_d,shift_arrayy_d(:,shifty+1),shift_arrayx_d(:,shiftx+1),nopiy,nopix,plan)
+									call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
+								else
+									call cuda_multislice_iteration(psi_d, transf_d(:,:,nran,jj), prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
+								endif
+							enddo
+
+							if (any(ii==ncells)) then
+								z_indx = minloc(abs(ncells-ii))
+								call cufftExec(plan, psi_inel_d, psi_out_d, CUFFT_FORWARD)
+								
+								! Accumulate the EELS images
+								do l=1,numeels
+									Hn0_eels_dc(ny,nx,i_df,z_indx(1),l) = Hn0_eels_dc(ny,nx,i_df,z_indx(1),l)+cuda_stem_detector(psi_out_d, Hn0_eels_detector_d(:,:,l))
+								enddo
+								! Accumulate EFISTEM images
+								if (istem.and.i_df==1) then;do l = 1, imaging_ndf
+									call cuda_image(psi_out_d,ctf_d(:,:,l),temp_d,normalisation, nopiy, nopix,plan,.false.)
+									call cuda_addition<<<blocks,threads>>>(efistem_image_d(:,:,l,z_indx(1)), temp_d, efistem_image_d(:,:,l,z_indx(1)), 1.0_fp_kind, nopiy, nopix)
+								enddo;endif;
+								!stop
+							endif
+                        enddo
+						enddo
+				enddo
+			endif  ! End loop over cells,targets and states and end double_channeling section
+
+                    ! QEP multislice
 				    nran = floor(n_qep_grates*ran1(idum)) + 1
+					shiftx = floor(ifactorx*ran1(idum));shifty = floor(ifactory*ran1(idum))
                     if(on_the_fly) then
                         call cuda_fph_make_potential(trans_d,ccd_slice_array(j),tau_slice,nat_slice(:,j),j,prop_distance(j),idum,plan,fz_d,inverse_sinc_d,bwl_mat_d)
-                        call cuda_multiplication<<<blocks,threads>>>(psi_d,trans_d, psi_out_d,1.0_fp_kind,nopiy,nopix)
+						call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,j), normalisation, nopiy, nopix,plan)
                     elseif(qep_mode == 2) then
-                        shiftx = floor(ifactorx*ran1(idum)) * nopix_ucell
-                        shifty = floor(ifactory*ran1(idum)) * nopiy_ucell
-                        call cuda_cshift<<<blocks,threads>>>(transf_d(:,:,nran,j),trans_d,nopiy,nopix,shifty,shiftx)
-                        call cuda_multiplication<<<blocks,threads>>>(psi_d,trans_d, psi_out_d,1.0_fp_kind,nopiy,nopix)
+                        call cuda_cshift<<<blocks,threads>>>(transf_d(:,:,nran,j),trans_d,nopiy,nopix,shifty* nopiy_ucell,shiftx* nopix_ucell)
+						call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,j), normalisation, nopiy, nopix,plan)
                     elseif(qep_mode == 3) then                       !randomly shift phase grate
-                        shiftx = floor(ifactorx*ran1(idum)) + 1
-                        shifty = floor(ifactory*ran1(idum)) + 1
-                        call cuda_make_shift_array<<<blocks,threads>>>(shift_array_d,shift_arrayy_d(:,shifty),shift_arrayx_d(:,shiftx),nopiy,nopix)     !make the qspace shift array
-                        call cuda_multiplication<<<blocks,threads>>>(transf_d(:,:,nran,j),shift_array_d, trans_d,1.0_fp_kind,nopiy,nopix) !multiply by the qspace shift array
-                        call cufftExec(plan,trans_d,trans_d,CUFFT_INVERSE)!inverse fourier transform
-                        call cuda_multiplication<<<blocks,threads>>>(psi_d,trans_d, psi_out_d,sqrt(normalisation),nopiy,nopix)              !do the phase grate multiplication
+						call cuda_phase_shift_from_1d_factor_arrays(transf_d(:,:,nran,j),trans_d,shift_arrayy_d(:,shifty+1),shift_arrayx_d(:,shiftx+1),nopiy,nopix,plan)
+                        call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,j), normalisation, nopiy, nopix,plan)
                     else
-                        call cuda_multiplication<<<blocks,threads>>>(psi_d,transf_d(:,:,nran,j), psi_out_d,1.0_fp_kind,nopiy,nopix)
+						call cuda_multislice_iteration(psi_d, transf_d(:,:,nran,j), prop_d(:,:,j), normalisation, nopiy, nopix,plan)
                     endif
-                    ! Propagate
-			    	call cufftExec(plan,psi_out_d,psi_d,CUFFT_FORWARD)
-                    call cuda_multiplication<<<blocks,threads>>>(psi_d,prop_d(:,:,j), psi_out_d,normalisation,nopiy,nopix)
-                    call cufftExec(plan,psi_out_d,psi_d,CUFFT_INVERSE)
+
 					if (output_probe_intensity) then
 						k = (i-1)*n_slices+j
 						if (output_cell_list(k)) then
@@ -371,6 +471,12 @@ subroutine qep_stem(STEM,ionization,PACBED)
 						stem_ion_image(ny,nx,i_df,z_indx(1),ii) = stem_ion_image(ny,nx,i_df,z_indx(1),ii)+get_sum(ion_image_d(:,:,ii))
 					enddo
 					endif
+
+					! Accumulate EFISTEM images
+					if (istem.and.i_df==1) then;do l = 1, imaging_ndf
+						call cuda_image(psi_out_d,ctf_d(:,:,l),temp_d,normalisation, nopiy, nopix,plan,.false.)
+						call cuda_addition<<<blocks,threads>>>(istem_image_d(:,:,l,z_indx(1)), temp_d, istem_image_d(:,:,l,z_indx(1)), 1.0_fp_kind, nopiy, nopix)
+					enddo;endif;
 				endif
             enddo ! End loop over cells
 		enddo ! End loop over QEP passes
@@ -581,5 +687,29 @@ subroutine qep_stem(STEM,ionization,PACBED)
             endif
 	    enddo
     endif
-    enddo	
+
+#ifdef GPU
+				if(double_channeling.and.istem) then
+				do i=1,nz;do l=1,imaging_ndf
+				temp = efistem_image_d(:,:,l,i)
+				call output_TEM_result(output_prefix,tile_out_image(temp,ifactory,ifactorx),'energy_filtered_ISTEM',nopiy,nopix,manyz,imaging_ndf>1,manytilt,z=zarray(i)&
+									&,lengthz=length,lengthdf=lengthimdf,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2),df = imaging_df(l))
+			enddo;enddo;endif	
+		
+	if(double_channeling) then
+		do l=1,numeels
+			filename =  trim(adjustl(fnam))//'_double_channeling_EELS_'//zero_padded_int(l,2)
+			call output_stem_image(Hn0_eels_dc(:,:,:,:,l), filename,probe_df)
+		enddo
+		endif
+
+		if(istem) then
+				do i=1,nz;do l=1,imaging_ndf
+				temp = istem_image_d(:,:,l,i)
+				call output_TEM_result(output_prefix,tile_out_image(temp,ifactory,ifactorx),'ISTEM',nopiy,nopix,manyz,imaging_ndf>1,manytilt,z=zarray(i)&
+									&,lengthz=length,lengthdf=lengthimdf,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2),df = imaging_df(l))
+			enddo;enddo;endif	
+#endif
+	enddo
+	
 end subroutine qep_stem

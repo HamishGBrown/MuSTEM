@@ -56,7 +56,7 @@
 
     complex(fp_kind), allocatable :: fz(:,:,:)            !the scattering factors, in reciprocal space, calculated on the grid (supercell)
     complex(fp_kind), allocatable :: fz_DWF(:,:,:)        !the DWF smear_array, in reciprocal space, calculated on the grid (supercell)
-    complex(fp_kind), allocatable :: sinc(:,:)            !sinc function to correct for pixelation in the potential construction
+    !complex(fp_kind), allocatable :: sinc(:,:)            !sinc function to correct for pixelation in the potential construction
     complex(fp_kind), allocatable :: inverse_sinc(:,:)    !1/sinc function to correct for pixelation in the potential construction
 
     real(fp_kind)  :: uvw1(3),uvw2(3)                     !real space scan vectors that are parallel 

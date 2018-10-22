@@ -660,8 +660,8 @@ module output
     if (present(realimag)) realimag_ = realimag
     
     if (realimag_) then
-        call binary_out(nopiy_temp,nopix_temp,real(array_),trim(adjustl(fnam))//'_real.bin')    
-        call binary_out(nopiy_temp,nopix_temp,imag(array_),trim(adjustl(fnam))//'_imag.bin')    
+        call binary_out(nopiy_temp,nopix_temp,real(array_),trim(adjustl(fnam))//'_real')    
+        call binary_out(nopiy_temp,nopix_temp,imag(array_),trim(adjustl(fnam))//'_imag')    
     else
         if(allocated(obj_ret)) deallocate(obj_ret)
         allocate(obj_ret(nopiy_temp,nopix_temp))
@@ -671,11 +671,11 @@ module output
         else
             mask = obj_ret/maxval(obj_ret) > 1e-8
         endif
-        fnam1=trim(adjustl(fnam))//'_inten.bin'
+        fnam1=trim(adjustl(fnam))//'_inten'
         call binary_out(nopiy_temp,nopix_temp,obj_ret,fnam1)
         obj_ret = 0
         forall(i=1:nopiy_temp,j=1:nopix_temp,mask(i,j)) obj_ret(i,j) = atan2(imag(array_(i,j)),real(array_(i,j)))
-        fnam1=trim(adjustl(fnam))//'_phase.bin'
+        fnam1=trim(adjustl(fnam))//'_phase'
         call binary_out(nopiy_temp,nopix_temp,obj_ret,fnam1)
     endif
     

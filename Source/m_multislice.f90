@@ -612,9 +612,10 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
         call get_input("Number of Monte Carlo calculated", n_qep_passes )
         write(*,*)
     
-        write(6,*) 'Enter the starting position of the random number sequence:'
-        call get_input("Number of ran1 discarded", nran )
-        write(*,*)       
+        !write(6,*) 'Enter the starting position of the random number sequence:'
+        !call get_input("Number of ran1 discarded", nran )
+        !write(*,*)       
+		nran=1
 
         end subroutine
     

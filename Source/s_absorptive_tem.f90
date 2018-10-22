@@ -87,7 +87,7 @@ subroutine absorptive_tem
 	integer :: plan
 	complex(fp_kind),device,allocatable :: prop_d(:,:),transf_d(:,:,:),propy_d(:),propx_d(:)
     complex(fp_kind),device,dimension(nopiy,nopix) :: psi_d
-	real(fp_kind),device,dimension(:,:),allocatable::temp_d,propp_d
+	real(fp_kind),device,dimension(:,:),allocatable::temp_d
     
     !device variables for on the fly potentials
     complex(fp_kind),device,allocatable,dimension(:,:) :: trans_d
@@ -173,7 +173,6 @@ subroutine absorptive_tem
 	    allocate(transf_d(nopiy,nopix,n_slices))
     endif
     if(.not.factorized_propagator) allocate(prop_d(nopiy,nopix))
-	if(.not.even_slicing) allocate(propp_d(nopiy,nopix))
 #endif
     call command_line_title_box('Calculation running')
     

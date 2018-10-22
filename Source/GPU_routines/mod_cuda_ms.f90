@@ -39,6 +39,7 @@ module cuda_ms
 		module procedure cuda_multislice_iteration_fractorized_prop
 		module procedure cuda_multislice_iteration_single_prop
 		module procedure cuda_multislice_iteration_new
+		module procedure cuda_multislice_iteration_cshifted_transf
 	end interface
     contains
 
@@ -82,6 +83,26 @@ module cuda_ms
 		call cuda_multiplication<<<blocks,threads>>>(psi_temp_d, ctf_d, psi_temp_d, sqrt(normalisation), nopiy, nopix)
         call cufftExec(plan, psi_temp_d, psi_temp_d, CUFFT_INVERSE)
 		call cuda_mod<<<blocks,threads>>>(psi_temp_d, image_d, normalisation, nopiy, nopix)
+	end subroutine
+
+	attributes(host) subroutine cuda_multislice_iteration_cshifted_transf(psi_d, transf_d, prop_d, normalisation, nopiy, nopix,nucy,nucx,plan)
+		use CUFFT_wrapper
+       use cuda_array_library, only: blocks, threads
+		
+		use output
+		implicit none
+
+		complex(fp_kind),device,dimension(nopiy,nopix)::psi_d, transf_d, prop_d,psi_out_d
+		integer(4):: nopiy, nopix,nucy,nucx
+		real(fp_kind),intent(in),value::normalisation
+		complex(fp_kind)::out(nopiy,nopix)
+		integer,value::plan
+			
+			call cuda_multiplication<<<blocks,threads>>>(psi_d,transf_d, psi_out_d,1.0_fp_kind,nopiy,nopix,nucy,nucx)
+            call cufftExec(plan,psi_out_d,psi_d,CUFFT_FORWARD)
+            call cuda_multiplication<<<blocks,threads>>>(psi_d,prop_d, psi_out_d,normalisation,nopiy,nopix)
+            call cufftExec(plan,psi_out_d,psi_d,CUFFT_INVERSE)
+
 	end subroutine
 
 	attributes(host) subroutine cuda_multislice_iteration_single_prop(psi_d, transf_d, prop_d, normalisation, nopiy, nopix,plan)
@@ -224,7 +245,89 @@ module cuda_ms
         
     end function cuda_stem_detector_wavefunction
     
+	attributes(global) subroutine cuda_stem_detector_wavefunction_on_the_fly(psi_d,result_d, inner,outer,dimy,dimx,n,m) 
     
+        implicit none
+     
+        integer*4:: l
+		real(fp_kind),device :: get_sum_complex_d,xx_d,yy_d,dimx_d,dimy_d,r_d,inner_d,outer_d
+		real(fp_kind),value:: result_d,inner,outer,dimy,dimx,xx,yy,r
+		complex(fp_kind),device::a
+        integer :: istat
+		integer,value:: n,m
+		complex(fp_kind), device, dimension(n,m) :: psi_d
+        
+		
+		integer(4), value :: ix,iy
+		real(fp_kind),value :: iix,iiy
+    
+        ix = (blockIdx%y-1)*blockDim%y + threadIdx%y
+        iy = (blockIdx%x-1)*blockDim%x + threadIdx%x
+
+        if (ix <= m) then
+             if (iy <= n) then
+                !iix = abs(modulo(ix+m/2,m)-m/2)/(m/2.0_fp_kind)
+				!iiy = abs(modulo(iy+n/2,n)-n/2)/(n/2.0_fp_kind)
+				!iix = sqrt(iix**2+iiy**2)
+				!if(.not.(iix<2.0_fp_kind/3)) then
+				!	arrayin(iy,ix) = 0
+				!else
+				!	arrayin(iy,ix) = arrayin(iy,ix)*scale
+				!endif
+				
+				xx = (modulo(ix+m/2-1,m)-m/2+1)/dimx
+				yy = (modulo(iy+n/2-1,n)-n/2+1)/dimy
+				r = sqrt(xx**2+yy**2)
+				!psi_d(iy,ix) = r
+                if(r<outer.and.r>inner) then
+					!a = psi_d(iy,ix)
+					r = abs(a)**2
+					istat = atomicAdd(result_d,r)
+				endif
+            endif
+        endif   
+    end subroutine cuda_stem_detector_wavefunction_on_the_fly
+
+    !attributes(host) function cuda_stem_detector_wavefunction_on_the_fly(psi_d, inner,outer,dimy,dimx) 
+    !
+	!	use cudafor
+    !    use cuda_array_library, only: blocks, threads
+    !
+    !    implicit none
+	!	
+	!	integer*4:: l,m
+    !    real(fp_kind) :: cuda_stem_detector_wavefunction_on_the_fly
+	!	real(fp_kind),device :: get_sum_complex_d,xx_d,yy_d,dimx_d,dimy_d,r_d,inner_d,outer_d
+	!	real(fp_kind):: inner,outer,dimy,dimx,xx,yy,r
+    !    complex(fp_kind), device, dimension(nopiy,nopix),intent(in) :: psi_d
+    !    integer :: istat
+	!
+    !   get_sum_complex_d = 0.0_fp_kind
+	!	write(*,*) 'hi'
+	!	!write(*,*) inner;inner_d=inner
+	!	!write(*,*) outer;outer_d=outer
+	!	!write(*,*) dimx;dimx_d=dimx
+	!	!write(*,*) dimy;dimy_d=dimy
+	!	
+	!	write(*,*) 'hi'
+    !    !$cuf kernel do (2) <<<*,*>>>
+    !    do m = 1, nopix
+    !        do l = 1, nopiy
+	!			!xx_d = 
+	!			!xx = (modulo(m+nopix/2-1,m)-m/2+1)/dimx
+	!			!yy = (modulo(l+nopiy/2-1,l)-l/2+1)/dimy
+	!			!r = xx**2+yy**2
+    !            !if(r<outer.and.r_d>inner) get_sum_complex_d = get_sum_complex_d + abs(psi_d(l,m))**2
+	!			istat = atomicAdd(get_sum_complex_d, abs(psi_d(l,m))**2)
+	!			!get_sum_complex_d = get_sum_complex_d + abs(psi_d(l,m))**2
+    !        enddo
+    !    enddo
+    !    
+    !    cuda_stem_detector_wavefunction_on_the_fly = get_sum_complex_d
+    !    
+    !end function cuda_stem_detector_wavefunction_on_the_fly
+
+
     
     attributes(host) function cuda_stem_detector_cbed(cbed_d, mask_d)
     

@@ -69,10 +69,9 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     integer(4) :: i, j, k, i_df, ny, nx,z_indx(1),ii,length,idum,ntilt,lengthdf,idet
 
     !probe variables
-	complex(fp_kind),allocatable::Vg(:,:,:),propy(:),propx(:)
+	complex(fp_kind),allocatable::propy(:),propx(:)
     complex(fp_kind),dimension(nopiy,nopix) :: psi,qpsi,psi_out,prop
-    complex(fp_kind),dimension(nopiy,nopix,n_slices)::projected_potential,transf_absorptive
-	complex(fp_kind),dimension(:,:,:),allocatable::ctf
+	complex(fp_kind),dimension(:,:,:),allocatable::ctf,Vg,projected_potential,transf_absorptive
 
     !output/detectors
     real(fp_kind),dimension(nopiy,nopix) :: image,temp_image,psi_intensity,temp
@@ -86,7 +85,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 
 
     !diagnostic variables
-    real(fp_kind) :: intens, t1, delta
+    real(fp_kind) :: intens, t1, delta,result
     
     !output variables
     character(120) :: filename,fnam,fnam_det
@@ -95,7 +94,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 #ifdef GPU
     !device variables
     integer :: plan
-    complex(fp_kind),device,dimension(nopiy,nopix) :: psi_d,psi_out_d
+    complex(fp_kind),device,dimension(nopiy,nopix) :: psi_d!,psi_out_d
 
     real(fp_kind),device, allocatable,dimension(:,:) :: psi_intensity_d,eels_correction_detector_d,inelastic_potential_d,temp_d
     real(fp_kind),device,allocatable,dimension(:,:,:) :: adf_image_d,ion_image_d,pacbed_pattern_d,masks_d
@@ -103,8 +102,8 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     
     !device variables for on the fly potentials
 	complex(fp_kind),device,allocatable,dimension(:) :: propy_d,propx_d
-    complex(fp_kind),device,allocatable,dimension(:,:) :: inverse_sinc_d,trans_d
-    complex(fp_kind),device,allocatable,dimension(:,:,:) :: fz_d,fz_dwf_d,fz_abs_d,fz_mu_d, prop_d,transf_d
+    complex(fp_kind),device,allocatable,dimension(:,:) :: inverse_sinc_d,trans_d,prop_d
+    complex(fp_kind),device,allocatable,dimension(:,:,:) :: fz_d,fz_dwf_d,fz_abs_d,fz_mu_d,transf_d
 	complex(fp_kind),device,allocatable,dimension(:,:,:,:) :: fz_adf_d
 
 	!Double channeling variables
@@ -128,29 +127,31 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 
 #ifdef GPU    
     call GPU_memory_message(absorptive_stem_GPU_memory(), on_the_fly)
+#else
+	on_the_fly = .false.
 #endif
 	
     call command_line_title_box('Pre-calculation setup')
     
     ! Precalculate the scattering factors on a grid
     call precalculate_scattering_factors()
-#ifdef GPU
-#else
-	on_the_fly = .false.
-#endif
+
     if (on_the_fly) then
 #ifdef GPU
         ! Setup the atom co-ordinate for on the fly potentials
-        call cuda_setup_many_phasegrate()                   
+        call cuda_setup_many_phasegrate()
+		if(stem) allocate(adf_cont(ndet))               
 #endif        
     else
-        if(.not.load_grates) projected_potential = make_absorptive_grates(nopiy,nopix,n_slices)
+        allocate(projected_potential(nopiy,nopix,n_slices),transf_absorptive(nopiy,nopix,n_slices))
+		if(.not.load_grates) projected_potential = make_absorptive_grates(nopiy,nopix,n_slices)
         call load_save_add_grates(projected_potential,nopiy,nopix,n_slices)
         if(ionization.or.stem) call make_local_inelastic_potentials(ionization)
     endif
     
     
     if(pacbed) then;allocate(pacbed_pattern(nopiy,nopix,nz)); pacbed_pattern= 0;endif
+
 #ifdef GPU
 	if(double_channeling) then
         allocate(tmatrix_states_d(nopiy,nopix,nstates),psi_inel_d(nopiy,nopix),cbed_inel_dc_d(nopiy,nopix),tmatrix_states(nopiy,nopix,nstates),temp_d(nopiy,nopix))
@@ -171,6 +172,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 		if(istem) allocate(efistem_image_d(nopiy,nopix,imaging_ndf,nz));efistem_image_d=0
     endif
 #endif
+
 	if(istem) then; allocate(ctf(nopiy,nopix,imaging_ndf),istem_image(nopiy,nopix,imaging_ndf,nz));istem_image=0
 			lengthimdf = calculate_padded_string_length(imaging_df,imaging_ndf)
 			do i=1,imaging_ndf
@@ -180,6 +182,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 		allocate(ctf_d(nopiy,nopix,imaging_ndf),istem_image_d(nopiy,nopix,imaging_ndf,nz));ctf_d=ctf;istem_image_d=0
 #endif
 		endif
+
     many_df = probe_ndf .gt. 1
     length = calculate_padded_string_length(zarray,nz)
     lengthdf = calculate_padded_string_length(probe_df,probe_ndf)
@@ -213,7 +216,6 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     
     ! Copy host arrays to the device
 	factorized_propagator = all(abs(claue)<1e-2).and.on_the_fly.and.even_slicing
-	factorized_propagator = .false.
     if (on_the_fly) then
         allocate(Vg(nopiy,nopix,nt))!,Vg_d(nopiy,nopix,nt)
 
@@ -222,10 +224,9 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 			&, orthog, 0.0_8, 4.0d0*atan(1.0d0))*2*ak*tp * ak*ss(7)/relm  !make the potential absorptive
 		Vg = Vg*spread(inverse_sinc,ncopies=nt,dim=3)
 		
-		if(factorized_propagator) then
-			allocate(propy_d(nopiy),propx_d(nopix))
-		endif
 		if(stem.and.adf)  then
+			if(allocated(fz_adf))deallocate(fz_adf)
+			allocate(fz_adf(nopiy,nopix,nt,ndet))
 			do k=1,ndet/nseg
 			  thmin =  atan(inner((k-1)*nseg+1)/ak)
 			  thmax =  atan(outer((k-1)*nseg+1)/ak)
@@ -235,6 +236,14 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 			  fz_adf(:,:,:,(k-1)*nseg+1:k*nseg) = spread(cmplx(absorptive_scattering_factors(ig1,ig2,ifactory,ifactorx,nopiy,nopix,nt,a0,ss&
 															&,atf,nat, ak, relm, orthog,thmin,thmax)/nseg,0.0_fp_kind)*4*pi,dim=4,ncopies=nseg)/nseg
 			enddo
+			fz_adf =fz_adf*spread(spread(inverse_sinc,ncopies=nt,dim=3),ncopies=ndet,dim=4)
+		endif
+		
+		if(factorized_propagator) then
+			allocate(propy_d(nopiy),propx_d(nopix),propy(nopiy),propx(nopix))
+			call make_propagator_components(nopiy,nopix,propy,propx,prop_distance(1),ak1,ss,ig1,ig2,ifactorx,ifactory)
+			propy_d = propy*bwl_mat(:,1)
+			propx_d = propx*bwl_mat(1,:)
 		endif
 		
         if (ionization) then
@@ -245,23 +254,25 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
         if (ionization) allocate(inelastic_potential_d(nopiy,nopix))
     else
         ! Set up device variables for precalculated potentials
-        if (stem.and.adf.and.(.not.on_the_fly)) then
+        if (stem.and.adf) then
             allocate(adf_potential_d(nopiy,nopix,n_slices,ndet))
             adf_potential_d = adf_potential
         endif
-        
+
         if(ionization) then
             allocate(ion_potential_d(nopiy,nopix,num_ionizations,n_slices))
             ion_potential_d = ionization_potential
         endif
         allocate(transf_d(nopiy,nopix,n_slices))
     endif
-    if (adf.or.ionization) allocate(psi_intensity_d(nopiy,nopix))
+	
+    if(.not.factorized_propagator) allocate(prop_d(nopiy,nopix))
+    if ((adf.and.(.not.on_the_fly)).or.ionization) allocate(psi_intensity_d(nopiy,nopix))
     if (stem.and.adf.and.(.not.on_the_fly)) allocate(adf_image_d(nopiy,nopix,ndet))
     if (ionization) allocate(ion_image_d(nopiy,nopix,num_ionizations))
 	if (pacbed) allocate(pacbed_pattern_d(nopiy,nopix,nz)) 
-    if (stem) allocate(masks_d(nopiy,nopix,ndet))
-    if (stem) masks_d = masks
+    if (stem.and.(.not.on_the_fly)) allocate(masks_d(nopiy,nopix,ndet))
+    if (stem.and.(.not.on_the_fly)) masks_d = masks
     
     if(ionization.and.(.not.EDX)) then
         allocate(eels_correction_detector_d(nopiy,nopix))
@@ -285,11 +296,12 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 	elseif(.not.factorized_propagator) then
 		call make_propagator(nopiy,nopix,prop,1.0_fp_kind,Kz(ntilt),ss,ig1,ig2,claue(:,ntilt),ifactorx,ifactory,exponentiate = .false.)
 	endif
+	
 	if(.not.on_the_fly) then
 	do i = 1, n_slices
         transf_absorptive(:,:,i) = exp(ci*pi*a0_slice(3,i)/Kz(ntilt)*projected_potential(:,:,i))
-	    !call make_propagator(nopiy,nopix,prop(:,:,i),prop_distance(i),Kz(ntilt),ss,ig1,ig2,claue(:,ntilt),ifactorx,ifactory)
-	    !prop(:,:,i) = prop(:,:,i) * bwl_mat
+	    !if(.not.on_the_fly) call make_propagator(nopiy,nopix,prop(:,:,i),prop_distance(i),Kz(ntilt),ss,ig1,ig2,claue(:,ntilt),ifactorx,ifactory)
+	    !if(.not.on_the_fly) prop(:,:) = prop(:,:,i) * bwl_mat
         !! Bandwith limit the phase grate, psi is used for temporary storage
         call fft2(nopiy, nopix, transf_absorptive(:,:,i), nopiy, psi, nopiy)
         psi = psi * bwl_mat
@@ -299,9 +311,9 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 	
 	pacbed_pattern = 0
 #ifdef GPU
-    if(pacbed) pacbed_pattern_d = 0
-	!prop_d = prop
-	transf_d = transf_absorptive
+    !if(pacbed) pacbed_pattern_d = 0
+	if(.not.on_the_fly) transf_d = transf_absorptive
+	if(.not.factorized_propagator) prop_d = prop
 #endif
     do ny = 1, nysample
     do nx = 1, nxsample
@@ -336,7 +348,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
         call tilt_wave_function(psi)
 
 #ifdef GPU
-        if (adf) adf_image_d = 0.0_fp_kind
+        if (adf.and.(.not.on_the_fly)) adf_image_d = 0.0_fp_kind
 		if(stem.and.adf.and.on_the_fly) adf_cont=0
         if (ionization) ion_image_d = 0.0_fp_kind
         psi_d = psi
@@ -346,14 +358,16 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 			if ((stem.and.adf.and.(.not.on_the_fly)).or.ionization) call cuda_mod<<<blocks,threads>>>(psi_d,psi_intensity_d,1.0_fp_kind,nopiy,nopix)
 			if((stem.and.adf)) then
 				do k=1,ndet
+				
 				if(on_the_fly) then
-					adf_cont(k) = adf_cont(k) + cuda_adf_crossection_on_the_fly(psi_d,tau_slice(:,:,:,j),nat_slice(:,j),plan,fz_adf(:,:,:,k),Volume_array(j))
+					adf_cont(k) = adf_cont(k) + cuda_adf_crossection_on_the_fly(psi_d,tau_slice(:,:,:,j),nat_slice(:,j),plan,fz_adf(:,:,:,k),Volume_array(j),prop_distance(j))
 				else
 					call cuda_multiplication<<<blocks,threads>>>(psi_intensity_d,adf_potential_d(:,:,j,k), temp_d,prop_distance(j),nopiy,nopix)     !overlap
+					call cuda_addition<<<blocks,threads>>>(temp_d,adf_image_d(:,:,k),adf_image_d(:,:,k),1.0_fp_kind,nopiy,nopix)                          !depth sum
 				endif
-				call cuda_addition<<<blocks,threads>>>(temp_d,adf_image_d(:,:,k),adf_image_d(:,:,k),1.0_fp_kind,nopiy,nopix)                          !depth sum
 				enddo
 			endif
+			
 			if(ionization) then
 				do ii=1,num_ionizations
 					if(on_the_fly) then
@@ -368,7 +382,6 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 			endif
 
 			!Double channeling
-
 			if(double_channeling) then
                     
                 do i_target = 1, natoms_slice_total(j) ! Loop over targets
@@ -384,23 +397,23 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 					
                         ! Scatter the inelastic wave through the remaining slices in the cell
                         do jj = j, n_slices   
-							call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,jj), prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
+							call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,jj),prop_d,prop_distance(jj),even_slicing, normalisation, nopiy, nopix,plan)
                         enddo
                         ! Scatter the inelastic wave through the remaining cells
                         do ii = i+1, n_cells
-                            do jj = 1, n_slices;call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,jj),prop_d(:,:,jj), normalisation, nopiy, nopix,plan);enddo
+                            do jj = 1, n_slices;call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,jj),prop_d,prop_distance(jj),even_slicing, normalisation, nopiy, nopix,plan);enddo
 
 							if (any(ii==ncells)) then
 								z_indx = minloc(abs(ncells-ii))
-								call cufftExec(plan, psi_inel_d, psi_out_d, CUFFT_FORWARD)
+								call cufftExec(plan, psi_inel_d, q_tmatrix_d, CUFFT_FORWARD)
 								
 								! Accumulate the EELS images
 								do l=1,numeels
-									Hn0_eels_dc(ny,nx,i_df,z_indx(1),l) = Hn0_eels_dc(ny,nx,i_df,z_indx(1),l)+cuda_stem_detector(psi_out_d, Hn0_eels_detector_d(:,:,l))
+									Hn0_eels_dc(ny,nx,i_df,z_indx(1),l) = Hn0_eels_dc(ny,nx,i_df,z_indx(1),l)+cuda_stem_detector(q_tmatrix_d, Hn0_eels_detector_d(:,:,l))
 								enddo
 								! Accumulate EFISTEM images
 								if (istem.and.i_df==1) then;do l = 1, imaging_ndf
-									call cuda_image(psi_out_d,ctf_d(:,:,l),temp_d,normalisation, nopiy, nopix,plan,.false.)
+									call cuda_image(q_tmatrix_d,ctf_d(:,:,l),temp_d,normalisation, nopiy, nopix,plan,.false.)
 									call cuda_addition<<<blocks,threads>>>(efistem_image_d(:,:,l,z_indx(1)), temp_d, efistem_image_d(:,:,l,z_indx(1)), 1.0_fp_kind, nopiy, nopix)
 								enddo;endif;
 								!stop
@@ -409,15 +422,14 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 						enddo
 				enddo
 			endif  ! End loop over cells,targets and states and end double_channeling section
-
 			! Transmit through slice potential
+			
 			if(on_the_fly) then
 				if(.not.factorized_propagator) call cuda_on_the_fly_abs_multislice(psi_d,ccd_slice_array(j),tau_slice(:,:,:,j),nat_slice(:,j),prop_distance(j),plan,Vg,Volume_array(j),prop_d = prop_d)
 				if(factorized_propagator) call cuda_on_the_fly_abs_multislice(psi_d,ccd_slice_array(j),tau_slice(:,:,:,j),nat_slice(:,j),prop_distance(j),plan,Vg,Volume_array(j),propy_d, propx_d)
-			else
-				call cuda_multislice_iteration(psi_d, transf_d(:,:,j), prop_d(:,:,j), normalisation, nopiy, nopix,plan)
-			endif
-			
+            else
+				call cuda_multislice_iteration(psi_d, transf_d(:,:,j), prop_d,prop_distance(j),even_slicing, normalisation, nopiy, nopix,plan)
+            endif
 			if (output_probe_intensity) then
 				k = (i-1)*n_slices+j
 				if (output_cell_list(k)) then
@@ -426,39 +438,63 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 				endif
 			endif
 		enddo;
-		!If this thickness corresponds to any of the output values then output images
-			if (any(i==ncells)) then
-				z_indx = minloc(abs(ncells-i))
-				call cufftExec(plan,psi_d,psi_out_d,CUFFT_FORWARD)
-				call cuda_mod<<<blocks,threads>>>(psi_out_d,temp_d,normalisation,nopiy,nopix)
-				
-				if(pacbed.and.(i_df==1)) call cuda_addition<<<blocks,threads>>>(temp_d,pacbed_pattern_d(:,:,z_indx(1)),pacbed_pattern_d(:,:,z_indx(1)),1.0_fp_kind,nopiy,nopix)
-				do ii=1,ndet
-					if(stem) stem_elastic_image(ny,nx,i_df,z_indx(1),ii) = cuda_stem_detector(temp_d,masks_d(:,:,ii))
-					if(stem.and.adf.and.on_the_fly) stem_inelastic_image(ny,nx,i_df,z_indx(1),ii) = adf_cont(ii)
-					if(stem.and.adf.and.(.not.on_the_fly)) stem_inelastic_image(ny,nx,i_df,z_indx(1),ii) = get_sum(adf_image_d(:,:,ii))
-				enddo
-				if(ionization) then
-					do ii=1,num_ionizations
-						 stem_ion_image(ny,nx,i_df,z_indx(1),ii) = get_sum(ion_image_d(:,:,ii))
-					enddo
-					if(.not.EDX) eels_correction_image(ny,nx,i_df,z_indx(1)) = cuda_stem_detector(temp_d,eels_correction_detector_d)
-				endif
-
-				if (istem.and.i_df==1) then;do l = 1, imaging_ndf
-					call cuda_image(psi_out_d,ctf_d(:,:,l),temp_d,normalisation, nopiy, nopix,plan,.false.)
-					call cuda_addition<<<blocks,threads>>>(istem_image_d(:,:,l,z_indx(1)), temp_d, istem_image_d(:,:,l,z_indx(1)), 1.0_fp_kind, nopiy, nopix)
-				enddo;endif;
-				!Output 4D STEM diffraction pattern
-				if(fourDSTEM) then
-						temp = temp_d
-						call output_TEM_result(output_prefix,temp,'Diffraction_pattern',nopiy,nopix,manyz,many_df,manytilt,zarray(z_indx(1)),probe_df(i_df)&
-						&,length,lengthdf,tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2),nopiyout=nopiyout,nopixout=nopixout,pp=[ny,nx],write_to_screen=.false.)
-				endif
-			endif
-		
-		enddo ! End loop over cells
-        intens = get_sum(psi_d)
+		!!If this thickness corresponds to any of the output values then output images
+		!	if (any(i==ncells)) then
+		!		
+		!		z_indx = minloc(abs(ncells-i))
+		!		
+		!		call cufftExec(plan,psi_d,psi_out_d,CUFFT_FORWARD)
+		!		call cuda_mod<<<blocks,threads>>>(psi_out_d,temp_d,normalisation,nopiy,nopix)
+		!		!if(pacbed.and.(i_df==1)) call cuda_addition<<<blocks,threads>>>(temp_d,pacbed_pattern_d(:,:,z_indx(1)),pacbed_pattern_d(:,:,z_indx(1)),1.0_fp_kind,nopiy,nopix)
+		!		do ii=1,ndet
+		!			if(stem.and.nseg>1) stem_elastic_image(ny,nx,i_df,z_indx(1),ii) = cuda_stem_detector(temp_d,masks_d(:,:,ii))
+		!			if(stem.and.nseg<2) then
+		!			write(*,*) 'hi'
+		!			psi=psi_d
+		!			write(*,*) 'by'
+		!			call cuda_stem_detector_wavefunction_on_the_fly<<<blocks,threads>>>(psi_out_d, result,inner(ii),outer(ii),ifactory*a0(1),ifactorx*a0(2),nopiy,nopix)
+		!			write(*,*) 'hi'
+		!			write(*,*) result,inner(ii),outer(ii),ifactory*a0(1),ifactorx*a0(2),nopiy,nopix
+		!			psi=psi_out_d
+		!			call binary_out(nopiy,nopix,psi,'psi')
+		!			stop
+		!			write(*,*) 'my name is'
+		!			stem_elastic_image(ny,nx,i_df,z_indx(1),ii) = result
+		!			
+		!			endif
+		!			if(stem.and.adf.and.on_the_fly) stem_inelastic_image(ny,nx,i_df,z_indx(1),ii) = adf_cont(ii)
+		!			if(stem.and.adf.and.(.not.on_the_fly)) stem_inelastic_image(ny,nx,i_df,z_indx(1),ii) = get_sum(adf_image_d(:,:,ii))
+		!		enddo
+		!		write(*,*) ionization
+		!		if(ionization) then
+		!			do ii=1,num_ionizations
+		!				 stem_ion_image(ny,nx,i_df,z_indx(1),ii) = get_sum(ion_image_d(:,:,ii))
+		!			enddo
+		!			if(.not.EDX) eels_correction_image(ny,nx,i_df,z_indx(1)) = cuda_stem_detector(temp_d,eels_correction_detector_d)
+		!		endif
+		!
+		!		write(*,*) istem.and.i_df==1
+		!		if (istem.and.i_df==1) then;do l = 1, imaging_ndf
+		!			call cuda_image(psi_out_d,ctf_d(:,:,l),temp_d,normalisation, nopiy, nopix,plan,.false.)
+		!			call cuda_addition<<<blocks,threads>>>(istem_image_d(:,:,l,z_indx(1)), temp_d, istem_image_d(:,:,l,z_indx(1)), 1.0_fp_kind, nopiy, nopix)
+		!		enddo;endif;
+		!		!Output 4D STEM diffraction pattern
+		!		write(*,*) fourDSTEM
+		!		if(fourDSTEM) then
+		!				temp = temp_d
+		!				call output_TEM_result(output_prefix,temp,'Diffraction_pattern',nopiy,nopix,manyz,many_df,manytilt,zarray(z_indx(1)),probe_df(i_df)&
+		!				&,length,lengthdf,tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2),nopiyout=nopiyout,nopixout=nopixout,pp=[ny,nx],write_to_screen=.false.)
+		!		endif
+	   !
+		!		write(*,*) 'my name is'
+		!		write(*,*) 'hi'
+		!			psi=psi_d
+		!			write(*,*) 'by'
+		!	endif
+		!enddo ! End loop over cells
+		!write(*,*) 'hi'
+       !intens = get_sum(psi_d)
+		!write(*,*) 'my name is'
 #else
         if (adf.and.stem) adf_image = 0.0_fp_kind
         if (ionization) ion_image = 0.0_fp_kind
@@ -466,7 +502,12 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 			! Calculate inelastic cross sections
 			if ((stem.and.adf).or.ionization) psi_intensity = abs(psi)**2
 			
-			if(stem.and.adf) then
+
+			if(stem.and.adf.and.on_the_fly) then
+#ifdef GPU
+				
+#endif
+			elseif(stem.and.adf.)
                 do k=1,ndet;adf_image(:,:,k) = psi_intensity*adf_potential(:,:,j,k)*prop_distance(j) + adf_image(:,:,k); enddo
             endif    
             
@@ -480,9 +521,12 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 				endif
 			endif
         enddo
-		
+#endif		
 			!If this thickness corresponds to any of the output values then output images
 			if (any(i==ncells)) then
+#ifdef GPU
+				psi=psi_d
+#endif
 				z_indx = minloc(abs(ncells-i))
 				call fft2(nopiy,nopix,psi,nopiy,psi_out,nopiy)
 				temp = abs(psi_out)**2
@@ -492,7 +536,11 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
                     enddo
                 endif
 				if(pacbed.and.(i_df==1)) pacbed_pattern(:,:,z_indx(1)) = pacbed_pattern(:,:,z_indx(1)) + temp
-				if((stem.and.adf)) then
+				if(stem.and.adf.and.on_the_fly) then
+#ifdef GPU
+					do k=1,ndet; stem_inelastic_image(ny,nx,i_df,z_indx(1),k) = adf_cont(k); enddo
+#endif				
+				elseif(stem.and.adf) then
                     do k=1,ndet; stem_inelastic_image(ny,nx,i_df,z_indx(1),k) = sum(adf_image(:,:,k)); enddo
                 endif
 				if(ionization) then
@@ -508,8 +556,12 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 													  &nopiyout=nopiyout,nopixout=nopixout,pp=[ny,nx],write_to_screen=.false.)
 			endif
 		enddo ! End loops over cells and slices
+#ifdef GPU
+		intens = get_sum(psi_d)
+#else
         intens = sum(abs(psi)**2)
-#endif		
+#endif
+		
 		if (output_probe_intensity) call probe_intensity_to_file(probe_intensity,i_df,ny,nx,1,probe_ndf,nysample,nxsample)        
     enddo                                                                         !end loop over defocus
     enddo                                                                         !end loop over probe position ny
@@ -595,7 +647,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 #endif    
     if (pacbed) then
 #ifdef GPU
-	pacbed_pattern = pacbed_pattern_d
+	!pacbed_pattern = pacbed_pattern_d
 	 
 #endif	
 		do i=1,nz

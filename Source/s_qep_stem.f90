@@ -300,7 +300,6 @@ subroutine qep_stem(STEM,ionization,PACBED)
 			if(qep_mode.ne.3) call ifft2(nopiy,nopix,psi*bwl_mat,nopiy,qep_grates(:,:,j,i),nopiy)
 			enddo
         enddo
-        
 #ifdef GPU
         prop_d=prop
         if(.not.on_the_fly) transf_d = qep_grates
@@ -370,6 +369,7 @@ subroutine qep_stem(STEM,ionization,PACBED)
                     call cufftExec(plan,q_tmatrix_d,tmatrix_d,CUFFT_INVERSE)
 					call cuda_multiplication<<<blocks,threads>>>(psi_d,tmatrix_d,psi_inel_d,sqrt(normalisation),nopiy,nopix)
 					
+						
                         ! Scatter the inelastic wave through the remaining slices in the cell
                         do jj = j, n_slices   
 							! QEP multislice
@@ -377,15 +377,14 @@ subroutine qep_stem(STEM,ionization,PACBED)
 							shiftx = floor(ifactorx*ran1(idum));shifty = floor(ifactory*ran1(idum))
 							if(on_the_fly) then
 								call cuda_fph_make_potential(trans_d,ccd_slice_array(jj),tau_slice,nat_slice(:,jj),jj,prop_distance(jj),idum,plan,fz_d,inverse_sinc_d,bwl_mat_d)
-								call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
+								call cuda_multislice_iteration(psi_inel_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
 							elseif(qep_mode == 2) then
-								call cuda_cshift<<<blocks,threads>>>(transf_d(:,:,nran,jj),trans_d,nopiy,nopix,shifty* nopiy_ucell,shiftx* nopix_ucell)
-								call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
+								call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,nran,j), prop_d(:,:,j), normalisation, nopiy, nopix,shifty*nopiy_ucell,shiftx* nopix_ucell,plan)
 							elseif(qep_mode == 3) then                       !randomly shift phase grate
 								call cuda_phase_shift_from_1d_factor_arrays(transf_d(:,:,nran,jj),trans_d,shift_arrayy_d(:,shifty+1),shift_arrayx_d(:,shiftx+1),nopiy,nopix,plan)
-								call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
+								call cuda_multislice_iteration(psi_inel_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
 							else
-								call cuda_multislice_iteration(psi_d, transf_d(:,:,nran,jj), prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
+								call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,nran,jj), prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
 							endif
                         enddo
                         ! Scatter the inelastic wave through the remaining cells
@@ -396,15 +395,14 @@ subroutine qep_stem(STEM,ionization,PACBED)
 								shiftx = floor(ifactorx*ran1(idum));shifty = floor(ifactory*ran1(idum))
 								if(on_the_fly) then
 									call cuda_fph_make_potential(trans_d,ccd_slice_array(jj),tau_slice,nat_slice(:,jj),jj,prop_distance(jj),idum,plan,fz_d,inverse_sinc_d,bwl_mat_d)
-									call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
+									call cuda_multislice_iteration(psi_inel_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
 								elseif(qep_mode == 2) then
-									call cuda_cshift<<<blocks,threads>>>(transf_d(:,:,nran,jj),trans_d,nopiy,nopix,shifty* nopiy_ucell,shiftx* nopix_ucell)
-									call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
+									call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,nran,j), prop_d(:,:,j), normalisation, nopiy, nopix,shifty*nopiy_ucell,shiftx* nopix_ucell,plan)
 								elseif(qep_mode == 3) then                       !randomly shift phase grate
 									call cuda_phase_shift_from_1d_factor_arrays(transf_d(:,:,nran,jj),trans_d,shift_arrayy_d(:,shifty+1),shift_arrayx_d(:,shiftx+1),nopiy,nopix,plan)
-									call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
+									call cuda_multislice_iteration(psi_inel_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
 								else
-									call cuda_multislice_iteration(psi_d, transf_d(:,:,nran,jj), prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
+									call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,nran,jj), prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
 								endif
 							enddo
 
@@ -435,8 +433,8 @@ subroutine qep_stem(STEM,ionization,PACBED)
                         call cuda_fph_make_potential(trans_d,ccd_slice_array(j),tau_slice,nat_slice(:,j),j,prop_distance(j),idum,plan,fz_d,inverse_sinc_d,bwl_mat_d)
 						call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,j), normalisation, nopiy, nopix,plan)
                     elseif(qep_mode == 2) then
-                        call cuda_cshift<<<blocks,threads>>>(transf_d(:,:,nran,j),trans_d,nopiy,nopix,shifty* nopiy_ucell,shiftx* nopix_ucell)
-						call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,j), normalisation, nopiy, nopix,plan)
+                        !call cuda_cshift<<<blocks,threads>>>(transf_d(:,:,nran,j),trans_d,nopiy,nopix,shifty*nopiy_ucell,shiftx* nopix_ucell)
+						call cuda_multislice_iteration(psi_d, transf_d(:,:,nran,j), prop_d(:,:,j), normalisation, nopiy, nopix,shifty*nopiy_ucell,shiftx* nopix_ucell,plan)
                     elseif(qep_mode == 3) then                       !randomly shift phase grate
 						call cuda_phase_shift_from_1d_factor_arrays(transf_d(:,:,nran,j),trans_d,shift_arrayy_d(:,shifty+1),shift_arrayx_d(:,shiftx+1),nopiy,nopix,plan)
                         call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,j), normalisation, nopiy, nopix,plan)

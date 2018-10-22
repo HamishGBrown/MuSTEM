@@ -380,7 +380,7 @@
 		if(allocated(ncells)                  ) deallocate(ncells)   
 		if(allocated(fz    )                  ) deallocate(fz)   
 		if(allocated(fz_DWF)                  ) deallocate(fz_DWF)   
-		if(allocated(sinc)                    ) deallocate(sinc)   
+		!if(allocated(sinc)                    ) deallocate(sinc)   
 		if(allocated(inverse_sinc)            ) deallocate(inverse_sinc)   
 		if(allocated(substance_atom_types    )) deallocate(substance_atom_types)   
 		if(allocated(outer                   )) deallocate(outer)   

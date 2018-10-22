@@ -454,7 +454,6 @@ end subroutine
         complex(fp_kind),device,dimension(nopiy,nopix) :: transf_d,potential_d,Vg_d
 		complex(fp_kind),device,intent(in),optional::propy_d(nopiy),propx_d(nopix),prop_d(nopiy,nopix)
         complex(fp_kind),dimension(nopiy,nopix,nt),intent(in) :: Vg
-		complex(fp_kind),dimension(nopiy,nopix) :: out
         real(fp_kind),device,dimension(nopiy,nopix) :: atom_mask_real_d
 
 		transf_d = 0
@@ -581,7 +580,7 @@ end subroutine
     
     end subroutine cuda_make_adf_potential
     
-	function cuda_adf_crossection_on_the_fly(psi_d,tau_ss,nat_layer,plan,fz_adf,volume)
+	function cuda_adf_crossection_on_the_fly(psi_d,tau_ss,nat_layer,plan,fz_adf,volume,prop_distance)
     
         use global_variables
         use m_precision
@@ -589,6 +588,7 @@ end subroutine
 	    use cufft_wrapper
         use cudafor
         use cuda_array_library, only: blocks, threads
+		use output
         
         implicit none
     
@@ -596,14 +596,16 @@ end subroutine
         integer(4) :: i,j,nat_layer(nt)
     
         real(fp_kind) :: tau_ss(3,nt,maxval(nat)*ifactorx*ifactory)
-        real(fp_kind) :: volume,V_corr
+        real(fp_kind) :: volume,prop_distance,V_corr
     
         !Device variables
         type(dim3) :: blocks_nat, threads_nat
         real(fp_kind),device,allocatable :: tau_d(:,:)
         real(fp_kind),device,dimension(nopiy,nopix) :: real_inelastic_slice_potential_d
 		complex(fp_kind),dimension(nopiy,nopix,nt),intent(in):: fz_adf
-        complex(fp_kind),device,dimension(nopiy,nopix) :: potential_d,fz_adf_d,psi_d
+        complex(fp_kind),device,dimension(nopiy,nopix) :: potential_d,fz_adf_d
+		complex(fp_kind),dimension(nopiy,nopix),intent(in),device::psi_d
+		complex(fp_kind)::out(nopiy,nopix)
 		
 		real(fp_kind)::cuda_adf_crossection_on_the_fly
     
@@ -629,9 +631,11 @@ end subroutine
             !multiply by the scattering factor
             !Elastic potential
 			fz_adf_d = fz_adf(:,:,i)
-            call cuda_multiplication<<<blocks,threads>>>(potential_d,fz_adf_d,potential_d,V_corr,nopiy,nopix)  
+            call cuda_multiplication<<<blocks,threads>>>(potential_d,fz_adf_d,potential_d,V_corr*normalisation*prop_distance,nopiy,nopix)  
 			call cufftExec(plan,potential_d,potential_d,CUFFT_INVERSE)
+			
 			call cuda_take_real<<<blocks,threads>>>(potential_d,real_inelastic_slice_potential_d,nopiy,nopix)
+			
 			cuda_adf_crossection_on_the_fly = cuda_adf_crossection_on_the_fly + local_potential_overlap(psi_d,real_inelastic_slice_potential_d,nopiy,nopix)
         enddo
         !get realspace potential
@@ -645,7 +649,7 @@ end subroutine
         integer(4) l,m,nopiy,nopix
         real(fp_kind) :: local_potential_overlap
         real(fp_kind),device :: local_potential_overlap_d
-        complex(fp_kind), device, dimension(nopiy,nopix) :: psi_d
+        complex(fp_kind), device, dimension(nopiy,nopix),intent(in) :: psi_d
 		real(fp_kind),device,dimension(nopiy,nopix)::pot
     
         local_potential_overlap_d = 0.0_fp_kind

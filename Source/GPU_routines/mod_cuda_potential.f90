@@ -427,7 +427,7 @@ end subroutine
     end subroutine cuda_make_abs_potential
     
   
-    subroutine cuda_on_the_fly_abs_multislice(psi_d,ccd_slice,tau_ss,nat_layer,thickness,plan,Vg,volume,propy_d, propx_d,prop_d)
+    subroutine cuda_on_the_fly_abs_multislice(psi_d,ccd_slice,tau_ss,nat_layer,thickness,even_slicing,plan,Vg,volume,propy_d, propx_d,prop_d)
     
         use global_variables
         use m_precision
@@ -453,8 +453,11 @@ end subroutine
 		complex(fp_kind),device,dimension(nopiy,nopix),intent(inout) :: psi_d
         complex(fp_kind),device,dimension(nopiy,nopix) :: transf_d,potential_d,Vg_d
 		complex(fp_kind),device,intent(in),optional::propy_d(nopiy),propx_d(nopix),prop_d(nopiy,nopix)
+		complex(fp_kind),device,allocatable::propp_d(:,:)
         complex(fp_kind),dimension(nopiy,nopix,nt),intent(in) :: Vg
         real(fp_kind),device,dimension(nopiy,nopix) :: atom_mask_real_d
+		logical,intent(in)::even_slicing
+		complex(fp_kind),dimension(nopiy,nopix)::out
 
 		transf_d = 0
         V_corr = ss(7)/volume
@@ -502,13 +505,21 @@ end subroutine
 		!Multiply transmission function by psi
         
 		call cuda_multiplication<<<blocks,threads>>>(psi_d,transf_d, psi_d,1.0_fp_kind,nopiy,nopix)
-
+		
 		!Apply free space propagator
 		call cufftExec(plan,psi_d,psi_d,CUFFT_FORWARD)
         if(present(propy_d).and.present(propx_d)) then
 			call cuda_multiplication<<<blocks,threads>>>(psi_d,propy_d,propx_d, psi_d,normalisation,nopiy,nopix)
 		elseif(present(prop_d)) then
-			call cuda_multiplication<<<blocks,threads>>>(psi_d,prop_d,psi_d,normalisation,nopiy,nopix)
+			if(even_slicing) then
+				call cuda_multiplication<<<blocks,threads>>>(psi_d,prop_d, psi_d,normalisation,nopiy,nopix)
+			else
+				allocate(propp_d(nopiy,nopix))
+				call cuda_complex_exponentiation<<<blocks,threads>>>(propp_d, prop_d,thickness, nopiy, nopix)
+				call cuda_apply_Band_width_limit<<<blocks,threads>>>(propp_d, nopiy,nopix,1.0_fp_kind)
+				call cuda_multiplication<<<blocks,threads>>>(psi_d,propp_d, psi_d,normalisation,nopiy,nopix)
+				
+			endif
 		else
 			stop
 		endif

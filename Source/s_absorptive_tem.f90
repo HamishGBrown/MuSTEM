@@ -61,7 +61,7 @@ subroutine absorptive_tem
     implicit none
     
     !dummy variables
-    integer(4) :: i_cell,i_slice,z_indx(1),lengthz,lengthdf,i,idum,ntilt
+    integer(4) :: i_cell,i_slice,z_indx(1),lengthz,lengthdf,i,idum,ntilt,starting_slice
     
     !random variables
     integer(4) :: count
@@ -216,34 +216,31 @@ subroutine absorptive_tem
 					call cuda_multiplication<<<blocks,threads>>>(tmatrix_states_d(:,:,k),shiftarray, q_tmatrix_d,1.0_fp_kind,nopiy,nopix)
                     call cufftExec(plan,q_tmatrix_d,tmatrix_d,CUFFT_INVERSE)
 					call cuda_multiplication<<<blocks,threads>>>(psi_d,tmatrix_d,psi_inel_d,sqrt(normalisation),nopiy,nopix)
-						
-                        ! Scatter the inelastic wave through the remaining slices in the cell
-                        do jj = i_slice, n_slices   
-							call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,jj), prop_d,prop_distance(jj),even_slicing, normalisation, nopiy, nopix,plan)
-                        enddo
-                        ! Scatter the inelastic wave through the remaining cells
-                        do ii = i_cell+1, n_cells
-                            do jj = 1, n_slices;call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,jj),prop_d,prop_distance(jj),even_slicing, normalisation, nopiy, nopix,plan);enddo
+					starting_slice = i_slice
+                    ! Scatter the inelastic wave through the remaining cells
+                    do ii = i_cell, n_cells
+                        do jj = starting_slice, n_slices;call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,jj),prop_d,prop_distance(jj),even_slicing, normalisation, nopiy, nopix,plan);enddo
 							
-							if (any(ii==ncells)) then
-								z_indx = minloc(abs(ncells-ii))
-								call cufftExec(plan, psi_inel_d, tmatrix_d, CUFFT_FORWARD)
+						if (any(ii==ncells)) then
+							z_indx = minloc(abs(ncells-ii))
+							call cufftExec(plan, psi_inel_d, tmatrix_d, CUFFT_FORWARD)
 								
-								! Accumulate EFTEM images
-								do l = 1, imaging_ndf
-									call cuda_image(tmatrix_d,ctf_d(:,:,l),temp_d,normalisation, nopiy, nopix,plan,.false.)
+							! Accumulate EFTEM images
+							do l = 1, imaging_ndf
+								call cuda_image(tmatrix_d,ctf_d(:,:,l),temp_d,normalisation, nopiy, nopix,plan,.false.)
 									 
-									call cuda_addition<<<blocks,threads>>>(eftem_image_d(:,:,l,z_indx(1)), temp_d, eftem_image_d(:,:,l,z_indx(1)), 1.0_fp_kind, nopiy, nopix)
-								enddo
-							endif
-                        enddo
-						enddo
+								call cuda_addition<<<blocks,threads>>>(eftem_image_d(:,:,l,z_indx(1)), temp_d, eftem_image_d(:,:,l,z_indx(1)), 1.0_fp_kind, nopiy, nopix)
+							enddo
+						endif
+						starting_slice=1
+                    enddo
+					enddo
 				enddo
 			endif  ! End loop over cells,targets and states and end double_channeling section
 
             if(on_the_fly) then
-				if(.not.factorized_propagator) call cuda_on_the_fly_abs_multislice(psi_d,ccd_slice_array(i_slice),tau_slice(:,:,:,i_slice),nat_slice(:,i_slice),prop_distance(i_slice),plan,Vg,Volume_array(i_slice),prop_d = prop_d)
-				if(factorized_propagator) call cuda_on_the_fly_abs_multislice(psi_d,ccd_slice_array(i_slice),tau_slice(:,:,:,i_slice),nat_slice(:,i_slice),prop_distance(i_slice),plan,Vg,Volume_array(i_slice),propy_d, propx_d)
+				if(.not.factorized_propagator) call cuda_on_the_fly_abs_multislice(psi_d,ccd_slice_array(i_slice),tau_slice(:,:,:,i_slice),nat_slice(:,i_slice),prop_distance(i_slice),even_slicing,plan,Vg,Volume_array(i_slice),prop_d = prop_d)
+				if(factorized_propagator) call cuda_on_the_fly_abs_multislice(psi_d,ccd_slice_array(i_slice),tau_slice(:,:,:,i_slice),nat_slice(:,i_slice),prop_distance(i_slice),even_slicing,plan,Vg,Volume_array(i_slice),propy_d, propx_d)
 				
             else
 				call cuda_multislice_iteration(psi_d, transf_d(:,:,i_slice), prop_d,prop_distance(i_slice),even_slicing, normalisation, nopiy, nopix,plan)
@@ -253,33 +250,43 @@ subroutine absorptive_tem
 		!If this thickness corresponds to any of the output values then output images
 		if (any(i_cell==ncells)) then
 			psi = psi_d
-			call fft2(nopiy, nopix, psi, nopiy, psi, nopiy)
-			cbed = abs(psi)**2
-			z_indx = minloc(abs(ncells-i_cell))
-			call output_TEM_result(output_prefix,cbed,'Diffraction_pattern',nopiy,nopix,manyz,.false.,manytilt,z=zarray(z_indx(1))&
-								&,lengthz=lengthz,lengthdf=lengthdf,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2)&
-								&,nopiyout=nopiy*2/3,nopixout=nopix*2/3)				
-			if(pw_illum) then
-			do i=1,imaging_ndf
-				tem_image = make_image(nopiy,nopix,psi,lens_ctf(:,:,i),.false.)
-				call output_TEM_result(output_prefix,tem_image,'Image',nopiy,nopix,manyz,imaging_ndf>1,manytilt,z=zarray(z_indx(1))&
-								&,lengthz=lengthz,lengthdf=lengthdf,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2),df = imaging_df(i))
+		!	
+		!	call fft2(nopiy, nopix, psi, nopiy, psi, nopiy)
+		!	cbed = abs(psi)**2
+		!	z_indx = minloc(abs(ncells-i_cell))
+		!	call output_TEM_result(output_prefix,cbed,'Diffraction_pattern',nopiy,nopix,manyz,.false.,manytilt,z=zarray(z_indx(1))&
+		!						&,lengthz=lengthz,lengthdf=lengthdf,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2)&
+		!						&,nopiyout=nopiy*2/3,nopixout=nopix*2/3)				
+		!	if(pw_illum) then
+		!	do i=1,imaging_ndf
+		!		tem_image = make_image(nopiy,nopix,psi,lens_ctf(:,:,i),.false.)
+		!		call output_TEM_result(output_prefix,tem_image,'Image',nopiy,nopix,manyz,imaging_ndf>1,manytilt,z=zarray(z_indx(1))&
+		!						&,lengthz=lengthz,lengthdf=lengthdf,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2),df = imaging_df(i))
 				if(double_channeling) then
-				tem_image = eftem_image_d(:,:,i,z_indx(1))
+				do l = 1, imaging_ndf
+				tem_image = eftem_image_d(:,:,l,z_indx(1))
 				call output_TEM_result(output_prefix,tile_out_image(tem_image,ifactory,ifactorx),'energy_filtered_image',nopiy,nopix,manyz,imaging_ndf>1,manytilt,z=zarray(z_indx(1))&
-								&,lengthz=lengthz,lengthdf=lengthdf,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2),df = imaging_df(i))
+								&,lengthz=lengthz,lengthdf=lengthdf,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2),df = imaging_df(l))
+				enddo
 				endif
-			enddo
-			endif
+		!	enddo
+		!	endif
 		endif
         
-#else
-    psi = psi_initial
+#else	
+	psi = psi_initial
     do i_cell = 1, maxval(ncells)
+		intensity = sum(abs(psi)**2)
+        if(n_tilts_total<2) write(6,900) i_cell, intensity
+        if(n_tilts_total>1) write(6,901) i_cell, ntilt,n_tilts_total, intensity
+900     format(1h+,1x, 'Cell: ', i5, ' Intensity: ', f12.6)	        
+901     format(1h+,1x, 'Cell: ', i5, ' tilt:',i5,'/',i5,' Intensity: ', f12.6)	
+    
         do i_slice = 1, n_slices	
-            call multislice_iteration(psi,prop(:,:,i_slice),transf_absorptive(:,:,i_slice),nopiy,nopix);												  
+            call multislice_iteration(psi,prop,transf_absorptive(:,:,i_slice),prop_distance(i_slice),even_slicing,nopiy,nopix);												  
         enddo ! End loop over slices
-        
+		
+#endif        
 		!If this thickness corresponds to any of the output values then output images
 		if (any(i_cell==ncells)) then
 			  
@@ -293,8 +300,8 @@ subroutine absorptive_tem
             
             
 			if(pw_illum) then
-            call binary_out(nopiy, nopix, abs(psi)**2, trim(adjustl(filename))//'_exit_surface_intensity')
-            call binary_out(nopiy, nopix, atan2(imag(psi),real(psi)), trim(adjustl(filename))//'_exit_surface_phase')
+            call binary_out(nopiy, nopix, abs(psi)**2, trim(adjustl(filename))//'_Exit_surface_intensity')
+            call binary_out(nopiy, nopix, atan2(imag(psi),real(psi)), trim(adjustl(filename))//'_Exit_surface_phase')
 			do i=1,imaging_ndf
 			   
 				call fft2(nopiy, nopix, psi, nopiy, psi_out, nopiy)
@@ -308,13 +315,6 @@ subroutine absorptive_tem
             enddo
             endif
 		endif
-        intensity = sum(abs(psi)**2)
-        
-        if(n_tilts_total<2) write(6,900) i_cell, intensity
-        if(n_tilts_total>1) write(6,901) i_cell, ntilt,n_tilts_total, intensity
-900     format(1h+,1x, 'Cell: ', i5, ' Intensity: ', f12.6)	        
-901     format(1h+,1x, 'Cell: ', i5, ' tilt:',i5,'/',i5,' Intensity: ', f12.6)	
-#endif	
         
 	enddo ! End loop over cells
     enddo ! End loop over tilts

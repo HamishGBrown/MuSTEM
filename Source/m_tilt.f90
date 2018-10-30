@@ -128,12 +128,9 @@ module m_tilt
 		character*120::input_string
         
         write(*,*) 'Please enter the specimen tilt in mrad'
-		write(*,*) 'A tilt series can be performed by inputting a comma seperated list:'
-        write(*,*) 'eg. 5,10,15'
-        write(*,*) 'or as a sequence:'
-        write(*,*) 'eg. 5:15:5 (start:stop:step)',char(10)
-        call get_input('Specimen tilt in mrad', input_string)
-        
+
+        call Series_prompt('tilt')
+		call get_input('Specimen tilt in mrad', input_string)
         call read_sequence_string(input_string,120,n_tilt)
 		allocate(tilt_array(n_tilt))
         call read_sequence_string(input_string,120,n_tilt,tilt_array)

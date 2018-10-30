@@ -152,7 +152,6 @@ module cuda_ms
 		logical,intent(in)::even_slicing
 		integer,value::plan
 			
-			
 			call cuda_multiplication<<<blocks,threads>>>(psi_d,transf_d, psi_out_d,1.0_fp_kind,nopiy,nopix)
             call cufftExec(plan,psi_out_d,psi_d,CUFFT_FORWARD)
 			if(even_slicing) then
@@ -245,48 +244,48 @@ module cuda_ms
         
     end function cuda_stem_detector_wavefunction
     
-	attributes(global) subroutine cuda_stem_detector_wavefunction_on_the_fly(psi_d,result_d, inner,outer,dimy,dimx,n,m) 
-    
-        implicit none
-     
-        integer*4:: l
-		real(fp_kind),device :: get_sum_complex_d,xx_d,yy_d,dimx_d,dimy_d,r_d,inner_d,outer_d
-		real(fp_kind),value:: result_d,inner,outer,dimy,dimx,xx,yy,r
-		complex(fp_kind),device::a
-        integer :: istat
-		integer,value:: n,m
-		complex(fp_kind), device, dimension(n,m) :: psi_d
-        
-		
-		integer(4), value :: ix,iy
-		real(fp_kind),value :: iix,iiy
-    
-        ix = (blockIdx%y-1)*blockDim%y + threadIdx%y
-        iy = (blockIdx%x-1)*blockDim%x + threadIdx%x
-
-        if (ix <= m) then
-             if (iy <= n) then
-                !iix = abs(modulo(ix+m/2,m)-m/2)/(m/2.0_fp_kind)
-				!iiy = abs(modulo(iy+n/2,n)-n/2)/(n/2.0_fp_kind)
-				!iix = sqrt(iix**2+iiy**2)
-				!if(.not.(iix<2.0_fp_kind/3)) then
-				!	arrayin(iy,ix) = 0
-				!else
-				!	arrayin(iy,ix) = arrayin(iy,ix)*scale
-				!endif
-				
-				xx = (modulo(ix+m/2-1,m)-m/2+1)/dimx
-				yy = (modulo(iy+n/2-1,n)-n/2+1)/dimy
-				r = sqrt(xx**2+yy**2)
-				!psi_d(iy,ix) = r
-                if(r<outer.and.r>inner) then
-					!a = psi_d(iy,ix)
-					r = abs(a)**2
-					istat = atomicAdd(result_d,r)
-				endif
-            endif
-        endif   
-    end subroutine cuda_stem_detector_wavefunction_on_the_fly
+	!attributes(global) subroutine cuda_stem_detector_wavefunction_on_the_fly(psi_d,result_d, inner,outer,dimy,dimx,n,m) 
+  !
+  !    implicit none
+  ! 
+  !    integer*4:: l
+	!	real(fp_kind),device :: get_sum_complex_d,xx_d,yy_d,dimx_d,dimy_d,r_d,inner_d,outer_d
+	!	real(fp_kind),value:: result_d,inner,outer,dimy,dimx,xx,yy,r
+	!	complex(fp_kind),device::a
+  !    integer :: istat
+	!	integer,value:: n,m
+	!	complex(fp_kind), device, dimension(n,m) :: psi_d
+  !    
+	!	
+	!	integer(4), value :: ix,iy
+	!	real(fp_kind),value :: iix,iiy
+  !
+  !    ix = (blockIdx%y-1)*blockDim%y + threadIdx%y
+  !    iy = (blockIdx%x-1)*blockDim%x + threadIdx%x
+  !
+  !    if (ix <= m) then
+  !         if (iy <= n) then
+  !            !iix = abs(modulo(ix+m/2,m)-m/2)/(m/2.0_fp_kind)
+	!			!iiy = abs(modulo(iy+n/2,n)-n/2)/(n/2.0_fp_kind)
+	!			!iix = sqrt(iix**2+iiy**2)
+	!			!if(.not.(iix<2.0_fp_kind/3)) then
+	!			!	arrayin(iy,ix) = 0
+	!			!else
+	!			!	arrayin(iy,ix) = arrayin(iy,ix)*scale
+	!			!endif
+	!			
+	!			xx = (modulo(ix+m/2-1,m)-m/2+1)/dimx
+	!			yy = (modulo(iy+n/2-1,n)-n/2+1)/dimy
+	!			r = sqrt(xx**2+yy**2)
+	!			!psi_d(iy,ix) = r
+  !            if(r<outer.and.r>inner) then
+	!				!a = psi_d(iy,ix)
+	!				r = abs(a)**2
+	!				istat = atomicAdd(result_d,r)
+	!			endif
+  !        endif
+  !    endif   
+  !end subroutine cuda_stem_detector_wavefunction_on_the_fly
 
     !attributes(host) function cuda_stem_detector_wavefunction_on_the_fly(psi_d, inner,outer,dimy,dimx) 
     !

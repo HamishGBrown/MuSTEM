@@ -66,7 +66,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     logical,intent(in)::pacbed,stem,ionization
     
     !dummy variables
-    integer(4) :: i, j, k, i_df, ny, nx,z_indx(1),ii,length,idum,ntilt,lengthdf,idet
+    integer(4) :: i, j, k, l,i_df, ny, nx,z_indx(1),ii,length,idum,ntilt,lengthdf,idet,lengthimdf,starting_slice
 
     !probe variables
 	complex(fp_kind),allocatable::propy(:),propx(:)
@@ -114,7 +114,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 	real(fp_kind),device,allocatable,dimension(:,:,:,:)::efistem_image_d,istem_image_d
 	real(fp_kind),allocatable,dimension(:,:,:,:,:)::Hn0_eels_dc
 	real(fp_kind),allocatable,dimension(:,:,:)::tmatrix_states
-	integer::jj,l,i_target,lengthimdf
+	integer::jj,i_target
 	
 
 #endif    
@@ -135,7 +135,6 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     
     ! Precalculate the scattering factors on a grid
     call precalculate_scattering_factors()
-
     if (on_the_fly) then
 #ifdef GPU
         ! Setup the atom co-ordinate for on the fly potentials
@@ -143,6 +142,9 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 		if(stem) allocate(adf_cont(ndet))               
 #endif        
     else
+#ifdef GPU        
+        allocate(temp_d(nopiy,nopix))
+#endif
         allocate(projected_potential(nopiy,nopix,n_slices),transf_absorptive(nopiy,nopix,n_slices))
 		if(.not.load_grates) projected_potential = make_absorptive_grates(nopiy,nopix,n_slices)
         call load_save_add_grates(projected_potential,nopiy,nopix,n_slices)
@@ -154,7 +156,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 
 #ifdef GPU
 	if(double_channeling) then
-        allocate(tmatrix_states_d(nopiy,nopix,nstates),psi_inel_d(nopiy,nopix),cbed_inel_dc_d(nopiy,nopix),tmatrix_states(nopiy,nopix,nstates),temp_d(nopiy,nopix))
+        allocate(tmatrix_states_d(nopiy,nopix,nstates),psi_inel_d(nopiy,nopix),cbed_inel_dc_d(nopiy,nopix),tmatrix_states(nopiy,nopix,nstates))
 		allocate(shiftarray(nopiy,nopix),tmatrix_d(nopiy,nopix),q_tmatrix_d(nopiy,nopix))
         tmatrix_states_d = setup_ms_hn0_tmatrices(nopiy,nopix,nstates)*alpha_n
         allocate(Hn0_shifty_coord_d(nopiy,maxval(natoms_slice_total),n_slices))
@@ -179,7 +181,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 				ctf(:,:,i) =  make_ctf([0.0_fp_kind,0.0_fp_kind,0.0_fp_kind],imaging_df(i),imaging_cutoff,imaging_aberrations,imaging_apodisation)
 			enddo
 #ifdef GPU
-		allocate(ctf_d(nopiy,nopix,imaging_ndf),istem_image_d(nopiy,nopix,imaging_ndf,nz));ctf_d=ctf;istem_image_d=0
+		allocate(ctf_d(nopiy,nopix,imaging_ndf));ctf_d=ctf
 #endif
 		endif
 
@@ -206,6 +208,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 			stem_ion_image = 0.0_fp_kind
 			if (.not.EDX) eels_correction_image = 0.0_fp_kind
 		endif
+	factorized_propagator = all(abs(claue)<1e-2).and.on_the_fly.and.even_slicing
 #ifdef GPU
     !plan the fourier transforms
     if (fp_kind.eq.8) then
@@ -215,7 +218,6 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     endif
     
     ! Copy host arrays to the device
-	factorized_propagator = all(abs(claue)<1e-2).and.on_the_fly.and.even_slicing
     if (on_the_fly) then
         allocate(Vg(nopiy,nopix,nt))!,Vg_d(nopiy,nopix,nt)
 
@@ -267,7 +269,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     endif
 	
     if(.not.factorized_propagator) allocate(prop_d(nopiy,nopix))
-    if ((adf.and.(.not.on_the_fly)).or.ionization) allocate(psi_intensity_d(nopiy,nopix))
+    if ((stem.and.adf.and.(.not.on_the_fly)).or.ionization) allocate(psi_intensity_d(nopiy,nopix))
     if (stem.and.adf.and.(.not.on_the_fly)) allocate(adf_image_d(nopiy,nopix,ndet))
     if (ionization) allocate(ion_image_d(nopiy,nopix,num_ionizations))
 	if (pacbed) allocate(pacbed_pattern_d(nopiy,nopix,nz)) 
@@ -293,6 +295,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     if(even_slicing.and.(.not.factorized_propagator)) then
 		call make_propagator(nopiy,nopix,prop,prop_distance(1),Kz(ntilt),ss,ig1,ig2,claue(:,ntilt),ifactorx,ifactory,exponentiate = .true.)
 		prop = prop*bwl_mat
+		
 	elseif(.not.factorized_propagator) then
 		call make_propagator(nopiy,nopix,prop,1.0_fp_kind,Kz(ntilt),ss,ig1,ig2,claue(:,ntilt),ifactorx,ifactory,exponentiate = .false.)
 	endif
@@ -367,7 +370,6 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 				endif
 				enddo
 			endif
-			
 			if(ionization) then
 				do ii=1,num_ionizations
 					if(on_the_fly) then
@@ -394,15 +396,11 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 					call cuda_multiplication<<<blocks,threads>>>(tmatrix_states_d(:,:,k),shiftarray, q_tmatrix_d,1.0_fp_kind,nopiy,nopix)
                     call cufftExec(plan,q_tmatrix_d,tmatrix_d,CUFFT_INVERSE)
 					call cuda_multiplication<<<blocks,threads>>>(psi_d,tmatrix_d,psi_inel_d,sqrt(normalisation),nopiy,nopix)
-					
-                        ! Scatter the inelastic wave through the remaining slices in the cell
-                        do jj = j, n_slices   
-							call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,jj),prop_d,prop_distance(jj),even_slicing, normalisation, nopiy, nopix,plan)
-                        enddo
+					starting_slice=j
                         ! Scatter the inelastic wave through the remaining cells
-                        do ii = i+1, n_cells
-                            do jj = 1, n_slices;call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,jj),prop_d,prop_distance(jj),even_slicing, normalisation, nopiy, nopix,plan);enddo
-
+                        do ii = i, n_cells
+                            do jj = starting_slice, n_slices;call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,jj),prop_d,prop_distance(jj),even_slicing, normalisation, nopiy, nopix,plan);enddo
+							starting_slice=1
 							if (any(ii==ncells)) then
 								z_indx = minloc(abs(ncells-ii))
 								call cufftExec(plan, psi_inel_d, q_tmatrix_d, CUFFT_FORWARD)
@@ -423,12 +421,11 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 				enddo
 			endif  ! End loop over cells,targets and states and end double_channeling section
 			! Transmit through slice potential
-			
 			if(on_the_fly) then
-				if(.not.factorized_propagator) call cuda_on_the_fly_abs_multislice(psi_d,ccd_slice_array(j),tau_slice(:,:,:,j),nat_slice(:,j),prop_distance(j),plan,Vg,Volume_array(j),prop_d = prop_d)
-				if(factorized_propagator) call cuda_on_the_fly_abs_multislice(psi_d,ccd_slice_array(j),tau_slice(:,:,:,j),nat_slice(:,j),prop_distance(j),plan,Vg,Volume_array(j),propy_d, propx_d)
+				if(.not.factorized_propagator) call cuda_on_the_fly_abs_multislice(psi_d,ccd_slice_array(j),tau_slice(:,:,:,j),nat_slice(:,j),prop_distance(j),even_slicing,plan,Vg,Volume_array(j),prop_d = prop_d)
+				if(factorized_propagator) call cuda_on_the_fly_abs_multislice(psi_d,ccd_slice_array(j),tau_slice(:,:,:,j),nat_slice(:,j),prop_distance(j),even_slicing,plan,Vg,Volume_array(j),propy_d, propx_d)
             else
-				call cuda_multislice_iteration(psi_d, transf_d(:,:,j), prop_d,prop_distance(j),even_slicing, normalisation, nopiy, nopix,plan)
+				call cuda_multislice_iteration_new(psi_d, transf_d(:,:,j), prop_d,prop_distance(j),even_slicing, normalisation, nopiy, nopix,plan)
             endif
 			if (output_probe_intensity) then
 				k = (i-1)*n_slices+j
@@ -507,12 +504,12 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 #ifdef GPU
 				
 #endif
-			elseif(stem.and.adf.)
-                do k=1,ndet;adf_image(:,:,k) = psi_intensity*adf_potential(:,:,j,k)*prop_distance(j) + adf_image(:,:,k); enddo
+			elseif(stem.and.adf) then 
+                do k=1,ndet; adf_image(:,:,k) = psi_intensity*adf_potential(:,:,j,k)*prop_distance(j) + adf_image(:,:,k); enddo
             endif    
             
 			if(ionization) ion_image = ion_image + spread(psi_intensity,ncopies=num_ionizations,dim=3) * ionization_potential(:,:,:,j) * prop_distance(j)
-			call multislice_iteration(psi,prop(:,:,j),transf_absorptive(:,:,j),nopiy,nopix)
+			call multislice_iteration(psi,prop,transf_absorptive(:,:,j),prop_distance(j),even_slicing,nopiy,nopix)
 			
 			if (output_probe_intensity) then
 				k = (i-1)*n_slices+j
@@ -526,6 +523,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 			if (any(i==ncells)) then
 #ifdef GPU
 				psi=psi_d
+				if (adf.and.(.not.on_the_fly)) adf_image= adf_image_d
 #endif
 				z_indx = minloc(abs(ncells-i))
 				call fft2(nopiy,nopix,psi,nopiy,psi_out,nopiy)
@@ -543,6 +541,11 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 				elseif(stem.and.adf) then
                     do k=1,ndet; stem_inelastic_image(ny,nx,i_df,z_indx(1),k) = sum(adf_image(:,:,k)); enddo
                 endif
+#ifdef GPU
+				if (istem.and.i_df==1) then;do l = 1, imaging_ndf
+					istem_image(:,:,l,z_indx(1)) = istem_image(:,:,l,z_indx(1)) + make_image(nopiy,nopix,psi_out,ctf(:,:,l),.false.) 
+				enddo;endif;
+#endif
 				if(ionization) then
 					do ii=1,num_ionizations
 						stem_ion_image(ny,nx,i_df,z_indx(1),ii) = sum(ion_image(:,:,ii))
@@ -653,21 +656,21 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 		do i=1,nz
 			pacbed_pattern(:,:,i) = pacbed_pattern(:,:,i)/nysample/nxsample
 			call output_TEM_result(output_prefix,pacbed_pattern(:,:,i),'PACBED',nopiy,nopix,manyz,.false.,manytilt,zarray(i)&
-								&,lengthz=length,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2),nopiyout=nopiy/3*2,nopixout=nopix/3*2)			
+								&,lengthz=length,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2),nopiyout=nopiyout,nopixout=nopixout)			
 		enddo
     endif
 
 	if(istem) then
 		do i=1,nz;do l=1,imaging_ndf
-			temp = istem_image_d(:,:,l,i)
-			call output_TEM_result(output_prefix,tile_out_image(temp,ifactory,ifactorx),'ISTEM',nopiy,nopix,manyz,imaging_ndf>1,manytilt,z=zarray(i)&
+			temp = istem_image(:,:,l,i)
+			call output_TEM_result(output_prefix,tile_out_image(temp/nysample/nxsample,ifactory,ifactorx),'ISTEM',nopiy,nopix,manyz,imaging_ndf>1,manytilt,z=zarray(i)&
 								&,lengthz=length,lengthdf=lengthimdf,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2),df = imaging_df(l))			
 		enddo;enddo;endif
 #ifdef GPU
 			if(double_channeling.and.istem) then
 			do i=1,nz;do l=1,imaging_ndf
 			temp = efistem_image_d(:,:,l,i)
-			call output_TEM_result(output_prefix,tile_out_image(temp,ifactory,ifactorx),'energy_filtered_ISTEM',nopiy,nopix,manyz,imaging_ndf>1,manytilt,z=zarray(i)&
+			call output_TEM_result(output_prefix,tile_out_image(temp/nysample/nxsample,ifactory,ifactorx),'energy_filtered_ISTEM',nopiy,nopix,manyz,imaging_ndf>1,manytilt,z=zarray(i)&
 								&,lengthz=length,lengthdf=lengthimdf,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2),df = imaging_df(l))
 		enddo;enddo;endif	
 		

@@ -53,6 +53,10 @@ module m_multislice
         module procedure load_save_add_grates_qep,load_save_add_grates_abs
     end interface
     
+    interface multislice_iteration
+        module procedure multislice_iteration_new,multislice_iteration_old
+    end interface
+    
     contains
     
     !This subroutine samples from the available phase grates and then performs one iteration of the multislice algorithm (called in CPU versions only)
@@ -90,7 +94,7 @@ module m_multislice
     
     !This subroutine performs one iteration of the multislice algorithm (called in CPU versions only)
     !Probe (psi) input and output is in real space
-    subroutine multislice_iteration(psi,propagator,transmission,nopiy,nopix)
+    subroutine multislice_iteration_old(psi,propagator,transmission,nopiy,nopix)
 	    use cufft_wrapper
         complex(fp_kind),intent(inout)::psi(nopiy,nopix)
         complex(fp_kind),intent(in)::propagator(nopiy,nopix),transmission(nopiy,nopix)
@@ -102,6 +106,30 @@ module m_multislice
         ! Propagate to next slice
 		call fft2(nopiy,nopix,psi,nopiy,psi,nopiy)
 		psi = psi*propagator
+		call ifft2(nopiy,nopix,psi,nopiy,psi,nopiy)
+    
+    end subroutine
+    
+    !This subroutine performs one iteration of the multislice algorithm (called in CPU versions only)
+    !Probe (psi) input and output is in real space
+    subroutine multislice_iteration_new(psi,propagator,transmission,prop_distance,even_slicing,nopiy,nopix)
+	    use cufft_wrapper
+        complex(fp_kind),intent(inout)::psi(nopiy,nopix)
+        complex(fp_kind),intent(in)::propagator(nopiy,nopix),transmission(nopiy,nopix)
+        integer*4,intent(in)::nopiy,nopix
+        real(fp_kind),intent(in)::prop_distance
+        logical,intent(in)::even_slicing
+        
+        ! Transmit through slice potential
+		psi = psi*transmission
+                
+        ! Propagate to next slice
+		call fft2(nopiy,nopix,psi,nopiy,psi,nopiy)
+		if(even_slicing) then
+            psi = psi*propagator
+        else
+            psi = psi*exp(prop_distance*propagator)
+        endif
 		call ifft2(nopiy,nopix,psi,nopiy,psi,nopiy)
     
     end subroutine
@@ -319,8 +347,9 @@ module m_multislice
         write(*,*) '<2> Load transmission functions'
         write(*,*) '<3> Add additional transmission function '
         write(*,*) '    (eg. from magnetic structure) from file'
-        call get_input('<0> continue <1> save <2> load', i_save_load)
-        write(*,*)
+       
+		call get_input('<0> continue <1> save <2> load', i_save_load)
+        
 323     format( '  - The xtl file',/,'  - The slicing of the unit cell',/,&
                &'  - The choice of thermal scattering model (QEP vs. absorptive)',/,&
                &'  - The tiling of the unit cell',/,'  - The number of pixels',/,&
@@ -747,24 +776,54 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
         write(*,*)
         
     end subroutine
+
+	function calculate_nat_slice( depths, tau, nm, nt, nat, n_slices, ifactorx, ifactory ) result(nat_slice)
+   !Calculate the number of atoms within each slice 
+    implicit none
+
+	real(fp_kind),intent(in):: depths(n_slices), tau(3,nt,nm)
+	integer(4),intent(in):: nm, nt, ifactorx, ifactory, n_slices,nat(nt)
+	
+	integer(4) nat_slice(nt,n_slices)
+	integer(4) i,kk
+	real(fp_kind) diff, tol
+	real(fp_kind) factorx, factory
+
+	tol = 1.0d-4
+	
+	do i = 1, nt !Loop over atom types
+		!Calculate atoms in all slices bar the final one
+		do kk=1,n_slices-1;
+			nat_slice(i,kk) = count((tau(3,i,1:nat(i)) .lt. (depths(kk+1)-tol)) &
+							&.and.(tau(3,i,1:nat(i)) .ge. (depths(kk)-tol))  )&
+							&*ifactory*ifactorx
+		enddo
+		!Calculate the number of atoms in the final slice
+		nat_slice(i,n_slices) = count(tau(3,i,1:nat(i)) .ge. (depths(n_slices)-tol))*ifactory*ifactorx
+
+	enddo
+    end function
     
     subroutine calculate_slices
-        use global_variables, only: nat, ifactory, ifactorx, nt, a0, deg, tau, nm,even_slicing,even_slicing
+        use global_variables, only: nat, ifactory, ifactorx, nt, a0, deg, tau, nm,even_slicing
         use m_crystallography, only: cryst
         
         implicit none
         
-        integer :: j
+        integer :: j,jj,kk,maxnat_slice_uc
         
-        maxnat_slice = maxval(nat) * ifactory * ifactorx
+        allocate(nat_slice(nt,n_slices),nat_slice_unitcell(nt,n_slices))
+        nat_slice = calculate_nat_slice( depths,tau,nm,nt,nat,n_slices,ifactorx,ifactory )
+		nat_slice_unitcell = nat_slice / dfloat(ifactorx*ifactory)
+		maxnat_slice=maxval(nat_slice)
+		maxnat_slice_uc=maxnat_slice / dfloat(ifactorx*ifactory)
         
-        allocate(nat_slice(nt,n_slices),tau_slice(3,nt,maxnat_slice,n_slices),&
+        allocate(tau_slice(3,nt,maxnat_slice,n_slices),&
                 &a0_slice(3,n_slices),ss_slice(7,n_slices),prop_distance(n_slices),&
-                 nat_slice_unitcell(nt,n_slices),tau_slice_unitcell(3,nt,nm,n_slices))
-        
+                 tau_slice_unitcell(3,nt,maxnat_slice_uc,n_slices))
+
         do j = 1, n_slices
-          a0_slice(1,j) = a0(1)*ifactorx	
-          a0_slice(2,j) = a0(2)*ifactory		
+          a0_slice(1:2,j) = a0(1:2)*[ifactorx,ifactory]
           
           if (j .eq. n_slices) then				
                 a0_slice(3,j) = (1.0_fp_kind-depths(j))*a0(3)
@@ -775,25 +834,27 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
           call cryst(a0_slice(:,j),deg,ss_slice(:,j))
           
           ! Make supercell cell subsliced
-          call calculate_tau_nat_slice( depths(j),depths(j+1),tau,tau_slice(:,:,:,j),nm,nt,nat,nat_slice(:,j),ifactorx,ifactory )
+          call calculate_tau_nat_slice( depths(j),depths(j+1),tau,tau_slice(:,:,:,j),nm,nt,nat,nat_slice(:,j),ifactorx,ifactory,&
+		  &                             maxnat_slice )
 	                
           ! Make unit cell subsliced
           call make_mod_tau_unitcell( depths(j),depths(j+1),tau,tau_slice_unitcell(:,:,:,j),nm,nt,nat,nat_slice_unitcell(:,j) )
         enddo
-        
+
         prop_distance = a0_slice(3,:)
-        even_slicing = all(abs(prop_distance - sum(prop_distance)/n_slices)<1e-3)
+		 even_slicing = all(abs(prop_distance - sum(prop_distance)/n_slices)<1e-3)
+        
     end subroutine
     
-	subroutine calculate_tau_nat_slice( depth1, depth2, tau, tau_slice, nm, nt, nat, nat_slice, ifactorx, ifactory )
+	subroutine calculate_tau_nat_slice( depth1, depth2, tau, tau_slice, nm, nt, nat, nat_slice, ifactorx, ifactory, maxnat_slice )
    
     implicit none
 
-	integer(4) nm, nt, ifactorx, ifactory
+	integer(4) nm, nt, ifactorx, ifactory, maxnat_slice
 	integer(4) nat(nt)
 	integer(4) nat_slice(nt)
 	real(fp_kind) depth2, depth1, tau(3,nt,nm)
-	real(fp_kind) tau_slice(3,nt,nm*ifactorx*ifactory)
+	real(fp_kind) tau_slice(3,nt,maxnat_slice)
 	integer(4) i,j,jj, mm, nn
 	real(fp_kind) diff, tol
 	real(fp_kind) factorx, factory
@@ -830,10 +891,10 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
 	    enddo
         
 	    nat_slice(i) = jj-1
-        
+		
 	enddo
 
-    end subroutine
+    end subroutine 
     
 !--------------------------------------------------------------------------------------
 	subroutine make_mod_tau_unitcell( depth1, depth2, tau, mod_tau, nm, nt, nat, nat2)
@@ -861,13 +922,11 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
 	    jj=1
 	    do j=1,nat(i)
 	        if( (tau(3,i,j) .lt. (depth2-tol)) .and.(tau(3,i,j) .ge. (depth1-tol)) ) then
-	            mod_tau(1,i,jj) = tau(1,i,j)
-	            mod_tau(2,i,jj) = tau(2,i,j)
+	            mod_tau(1:2,i,jj) = tau(1:2,i,j)
 			    mod_tau(3,i,jj) = (tau(3,i,j)-depth1)/diff
 			    jj = jj+1
 	        elseif(diff.eq.1.0) then
-	            mod_tau(1,i,jj) = tau(1,i,j)
-	            mod_tau(2,i,jj) = tau(2,i,j)
+	            mod_tau(1:2,i,jj) = tau(1:2,i,j)
 			    mod_tau(3,i,jj) = (tau(3,i,j)-depth1)/diff  
 	        endif
 	    enddo

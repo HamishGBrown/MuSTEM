@@ -105,21 +105,16 @@ module m_potential
 	    implicit none
     
         integer(4) :: i, j, k,Z
-        real(fp_kind) :: el_scat,ax,ay,g2,s2,sky,skx
-        real(fp_kind) :: xkstep, temp
+        real(fp_kind) :: xkstep, temp,el_scat,ax,ay,g2,s2,sky,skx
         real(fp_kind),allocatable :: xdata(:),tdsbrc(:,:,:) 
         real(fp_kind) :: factor, eps, g_vec_array(3,nopiy,nopix)
 
-        !if(allocated(sinc)) deallocate(sinc)
         if(allocated(inverse_sinc)) deallocate(inverse_sinc)
-       ! if(allocated(inverse_sinc_new)) deallocate(inverse_sinc_new)
         if(allocated(fz)) deallocate(fz)
         if(allocated(fz_DWF)) deallocate(fz_DWF)
     
         allocate(fz(nopiy,nopix,nt))
-        !allocate(sinc(nopiy,nopix))
         allocate(inverse_sinc(nopiy,nopix))
-        !allocate(inverse_sinc_new(nopiy,nopix))
         allocate(fz_DWF(nopiy,nopix,nt))
     
         ax = (a0(1)*float(ifactorx))/(float(nopix)*2.0_fp_kind)
@@ -146,16 +141,13 @@ module m_potential
             enddo
             
             !Sinc 
-            !sinc(i,j) = cmplx((sin(tp*skx*ax)+eps)/(tp*skx*ax+eps)*((sin(tp*sky*ay)+eps)/(tp*sky*ay+eps)),0.0_fp_kind,fp_kind)
             inverse_sinc(i,j) = cmplx((tp*skx*ax+eps)/(sin(tp*skx*ax)+eps)*(tp*sky*ay+eps)/(sin(tp*sky*ay)+eps),0.0_fp_kind,fp_kind)
-        !inverse_sinc_new(i,j) = cmplx((tp*skx*ax+eps)/(sin(tp*skx*ax)+eps)*(tp*sky*ay+eps)/(sin(tp*sky*ay)+eps),0.0_fp_kind,fp_kind)            
         enddo; enddo
         ! Currently have U(g)/2K, so multiply by 2K
         fz = 2*ak*fz
         
-        ! Normalise the sinc functions
+        ! Normalise the sinc function
         inverse_sinc = inverse_sinc*float(nopiy)*float(nopix)
-        !sinc = sinc / (float(nopiy)*float(nopix))
     end subroutine precalculate_scattering_factors
     
     subroutine make_site_factor_matmul(site_factor, tau)

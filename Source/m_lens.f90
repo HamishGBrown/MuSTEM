@@ -133,7 +133,7 @@ module m_lens
 		character(120)::set_defocus
 		
 
-        call command_line_title_box(string)
+        call command_line_title_box(string//' forming lens')
         
 		call aberrations(1 )%initialise('C12'      ,'A1','2-Fold astig.    ',0.0_fp_kind,0.0_fp_kind,1,2)
 		call aberrations(2 )%initialise('C21'      ,'B2','Axial coma       ',0.0_fp_kind,0.0_fp_kind,2,1)
@@ -152,6 +152,7 @@ module m_lens
         cutoff = set_cutoff(0.0_fp_kind)
 		
         write(*,*) 'Enter the defocus in Angstroms:'
+		call Series_prompt('defocus')
 		call get_input('Defocus', set_defocus)
 		call read_sequence_string(set_defocus,120,ndf)
 		

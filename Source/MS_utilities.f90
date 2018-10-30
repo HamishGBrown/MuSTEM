@@ -505,7 +505,7 @@
         use global_variables, only: thickness, n_cells, a0,nz,zarray,ncells
         use m_user_input, only: get_input
         use m_precision, only: fp_kind
-		use m_string, only: read_sequence_string,command_line_title_box
+		use m_string, only: read_sequence_string,command_line_title_box,series_prompt
 
         implicit none
 
@@ -515,6 +515,7 @@
         call command_line_title_box('Specimen thickness')
     10  write(6,11)
     11  format( ' Enter the specimen thickness in Angstroms:')
+		call Series_prompt('thickness')
 		call get_input("Thickness", thickness_string)
 		
 		call read_sequence_string(thickness_string,120,nz,minstep=a0(3))
@@ -549,18 +550,19 @@
         call command_line_title_box('4D-STEM options')
         
         write(*,*) 'Output diffraction patterns for each scan position?'
-        write(*,*) '<1> Yes',char(10),' <2> Output cropped diffraction patterns (saves memory)',char(10),' <3> No'
+        write(*,*) '<1> Yes',char(10),' <2> Output cropped diffraction patterns (saves memory)',char(10),' <3> No'&
+					,'<4> No, but output cropped PACBED pattern',char(10)
 		call get_input('<1> Diffraction pattern for each probe position',idum)
 		fourDSTEM = (idum == 1).or.(idum ==2)
-        if(idum==2) then
+        if(idum==2.or.idum==4) then
             write(*,*) 'Please input number of y pixels in diffration pattern output'
             call get_input('diffraction pattern y pixels',nopiyout)
             
             write(*,*) 'Please input number of x pixels in diffration pattern output'
             call get_input('diffraction pattern x pixels',nopixout)
         else
-            nopiyout = nopiy
-            nopixout = nopix
+            nopiyout = nopiy/3*2
+            nopixout = nopix/3*2
         endif
     end subroutine
 
@@ -681,6 +683,7 @@
         STEM= .false.
         ionization = .false.
         PACBED = .false.
+		istem = .false.
 		dc_init = double_channeling
 		double_channeling=.false.
         

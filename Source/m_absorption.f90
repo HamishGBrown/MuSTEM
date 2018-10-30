@@ -200,10 +200,10 @@ module m_absorption
 
             ! Status
 #ifdef GPU            
-        131 format(a1,' Calculating absorptive scattering factor ', i4, ' of ', i4, '...' )
+        131 format(a1,' Calculating absorptive scattering factor ', i5, ' of ', i5, '...' )
             write(6,131, advance='no') achar(13),ipa, max_int
 #else
-        131 format(1h+,' Calculating absorptive scattering factor ', i4, ' of ', i4, '...' )
+        131 format(1h+,' Calculating absorptive scattering factor ', i5, ' of ', i5, '...' )
             write(6,131) ipa, max_int
 #endif
             !flush(unit=6)
@@ -265,10 +265,10 @@ module m_absorption
 
         ! Display kinematic mean free path 
         if (mu_0.eq.0.0_fp_kind) then
-            write(*,*) 'Kinematic mean free path for TDS is effectively infinite.'
+            !write(*,*) 'Kinematic mean free path for TDS is effectively infinite.'
 
         else
-            if(thmin<1e-3.and.thmax>pi-1e-3) write(*,211) 1/mu_0, char(143)
+            !if(thmin<1e-3.and.thmax>pi-1e-3) write(*,211) 1/mu_0, char(143)
     211     format(' Kinematic mean free path for TDS = ', f10.2, 1x, a1)
 
         endif

@@ -287,6 +287,7 @@ module m_user_input
         endif
         
         s = adjustl(remove_tabs(s))
+
         
         read(s, '(i10)', iostat=iostat) num
         
@@ -783,7 +784,6 @@ module m_user_input
 		character(:),allocatable :: remove_tabs
 
 		remove_tabs = reduce_blanks(Replace_Text(string,char(9),' '))
-		
 	end function
 
     end module

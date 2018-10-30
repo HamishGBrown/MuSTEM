@@ -70,6 +70,17 @@ implicit none
     read(str,*,iostat=stat_)  int
   end function str2int
     
+	subroutine Series_prompt(tag)
+	character*(*),intent(in):: tag
+
+		write(*,*)
+		write(*,*) 'A ',trim(adjustl(tag)),' series can be performed by inputting a comma seperated list:'
+        write(*,*) 'eg. 5,10,15'
+        write(*,*) 'or a sequence:'
+        write(*,*) 'eg. 5:15:5 (start:stop:step)',char(10)
+	end subroutine
+
+
 	!Allows thickness to be read in via:
 	!Single value in  the format: [z1]
 	!List of values in the format: [z1],[z2],[z3]

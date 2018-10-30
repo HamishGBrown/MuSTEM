@@ -79,21 +79,32 @@ module m_Hn0
         call fakred()
 		
 		call command_line_title_box('Double-channeling ionization menu')
-    40  write(*,610)
 
+		
+		itype=-1
+		do while(itype<1.or.itype>nt) 
+	 40  write(*,610)
     610 format (' Enter the index for the type of atom for which ionizations occur:',/)
      45 write(*,612) (substance_atom_types(i),i,i=1,nt)
     612 format(1x,a6,3x,'index =',i3,/)
 
         call get_input("Index of atom to ionize ",itype)
         write(*,*)
+
+		if(itype<1.or.itype>nt) write(*,615) itype
+		enddo
+	615 format('Index ',i3,' invalid, please try again') 
+		
         
         target_atom=itype
         !atomic no of atom follows
         Z = ATF(1,itype)
 
      66 call numset()   !read in from orb file
-        write(*,*) 'Enter the energy (in ev) above threshold to ionize to.'
+        write(*,*) 'Enter the energy (in eV) above threshold at which the ionization will be calculated.'
+		write(*,*) 'Note: this calculates the differential cross-section at one energy, ie. there is'
+		write(*,*) 'no integration over an energy window.'
+		write(*,*)
         call get_input('Ionization energy',eval)
         write(*,*)
 		
@@ -148,7 +159,6 @@ module m_Hn0
         allocate(gint(0:numwve,nsplpts,-1:1,nstates))      
         allocate(dgint(0:numwve,nsplpts,-1:1,nstates))
         allocate(qpos(300,nstates))
-        write(*,*) 'done'
     end subroutine
     
     
@@ -1862,7 +1872,7 @@ module m_Hn0
             do i=1,tiley    
             do j=1,tilex
                 arrayout = arrayout + cshift(cshift(arrayin,deltay*i,1)&
-												    &    ,deltax*j,2)
+												    &      ,deltax*j,2)
             enddo
             enddo
         
@@ -1880,7 +1890,7 @@ module m_Hn0
             enddo
             enddo     
         endif
-    
+		arrayout= arrayout/ifactory/ifactorx
     end function
     
     

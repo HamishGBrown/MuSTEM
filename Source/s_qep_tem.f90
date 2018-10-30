@@ -62,7 +62,7 @@ subroutine qep_tem
     
     !dummy variables
     integer(4) :: i_cell, i_slice, i_qep_pass,i,j,ntilt
-    integer(4) :: shifty, shiftx,z_indx(1)
+    integer(4) :: shifty, shiftx,z_indx(1),starting_slice
     
     !random variables
     integer(4) :: idum
@@ -112,7 +112,7 @@ subroutine qep_tem
     
     character*100::filename
 #ifdef GPU    
-    call GPU_memory_message(qep_tem_GPU_memory(), on_the_fly)
+    call GPU_memory_message(qep_tem_GPU_memory(n_qep_grates, quick_shift, phase_ramp_shift), on_the_fly)
 #endif    
 
     manyz = nz>1
@@ -252,10 +252,9 @@ psi_initial_d = psi_initial
 					call cuda_multiplication<<<blocks,threads>>>(tmatrix_states_d(:,:,k),shiftarray, q_tmatrix_d,1.0_fp_kind,nopiy,nopix)
                     call cufftExec(plan,q_tmatrix_d,tmatrix_d,CUFFT_INVERSE)
 					call cuda_multiplication<<<blocks,threads>>>(psi_d,tmatrix_d,psi_inel_d,sqrt(normalisation),nopiy,nopix)
-						
-                        ! Scatter the inelastic wave through the remaining slices in the cell
-                        do jj = i_slice, n_slices   
-							nran = floor(n_qep_grates*ran1(idum)) + 1
+					starting_slice = i_slice
+					do ii = i_cell, n_cells
+                        do jj = starting_slice, n_slices;nran = floor(n_qep_grates*ran1(idum)) + 1
 							shiftx = floor(ifactorx*ran1(idum));shifty = floor(ifactory*ran1(idum))
 							if(on_the_fly) then
 								call cuda_fph_make_potential(trans_d,ccd_slice_array(jj),tau_slice,nat_slice(:,jj),jj,prop_distance(jj),idum,plan,fz_d,inverse_sinc_d,bwl_mat_d)
@@ -268,38 +267,22 @@ psi_initial_d = psi_initial
 								call cuda_multislice_iteration(psi_inel_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
 							else
 								call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,nran,jj), prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
-							endif
-                        enddo
-                        ! Scatter the inelastic wave through the remaining cells
-                        do ii = i_cell+1, n_cells
-                            do jj = 1, n_slices;nran = floor(n_qep_grates*ran1(idum)) + 1
-								shiftx = floor(ifactorx*ran1(idum));shifty = floor(ifactory*ran1(idum))
-								if(on_the_fly) then
-									call cuda_fph_make_potential(trans_d,ccd_slice_array(jj),tau_slice,nat_slice(:,jj),jj,prop_distance(jj),idum,plan,fz_d,inverse_sinc_d,bwl_mat_d)
-									call cuda_multislice_iteration(psi_inel_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
-								elseif(qep_mode == 2) then
-									call cuda_cshift<<<blocks,threads>>>(transf_d(:,:,nran,jj),trans_d,nopiy,nopix,shifty* nopiy_ucell,shiftx* nopix_ucell)
-									call cuda_multislice_iteration(psi_inel_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
-								elseif(qep_mode == 3) then                       !randomly shift phase grate
-									call cuda_phase_shift_from_1d_factor_arrays(transf_d(:,:,nran,jj),trans_d,shift_arrayy_d(:,shifty+1),shift_arrayx_d(:,shiftx+1),nopiy,nopix,plan)
-									call cuda_multislice_iteration(psi_inel_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
-								else
-									call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,nran,jj), prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
-								endif;enddo
+							endif;enddo
 							
-							if (any(ii==ncells)) then
-								z_indx = minloc(abs(ncells-ii))
-								call cufftExec(plan, psi_inel_d, tmatrix_d, CUFFT_FORWARD)
+						if (any(ii==ncells)) then
+							z_indx = minloc(abs(ncells-ii))
+							call cufftExec(plan, psi_inel_d, tmatrix_d, CUFFT_FORWARD)
 								
-								! Accumulate EFTEM images
-								do l = 1, imaging_ndf
-									call cuda_image(tmatrix_d,ctf_d(:,:,l),temp_d,normalisation, nopiy, nopix,plan,.false.)
+							! Accumulate EFTEM images
+							do l = 1, imaging_ndf
+								call cuda_image(tmatrix_d,ctf_d(:,:,l),temp_d,normalisation, nopiy, nopix,plan,.false.)
 									 
-									call cuda_addition<<<blocks,threads>>>(eftem_image_d(:,:,l,z_indx(1)), temp_d, eftem_image_d(:,:,l,z_indx(1)), 1.0_fp_kind, nopiy, nopix)
-								enddo
-							endif
-                        enddo
-						enddo
+								call cuda_addition<<<blocks,threads>>>(eftem_image_d(:,:,l,z_indx(1)), temp_d, eftem_image_d(:,:,l,z_indx(1)), 1.0_fp_kind, nopiy, nopix)
+							enddo
+						endif
+						starting_slice =1
+                    enddo
+					enddo
 				enddo
 			endif  ! End loop over cells,targets and states and end double_channeling section
 
@@ -457,24 +440,24 @@ psi_initial_d = psi_initial
 		if(nz>1) filename=trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(i)),lengthz)//'_A'
 		
 		if(.not.output_thermal) then
-			call binary_out_unwrap(nopiy, nopix, cbed(:,:,i), trim(filename)//'_DiffPlane')
+			call binary_out_unwrap(nopiy, nopix, cbed(:,:,i), trim(filename)//'_DiffractionPattern')
 			if(pw_illum) call binary_out(nopiy, nopix, total_intensity(:,:,i), trim(filename)//'_ExitSurface_Intensity')
 		else
-			call binary_out_unwrap(nopiy, nopix, cbed(:,:,i), trim(filename)//'_DiffPlaneTotal')
+			call binary_out_unwrap(nopiy, nopix, cbed(:,:,i), trim(filename)//'_DiffractionPattern_Total')
 			call fft2(nopiy, nopix, psi_elastic(:,:,i), nopiy, psi, nopiy)
 			image = abs(psi)**2
-			call binary_out_unwrap(nopiy, nopix, image, trim(filename)//'_DiffPlaneElastic')
+			call binary_out_unwrap(nopiy, nopix, image, trim(filename)//'_DiffractionPattern_Elastic')
 			
 			image = cbed(:,:,i) - image
-			call binary_out_unwrap(nopiy, nopix, image, trim(filename)//'_DiffPlaneTDS')
+			call binary_out_unwrap(nopiy, nopix, image, trim(filename)//'_DiffractionPattern_TDS')
 			
 			if(pw_illum) then
-				call binary_out(nopiy, nopix, abs(psi_elastic(:,:,i))**2, trim(filename)//'_ExitSurface_IntensityElastic')
-				call binary_out(nopiy, nopix, atan2(imag(psi_elastic(:,:,i)), real(psi_elastic(:,:,i))), trim(filename)//'_ExitSurface_PhaseElastic')
-				call binary_out(nopiy, nopix, total_intensity(:,:,i), trim(filename)//'_ExitSurface_IntensityTotal')
+				call binary_out(nopiy, nopix, abs(psi_elastic(:,:,i))**2, trim(filename)//'_ExitSurface_Intensity_Elastic')
+				call binary_out(nopiy, nopix, atan2(imag(psi_elastic(:,:,i)), real(psi_elastic(:,:,i))), trim(filename)//'_ExitSurface_Phase_Elastic')
+				call binary_out(nopiy, nopix, total_intensity(:,:,i), trim(filename)//'_ExitSurface_Intensity_Total')
 			
 				total_intensity(:,:,i) = total_intensity(:,:,i) - abs(psi_elastic(:,:,i))**2
-				call binary_out(nopiy, nopix, total_intensity(:,:,i), trim(filename)//'_ExitSurface_IntensityTDS')
+				call binary_out(nopiy, nopix, total_intensity(:,:,i), trim(filename)//'_ExitSurface_Intensity_TDS')
 			endif
 		endif
 		if(pw_illum) then
@@ -502,11 +485,13 @@ psi_initial_d = psi_initial
 			else
             call binary_out(nopiy, nopix, tem_image(:,:,i,j), trim(fnam_df)//'_Image')
             endif
+#ifdef GPU            
 			if(double_channeling) then
 				image = eftem_image_d(:,:,j,i)
 				call output_TEM_result(output_prefix,tile_out_image(image,ifactory,ifactorx),'energy_filtered_image',nopiy,nopix,manyz,imaging_ndf>1,manytilt,z=zarray(i)&
 								&,lengthz=lengthz,lengthdf=lengthdf,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2),df = imaging_df(j))
-				endif
+            endif
+#endif
 		enddo
 		endif
 	

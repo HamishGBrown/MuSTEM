@@ -13,13 +13,17 @@ Ultramicroscopy, Vol. 151, pp. 11-22, (2015).](http://www.sciencedirect.com/scie
 
 ### GPU version
 
+#### To run precompiled executables
+
 * 64 bit windows OS
 * A CUDA enabled GPU with compute class 3.0 or greater
 * Version 9.0 of the [Nvidia CUDA toolkit](https://developer.nvidia.com/cuda-toolkit-archive), this installs the .dll files necessary to run the GPU versions of μSTEM. Future versions of μSTEM will likely use later versions (9.1 and above) of the CUDA toolkit so this is a site you might have to revisit in future.
 
 #### To compile source code
 
-* [PGI Visual Fortran and Microsoft Visual Studio](https://www.pgroup.com/products/pvf.htm)
+* [PGI Visual Fortran](https://www.pgroup.com/products/pvf.htm)
+* A CUDA enabled GPU
+* Any operating system that the PGI compiler supports, this includes Windows as well as most versions of Linux and MacOS
 
 ### CPU version
 
@@ -28,6 +32,7 @@ Ultramicroscopy, Vol. 151, pp. 11-22, (2015).](http://www.sciencedirect.com/scie
 #### To compile source code
 
 * Any Fortran 90 compiler and FFTW libraries
+* Any operating system
 
 ## Precompiled executables
 

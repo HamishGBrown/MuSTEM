@@ -1,0 +1,43 @@
+.SUFFIXES: .mod .o .f90
+
+
+FC = ifort
+MKLROOT = /usr/local/intel/2015.0.090/mkl
+FCFLAGS = -mkl  -fpp -c -qopenmp  -assume nobscc -Dsingle_precision  -I ${MKLROOT}/include/fftw -I ${MKLROOT}/include/
+LDFLAGS = -mkl  -L${MKLROOT}/lib/intel64 -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl   -qopenmp  -I ${MKLROOT}/include/ -I ${MKLROOT}/include/fftw
+
+SUFFIX = .f90
+
+OBJS =  \
+	quadpack.o \
+	m_precision.o \
+	m_string.o \
+	m_numerical_tools.o \
+	mod_global_variables.o \
+	m_crystallography.o \
+	m_electron.o \
+	m_user_input.o \
+	mod_CUFFT_wrapper.o \
+	mod_output.o \
+	m_multislice.o \
+	m_lens.o \
+	m_tilt.o \
+	m_absorption.o \
+	m_potential.o \
+	s_qep_stem.o \
+	s_absorptive_stem.o \
+	s_absorptive_tem.o \
+	MS_utilities.o \
+	s_qep_tem.o \
+	muSTEM.o
+#F90SRC_MOD = $(OBJS_MOD:.mod=$(SUFFIX))
+F90SRC = $(OBJS:.o=$(SUFFIX))
+
+$(OBJS): $(F90SRC) 
+	${FC} ${FCFLAGS} -c $*$(SUFFIX)
+
+all: link
+link: $(OBJS)
+	${FC} ${LDFLAGS}  $(OBJS) -o MuSTEM.x
+clean:
+	rm *.mod *.o

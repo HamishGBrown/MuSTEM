@@ -766,13 +766,13 @@ module m_potential
 	    use cufft_wrapper, only: fft2, ifft2
         use global_variables, only: ig1,ig2,ifactory,ifactorx,nt, relm, tp, ak, atf, high_accuracy, ci, pi, bwl_mat,fz,fz_DWF,ss,a0,nat,orthog
         use m_absorption!, only: transf_absorptive,fz_abs
-        use m_multislice
+        use m_multislice, only: nat_slice, ss_slice, tau_slice
         use m_string, only: to_string
         use output
         
         implicit none
         
-        integer*4,intent(in)::nopiy,nopix,n_slices
+        integer(4),intent(in)::nopiy,nopix,n_slices
         complex(fp_kind)::projected_potential(nopiy,nopix,n_slices)
         
         integer(4) :: j, m, n,nat_layer

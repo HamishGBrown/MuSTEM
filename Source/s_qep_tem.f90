@@ -118,7 +118,7 @@ subroutine qep_tem
     manyz = nz>1
 	manytilt = n_tilts_total>1
     lengthz = calculate_padded_string_length(zarray,nz)
-    lengthdf = calculate_padded_string_length(imaging_df,imaging_ndf)
+    if(pw_illum) lengthdf = calculate_padded_string_length(imaging_df,imaging_ndf)
 	
     call command_line_title_box('Pre-calculation setup')
     call precalculate_scattering_factors
@@ -173,15 +173,9 @@ subroutine qep_tem
 	prop_d = prop
 
     if (on_the_fly) then
-        if(allocated(bwl_mat_d)) deallocate(bwl_mat_d)
-        if(allocated(inverse_sinc_d)) deallocate(inverse_sinc_d)
         if(allocated(fz_d)) deallocate(fz_d)
-        allocate(bwl_mat_d(nopiy,nopix))
-        allocate(inverse_sinc_d(nopiy,nopix))
         allocate(fz_d(nopiy,nopix,nt))
-        fz_d = fz
-        inverse_sinc_d = inverse_sinc
-        bwl_mat_d = bwl_mat
+        fz_d = fz*spread(inverse_sinc,dim=3,ncopies=nt) 
     else
         allocate(transf_d(nopiy,nopix,n_qep_grates,n_slices))
         transf_d = qep_grates
@@ -257,7 +251,7 @@ psi_initial_d = psi_initial
                         do jj = starting_slice, n_slices;nran = floor(n_qep_grates*ran1(idum)) + 1
 							shiftx = floor(ifactorx*ran1(idum));shifty = floor(ifactory*ran1(idum))
 							if(on_the_fly) then
-								call cuda_fph_make_potential(trans_d,ccd_slice_array(jj),tau_slice,nat_slice(:,jj),jj,prop_distance(jj),idum,plan,fz_d,inverse_sinc_d,bwl_mat_d)
+								call cuda_fph_make_potential(trans_d,ccd_slice_array(jj),tau_slice(:,:,:,jj),nat_slice(:,jj),a0_slice(:,jj),atf(:,jj),idum,plan,fz_d)
 								call cuda_multislice_iteration(psi_inel_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
 							elseif(qep_mode == 2) then
 								call cuda_cshift<<<blocks,threads>>>(transf_d(:,:,nran,jj),trans_d,nopiy,nopix,shifty* nopiy_ucell,shiftx* nopix_ucell)
@@ -291,7 +285,7 @@ psi_initial_d = psi_initial
 				nran = floor(n_qep_grates*ran1(idum)) + 1
 				shiftx = floor(ifactorx*ran1(idum));shifty = floor(ifactory*ran1(idum))
 				if(on_the_fly) then
-					call cuda_fph_make_potential(trans_d,ccd_slice_array(i_slice),tau_slice,nat_slice(:,i_slice),i_slice,prop_distance(i_slice),idum,plan,fz_d,inverse_sinc_d,bwl_mat_d)
+					call cuda_fph_make_potential(trans_d,ccd_slice_array(i_slice),tau_slice(:,:,:,i_slice),nat_slice(:,i_slice),a0_slice(:,i_slice),atf(3,:),idum,plan,fz_d)
 					call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,i_slice), normalisation, nopiy, nopix,plan)
 				elseif(qep_mode == 2) then
 					call cuda_cshift<<<blocks,threads>>>(transf_d(:,:,nran,i_slice),trans_d,nopiy,nopix,shifty* nopiy_ucell,shiftx* nopix_ucell)

@@ -66,102 +66,6 @@ module cuda_potential
 	    enddo
 	
     end subroutine cuda_setup_many_phasegrate    
-! 
-!     attributes(device) subroutine atAddComplex( a, b)
-!
-!	 implicit none
-!
-!	 complex(fp_kind) :: a
-!	 complex(fp_kind) :: b
-!
-!     
-!      call atomicAdd(real(a), real(b))
-!      call atomicAdd(imag(a), imag(b))
-!    end subroutine 
-!
-!   attributes(global) subroutine cuda_make_atom_mask_complex(tau_ss_in,input_nat_layer,atom_mask_d,n,m)
-!    
-!        use m_precision
-!    
-!        implicit none
-!    
-!        integer(4),value :: ix
-!        integer(4),value :: xpixel,ypixel,n,m
-!        integer(4),value :: input_nat_layer !dimensions of the tau array
-!        real(fp_kind) :: xpos,ypos,fracx,fracy
-!        real(fp_kind),device,dimension(3,input_nat_layer) :: tau_ss_in
-!        complex(fp_kind),device,dimension(n,m) :: atom_mask_d
-!    
-!        integer :: istat
-!        
-!        ix = (blockIdx%x-1)*blockDim%x + threadIdx%x
-!    
-!        if (ix <= input_nat_layer) then
-!		
-!            !the -1 is to fix a pixel offset
-!            xpos = tau_ss_in(1,ix)*float(m)
-!            ypos = tau_ss_in(2,ix)*float(n)
-!            if(ceiling(xpos).gt.m) then
-!                xpos = xpos - float(m)
-!            elseif(floor(xpos).lt.1.0_fp_kind) then
-!                xpos = xpos + float(m)
-!            endif
-!            
-!            if(ceiling(ypos).gt.n) then
-!                ypos = ypos - float(n)
-!            elseif(floor(ypos).lt.1.0_fp_kind) then
-!                ypos = ypos + float(n)
-!            endif
-!            
-!            !fraction of the pixel top right
-!            xpixel = ceiling(xpos)
-!            ypixel = ceiling(ypos)
-!            fracx = mod(xpos,1.0_fp_kind)
-!            fracy = mod(ypos,1.0_fp_kind)
-!            
-!            if(xpixel.eq.0) xpixel = m
-!            if(xpixel.eq.m+1) xpixel = 1
-!            if(ypixel.eq.0) ypixel = n
-!            if(ypixel.eq.n+1) ypixel = 1
-!            call atAddComplex(atom_mask_d(ypixel,xpixel), fracx*fracy)
-!            
-!            !fraction of the pixel top left
-!            xpixel = floor(xpos)
-!            ypixel = ceiling(ypos)
-!            fracx = 1.0_fp_kind - mod(xpos,1.0_fp_kind)
-!            fracy = mod(ypos,1.0_fp_kind)
-!            
-!            if(xpixel.eq.0) xpixel = m
-!            if(xpixel.eq.m+1) xpixel = 1
-!            if(ypixel.eq.0) ypixel = n
-!            if(ypixel.eq.n+1) ypixel = 1
-!            call atAddComplex(atom_mask_d(ypixel,xpixel), fracx*fracy)
-!            
-!            !fraction of the pixel bottom right
-!            xpixel = ceiling(xpos)
-!            ypixel = floor(ypos)
-!            fracx = mod(xpos,1.0_fp_kind)
-!            fracy = 1.0_fp_kind - mod(ypos,1.0_fp_kind)
-!            
-!            if(xpixel.eq.0) xpixel = m
-!            if(xpixel.eq.m+1) xpixel = 1
-!            if(ypixel.eq.0) ypixel = n
-!            if(ypixel.eq.n+1) ypixel = 1
-!            call atAddComplex(atom_mask_d(ypixel,xpixel), fracx*fracy)
-!            
-!            !fraction of the pixel bottom left
-!            xpixel = floor(xpos)
-!            ypixel = floor(ypos)
-!            fracx = 1.0_fp_kind - mod(xpos,1.0_fp_kind)
-!            fracy = 1.0_fp_kind - mod(ypos,1.0_fp_kind)
-!            if(xpixel.eq.0) xpixel = m
-!            if(xpixel.eq.m+1) xpixel = 1
-!            if(ypixel.eq.0) ypixel = n
-!            if(ypixel.eq.n+1) ypixel = 1
-!            call atAddComplex(atom_mask_d(ypixel,xpixel), fracx*fracy)
-!        endif
-!        
-!end subroutine cuda_make_atom_mask_complex
  
     
   attributes(global) subroutine cuda_make_atom_mask_real(tau_ss_in,input_nat_layer,atom_mask_real_d,n,m)
@@ -184,30 +88,15 @@ module cuda_potential
         if (ix <= input_nat_layer) then
 		
             !the -1 is to fix a pixel offset
-            xpos = tau_ss_in(1,ix)*float(m)+1.0_fp_kind
-            ypos = tau_ss_in(2,ix)*float(n)+1.0_fp_kind
-            if(ceiling(xpos).gt.m) then
-                xpos = xpos - float(m)
-            elseif(floor(xpos).lt.1.0_fp_kind) then
-                xpos = xpos + float(m)
-            endif
-            
-            if(ceiling(ypos).gt.n) then
-                ypos = ypos - float(n)
-            elseif(floor(ypos).lt.1.0_fp_kind) then
-                ypos = ypos + float(n)
-            endif
+            xpos = modulo(tau_ss_in(1,ix)*float(m),float(m))+1.0_fp_kind
+            ypos = modulo(tau_ss_in(2,ix)*float(n),float(m))+1.0_fp_kind
             
             !fraction of the pixel top right
             xpixel = ceiling(xpos)
             ypixel = ceiling(ypos)
             fracx = mod(xpos,1.0_fp_kind)
             fracy = mod(ypos,1.0_fp_kind)
-            
-            if(xpixel.eq.0) xpixel = m
-            if(xpixel.eq.m+1) xpixel = 1
-            if(ypixel.eq.0) ypixel = n
-            if(ypixel.eq.n+1) ypixel = 1
+            call check_pixel_wrapping(ypixel,xpixel,n,m)
             istat = atomicAdd(atom_mask_real_d(ypixel,xpixel), fracx*fracy)
             
             !fraction of the pixel top left
@@ -215,11 +104,7 @@ module cuda_potential
             ypixel = ceiling(ypos)
             fracx = 1.0_fp_kind - mod(xpos,1.0_fp_kind)
             fracy = mod(ypos,1.0_fp_kind)
-            
-            if(xpixel.eq.0) xpixel = m
-            if(xpixel.eq.m+1) xpixel = 1
-            if(ypixel.eq.0) ypixel = n
-            if(ypixel.eq.n+1) ypixel = 1
+            call check_pixel_wrapping(ypixel,xpixel,n,m)
             istat = atomicAdd(atom_mask_real_d(ypixel,xpixel), fracx*fracy)
             
             !fraction of the pixel bottom right
@@ -227,11 +112,7 @@ module cuda_potential
             ypixel = floor(ypos)
             fracx = mod(xpos,1.0_fp_kind)
             fracy = 1.0_fp_kind - mod(ypos,1.0_fp_kind)
-            
-            if(xpixel.eq.0) xpixel = m
-            if(xpixel.eq.m+1) xpixel = 1
-            if(ypixel.eq.0) ypixel = n
-            if(ypixel.eq.n+1) ypixel = 1
+            call check_pixel_wrapping(ypixel,xpixel,n,m)
             istat = atomicAdd(atom_mask_real_d(ypixel,xpixel), fracx*fracy)
             
             !fraction of the pixel bottom left
@@ -239,57 +120,54 @@ module cuda_potential
             ypixel = floor(ypos)
             fracx = 1.0_fp_kind - mod(xpos,1.0_fp_kind)
             fracy = 1.0_fp_kind - mod(ypos,1.0_fp_kind)
-            if(xpixel.eq.0) xpixel = m
-            if(xpixel.eq.m+1) xpixel = 1
-            if(ypixel.eq.0) ypixel = n
-            if(ypixel.eq.n+1) ypixel = 1
+			call check_pixel_wrapping(ypixel,xpixel,n,m)
             istat = atomicAdd(atom_mask_real_d(ypixel,xpixel), fracx*fracy)
         endif
         
 end subroutine cuda_make_atom_mask_real
 
-	attributes(device) subroutine check_pixel_wrapping(ypixel,xpixel,n,m)
+
+
+attributes(device) subroutine check_pixel_wrapping(ypixel,xpixel,n,m)
 			integer,intent(in)::n,m
 			integer,intent(inout)::ypixel,xpixel
-			xpixel = mod(xpixel-1,m)
-			ypixel = mod(ypixel-1,n)
+			xpixel = modulo(xpixel-1,m)+1
+			ypixel = modulo(ypixel-1,n)+1
 end subroutine
     
-    subroutine cuda_fph_make_potential(transf_d,ccd_slice,tau_ss,nat_layer,n_sub_slice,thickness,idum,plan,fz_d,inverse_sinc_d,bwl_mat_d)
+    subroutine cuda_fph_make_potential(transf_d,ccd_slice,tau_ss,nat_layer,a0_slice,dwfs,idum,plan,fz_d)
     
-        use global_variables
         use m_precision
         use CUFFT
 	    use cufft_wrapper
         use cudafor
         use m_numerical_tools, only: displace
         use cuda_array_library, only: blocks, threads
-		use output
-		use m_multislice,only:n_slices,nat_slice,a0_slice
         
         implicit none
     
         integer plan
-        integer(4) :: n_sub_slice
         integer(4) :: i,j,nat_layer(nt)
         integer(4) :: idum
     
-        real(fp_kind) :: tau_ss(3,nt,maxval(nat)*ifactorx*ifactory,n_slices),tau_displace(3,nt,maxval(nat_layer))
+        complex(fp_kind),device,dimension(nopiy,nopix),intent(out) :: transf_d
+		complex(fp_kind),device,dimension(nopiy,nopix,nt),intent(in) :: fz_d
+		real(fp_kind),intent(in) :: tau_ss(3,nt,maxval(nat_layer)),dwfs(nt),a0_slice(3)
+
         real(fp_kind),device,allocatable :: tau_displace_d(:,:)
-        real(fp_kind) :: CCD_slice,thickness
-        real(fp_kind) :: image(nopiy,nopix)
+        real(fp_kind) :: CCD_slice,tau_displace(3,nt,maxval(nat_layer))
         real(fp_kind) :: interaction
     
         !Device variables
         type(dim3) :: blocks_nat, threads_nat
-        complex(fp_kind),device,dimension(nopiy,nopix) :: transf_d,bwl_mat_d
-        complex(fp_kind),device,dimension(nopiy,nopix,nt) :: fz_d
-        complex(fp_kind),device,dimension(nopiy,nopix) :: slice_potential_d,potential_d,inverse_sinc_d,atom_mask_d
+        
+        complex(fp_kind),device,dimension(nopiy,nopix) :: slice_potential_d,potential_d,atom_mask_d
         real(fp_kind),device,dimension(nopiy,nopix) :: atom_mask_real_d, temp_d
-	              
+		real(fp_kind)::out(nopiy,nopix)
+	    
  	    do i=1,nt                                 !calculate shifted tau
-            do j=1,nat_slice(i,n_sub_slice)       !loop over atoms of type i in subslice n_sub_slice
-                call displace(tau_ss(1:3,i,j,n_sub_slice),tau_displace(1:3,i,j),sqrt(atf(3,i)),a0_slice,idum)
+            do j=1,nat_layer(i)       !loop over atoms of type i in subslice n_sub_slice
+				call displace(tau_ss(1:3,i,j),tau_displace(1:3,i,j),sqrt(dwfs(i)),a0_slice,idum)
             enddo
         enddo
 
@@ -301,26 +179,21 @@ end subroutine
             if(nat_layer(i).eq.0) cycle
                         
             blocks_nat = dim3(ceiling(float(nat_layer(i))/threads_nat%x), 1, 1)
-            
             allocate(tau_displace_d(3,nat_layer(i)))
             tau_displace_d = tau_displace(:,i,1:nat_layer(i))
             
             atom_mask_real_d = 0.0_fp_kind
             call cuda_make_atom_mask_real<<<blocks_nat,threads_nat>>>(tau_displace_d,nat_layer(i),atom_mask_real_d,nopiy,nopix)
-
-            call cuda_cshift_real<<<blocks,threads>>>(atom_mask_real_d, temp_d, nopiy, nopix, -1, -1)
-            
-            call cuda_copy_real_to_cmplx<<<blocks,threads>>>(temp_d, atom_mask_d, nopiy, nopix)           
+			
+            call cuda_copy_real_to_cmplx<<<blocks,threads>>>(atom_mask_real_d, atom_mask_d, nopiy, nopix)           
             
             !fourier transform to convolve with scattering factor
             call cufftExec(plan,atom_mask_d,potential_d,CUFFT_FORWARD)
             
-            !divide by the sinc function
-            call cuda_multiplication<<<blocks,threads>>>(potential_d,inverse_sinc_d,potential_d,1.0_fp_kind,nopiy,nopix)   
-        
             !multiply by the scattering factor
             call cuda_multiplication<<<blocks,threads>>>(potential_d,fz_d(:,:,i),potential_d,CCD_slice,nopiy,nopix) 
             
+			
             !sum the complex potentials (in reciprocal space)
             call cuda_addition<<<blocks,threads>>>(slice_potential_d,potential_d,slice_potential_d,normalisation,nopiy,nopix)          
             
@@ -329,12 +202,12 @@ end subroutine
         
         !get realspace potential
         call cufftExec(plan,slice_potential_d,potential_d,CUFFT_INVERSE)
-    
+		
         !bandwidth limit the potential
-        interaction = pi*thickness/ak1
+        interaction = pi*a0_slice(3)/ak1
         call cuda_complex_exponentiation<<<blocks,threads>>>(transf_d,potential_d,interaction,nopiy,nopix)  
         call cufftExec(plan,transf_d,potential_d,CUFFT_FORWARD)
-        call cuda_multiplication<<<blocks,threads>>>(potential_d,bwl_mat_d,potential_d,normalisation,nopiy,nopix)  
+		call cuda_apply_Band_width_limit<<<blocks,threads>>>(potential_d,nopiy,nopix,normalisation)
         call cufftExec(plan,potential_d,transf_d,CUFFT_INVERSE)
 
     end subroutine cuda_fph_make_potential

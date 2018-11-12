@@ -111,7 +111,7 @@ subroutine absorptive_tem
     manyz = nz>1
 	manytilt = n_tilts_total>1
     lengthz = calculate_padded_string_length(zarray,nz)
-    lengthdf = calculate_padded_string_length(imaging_df,imaging_ndf)
+    if (pw_illum) lengthdf = calculate_padded_string_length(imaging_df,imaging_ndf)
 
     call command_line_title_box('Pre-calculation setup')
 	do i=1,imaging_ndf
@@ -140,7 +140,7 @@ subroutine absorptive_tem
 	else
           call cufftPlan(plan,nopix,nopiy,CUFFT_C2C)
     endif
-
+	write(*,*) double_channeling
 	if(double_channeling) then
         allocate(tmatrix_states_d(nopiy,nopix,nstates),psi_inel_d(nopiy,nopix),cbed_inel_dc_d(nopiy,nopix),tmatrix_states(nopiy,nopix,nstates))
 		allocate(shiftarray(nopiy,nopix),tmatrix_d(nopiy,nopix),q_tmatrix_d(nopiy,nopix),temp_d(nopiy,nopix))

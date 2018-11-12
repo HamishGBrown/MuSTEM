@@ -572,7 +572,9 @@ module m_lens
         
         if((nysample.gt.1).and.(nxsample.gt.1)) then
             write(6,99) 
-            99 format(' Enter the maximum number of pixels to interpolate the output image to.',/,&
+            99 format(' Enter the maximum number of pixels to interpolate the STEM images to.',/,&
+					  ' Note that this will not apply to the output of diffraction patterns or',/,&
+					  ' ISTEM images',/&
                       &' Enter a negative number to disable interpolation.')
             call get_input('output interpolation max pixels', out_max)
             write(*,*)

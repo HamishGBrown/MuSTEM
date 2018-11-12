@@ -251,15 +251,13 @@ subroutine qep_stem(STEM,ionization,PACBED)
     allocate(prop_d(nopiy,nopix,n_slices))
     prop_d = prop
     if (on_the_fly) then
-        allocate(bwl_mat_d(nopiy,nopix),inverse_sinc_d(nopiy,nopix),fz_d(nopiy,nopix,nt))
-        fz_d = fz 
+        allocate(fz_d(nopiy,nopix,nt))
+        fz_d = fz*spread(inverse_sinc,dim=3,ncopies=nt) 
         if(ionization) then
             allocate(inelastic_potential_d(nopiy,nopix))
             allocate(fz_mu_d(nopiy,nopix,num_ionizations))
             fz_mu_d = ionization_mu
         endif
-        inverse_sinc_d = inverse_sinc
-        bwl_mat_d = bwl_mat
     else
         allocate(transf_d(nopiy,nopix,n_qep_grates,n_slices))
   	    transf_d = qep_grates
@@ -293,12 +291,15 @@ subroutine qep_stem(STEM,ionization,PACBED)
  	    do i = 1, n_slices
 	        call make_propagator(nopiy,nopix,prop(:,:,i),prop_distance(i),Kz(1),ss,ig1,ig2,claue(:,1),ifactorx,ifactory)
 	        prop(:,:,i) = prop(:,:,i) * bwl_mat
-            qep_grates(:,:,:,i) = exp(ci*pi*a0_slice(3,i)/Kz(ntilt)*projected_potential(:,:,:,i))
-			do j=1,n_qep_grates
-			call fft2(nopiy,nopix,qep_grates(:,:,j,i),nopiy,psi,nopiy)
-			if(qep_mode.eq.3) qep_grates(:,:,j,i)= psi*bwl_mat
-			if(qep_mode.ne.3) call ifft2(nopiy,nopix,psi*bwl_mat,nopiy,qep_grates(:,:,j,i),nopiy)
-			enddo
+			if(.not.on_the_fly) then
+				qep_grates(:,:,:,i) = exp(ci*pi*a0_slice(3,i)/Kz(ntilt)*projected_potential(:,:,:,i))
+				do j=1,n_qep_grates
+				call fft2(nopiy,nopix,qep_grates(:,:,j,i),nopiy,psi,nopiy)
+				if(qep_mode.eq.3) qep_grates(:,:,j,i)= psi*bwl_mat
+				if(qep_mode.ne.3) call ifft2(nopiy,nopix,psi*bwl_mat,nopiy,qep_grates(:,:,j,i),nopiy)
+				enddo
+			endif
+			
         enddo
 #ifdef GPU
         prop_d=prop
@@ -377,7 +378,7 @@ subroutine qep_stem(STEM,ionization,PACBED)
 								nran = floor(n_qep_grates*ran1(idum)) + 1
 								shiftx = floor(ifactorx*ran1(idum));shifty = floor(ifactory*ran1(idum))
 								if(on_the_fly) then
-									call cuda_fph_make_potential(trans_d,ccd_slice_array(jj),tau_slice,nat_slice(:,jj),jj,prop_distance(jj),idum,plan,fz_d,inverse_sinc_d,bwl_mat_d)
+									call cuda_fph_make_potential(trans_d,ccd_slice_array(jj),tau_slice(:,:,:,jj),nat_slice(:,jj),a0_slice(:,jj),atf(3,:),idum,plan,fz_d)
 									call cuda_multislice_iteration(psi_inel_d, trans_d, prop_d(:,:,jj), normalisation, nopiy, nopix,plan)
 								elseif(qep_mode == 2) then
 									call cuda_multislice_iteration(psi_inel_d, transf_d(:,:,nran,j), prop_d(:,:,j), normalisation, nopiy, nopix,shifty*nopiy_ucell,shiftx* nopix_ucell,plan)
@@ -408,22 +409,27 @@ subroutine qep_stem(STEM,ionization,PACBED)
 						enddo
 				enddo
 			endif  ! End loop over cells,targets and states and end double_channeling section
-
+			
                     ! QEP multislice
+					!write(*,*) 'hi'
 				    nran = floor(n_qep_grates*ran1(idum)) + 1
 					shiftx = floor(ifactorx*ran1(idum));shifty = floor(ifactory*ran1(idum))
                     if(on_the_fly) then
-                        call cuda_fph_make_potential(trans_d,ccd_slice_array(j),tau_slice,nat_slice(:,j),j,prop_distance(j),idum,plan,fz_d,inverse_sinc_d,bwl_mat_d)
+                        call cuda_fph_make_potential(trans_d,ccd_slice_array(j),tau_slice(:,:,:,j),nat_slice(:,j),a0_slice(:,j),atf(3,:),idum,plan,fz_d)
+						!psi=trans_d
+						!call binary_out(nopiy,nopix,psi,'trans_d_'//to_string(i)//'_'//to_string(j))
 						call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,j), normalisation, nopiy, nopix,plan)
                     elseif(qep_mode == 2) then
 						call cuda_multislice_iteration(psi_d, transf_d(:,:,nran,j), prop_d(:,:,j), normalisation, nopiy, nopix,shifty*nopiy_ucell,shiftx* nopix_ucell,plan)
                     elseif(qep_mode == 3) then                       !randomly shift phase grate
 						call cuda_phase_shift_from_1d_factor_arrays(transf_d(:,:,nran,j),trans_d,shift_arrayy_d(:,shifty+1),shift_arrayx_d(:,shiftx+1),nopiy,nopix,plan)
+						
+						
                         call cuda_multislice_iteration(psi_d, trans_d, prop_d(:,:,j), normalisation, nopiy, nopix,plan)
                     else
 						call cuda_multislice_iteration(psi_d, transf_d(:,:,nran,j), prop_d(:,:,j), normalisation, nopiy, nopix,plan)
                     endif
-
+					!write(*,*) 'my name is'
 					if (output_probe_intensity) then
 						k = (i-1)*n_slices+j
 						if (output_cell_list(k)) then
@@ -431,7 +437,11 @@ subroutine qep_stem(STEM,ionization,PACBED)
 							probe_intensity(:,:,cell_map(k)) = probe_intensity(:,:,cell_map(k)) + abs(psi)**2
 						endif
 					endif
+					
+					!write(*,*) 'tika tika'
 		        enddo ! End loop over slices
+				!stop
+				!write(*,*) 'slim shady'
                 !If this thickness corresponds to any of the output values then accumulate diffraction pattern
 				if (any(i==ncells)) then
 					
@@ -458,7 +468,9 @@ subroutine qep_stem(STEM,ionization,PACBED)
 						call cuda_addition<<<blocks,threads>>>(istem_image_d(:,:,l,z_indx(1)), temp_d, istem_image_d(:,:,l,z_indx(1)), 1.0_fp_kind, nopiy, nopix)
 					enddo;endif;
 				endif
+				
             enddo ! End loop over cells
+			!stop
 		enddo ! End loop over QEP passes
         
         intensity = get_sum(psi_d)

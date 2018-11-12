@@ -778,16 +778,23 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
     end subroutine
 
 	function calculate_nat_slice( depths, tau, nm, nt, nat, n_slices, ifactorx, ifactory ) result(nat_slice)
-   !Calculate the number of atoms within each slice 
+   !Calculate the number of atoms within each slice
+   !depths   - an array describing the depth of each unit cell
+   !tau      - an array dimensions 3 x # atom types x max number of atoms of a given type 
+   !           containing the fractional coordinates of all the atoms in the unit cel
+   !nm       - max number of atom of a given type
+   !nt       - Number of different types of atom
+   !nat      - An array dimensions #atom types which contains the number of atoms of each type
+   !n_slices - The sub-slicing chosen by the user
+   !ifactory - Unit cell tiling in y direction
+   !ifactorx - Unit cell tiling in x direction
     implicit none
 
 	real(fp_kind),intent(in):: depths(n_slices), tau(3,nt,nm)
 	integer(4),intent(in):: nm, nt, ifactorx, ifactory, n_slices,nat(nt)
 	
-	integer(4) nat_slice(nt,n_slices)
-	integer(4) i,kk
-	real(fp_kind) diff, tol
-	real(fp_kind) factorx, factory
+	integer(4) nat_slice(nt,n_slices),i,kk
+	real(fp_kind) diff, tol,factorx, factory
 
 	tol = 1.0d-4
 	
@@ -797,14 +804,19 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
 			nat_slice(i,kk) = count((tau(3,i,1:nat(i)) .lt. (depths(kk+1)-tol)) &
 							&.and.(tau(3,i,1:nat(i)) .ge. (depths(kk)-tol))  )&
 							&*ifactory*ifactorx
+			
 		enddo
 		!Calculate the number of atoms in the final slice
 		nat_slice(i,n_slices) = count(tau(3,i,1:nat(i)) .ge. (depths(n_slices)-tol))*ifactory*ifactorx
+		
 
 	enddo
     end function
     
     subroutine calculate_slices
+    !This subroutine is called after the slicing depths and supercell tiling has been chosen
+    !It allocates the global variable arrays that contain the fractional coordinates of all the
+    !atoms and the arrays which describe the dimensions of the atoms
         use global_variables, only: nat, ifactory, ifactorx, nt, a0, deg, tau, nm,even_slicing
         use m_crystallography, only: cryst
         
@@ -812,6 +824,8 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
         
         integer :: j,jj,kk,maxnat_slice_uc
         
+        !Allocate the arrays which contain the number of atoms in the supercell slices
+        !and the single unit cell slices
         allocate(nat_slice(nt,n_slices),nat_slice_unitcell(nt,n_slices))
         nat_slice = calculate_nat_slice( depths,tau,nm,nt,nat,n_slices,ifactorx,ifactory )
 		nat_slice_unitcell = nat_slice / dfloat(ifactorx*ifactory)
@@ -825,11 +839,8 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
         do j = 1, n_slices
           a0_slice(1:2,j) = a0(1:2)*[ifactorx,ifactory]
           
-          if (j .eq. n_slices) then				
-                a0_slice(3,j) = (1.0_fp_kind-depths(j))*a0(3)
-          else
-                a0_slice(3,j) = (depths(j+1)-depths(j))*a0(3)
-          endif
+          if (j .eq. n_slices) a0_slice(3,j) = (1.0_fp_kind-depths(j))*a0(3)
+          if (j .lt. n_slices) a0_slice(3,j) = (depths(j+1)-depths(j))*a0(3)
           
           call cryst(a0_slice(:,j),deg,ss_slice(:,j))
           
@@ -839,6 +850,7 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
 	                
           ! Make unit cell subsliced
           call make_mod_tau_unitcell( depths(j),depths(j+1),tau,tau_slice_unitcell(:,:,:,j),nm,nt,nat,nat_slice_unitcell(:,j) )
+		  
         enddo
 
         prop_distance = a0_slice(3,:)
@@ -847,7 +859,7 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
     end subroutine
     
 	subroutine calculate_tau_nat_slice( depth1, depth2, tau, tau_slice, nm, nt, nat, nat_slice, ifactorx, ifactory, maxnat_slice )
-   
+	!Calculate 
     implicit none
 
 	integer(4) nm, nt, ifactorx, ifactory, maxnat_slice
@@ -859,11 +871,10 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
 	real(fp_kind) diff, tol
 	real(fp_kind) factorx, factory
 
-	tol = 1.0d-4
+	tol = 1.0d-4 !Numerical Tolerance
+	diff = depth2 - depth1 !Slice thickness (difference)
 
-	diff = depth2 - depth1
-
-	factorx = float( ifactorx )
+	factorx = float( ifactorx ) !Make floating point versions of ifactory and ifactorx
 	factory = float( ifactory )
 
 	do i = 1, nt
@@ -875,21 +886,18 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
 	      do j = 1, nat(i)
           
 	         if( (tau(3,i,j) .lt. (depth2-tol)) .and.(tau(3,i,j) .ge. (depth1-tol)) ) then
-	            tau_slice(1,i,jj) = tau(1,i,j)/factorx + float(nn-1)/factorx
-	            tau_slice(2,i,jj) = tau(2,i,j)/factory + float(mm-1)/factory
+	            tau_slice(1:2,i,jj) = tau(1:2,i,j)/[factorx,factory] + [float(nn-1)/factorx,float(mm-1)/factory]
 			    tau_slice(3,i,jj) = (tau(3,i,j)-depth1)/diff
 	            jj = jj + 1
                 
 	         elseif(diff.eq.1.0) then
-	            tau_slice(1,i,jj) = tau(1,i,j)/factorx + float(nn-1)/factorx
-	            tau_slice(2,i,jj) = tau(2,i,j)/factory + float(mm-1)/factory
+	            tau_slice(1:2,i,jj) = tau(1:2,i,j)/[factorx,factory] + [float(nn-1)/factorx,float(mm-1)/factory]
 			    tau_slice(3,i,jj) = (tau(3,i,j)-depth1)/diff  
                 
 	         endif
 	      enddo
 		enddo
 	    enddo
-        
 	    nat_slice(i) = jj-1
 		
 	enddo
@@ -931,6 +939,7 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
 	        endif
 	    enddo
 	    nat2(i)=jj-1
+
 	enddo
     
 	end subroutine        

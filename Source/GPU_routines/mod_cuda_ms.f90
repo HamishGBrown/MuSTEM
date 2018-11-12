@@ -57,7 +57,7 @@ module cuda_ms
 		integer*4::shifty,shiftx		
 
 			call cuda_make_shift_array<<<blocks,threads>>>(shift_array_d,shift_arrayy_d,shift_arrayx_d,nopiy,nopix)     !make the qspace shift array
-            call cuda_multiplication<<<blocks,threads>>>(arrayin,shift_array_d, arrayout,1.0_fp_kind,nopiy,nopix) !multiply by the qspace shift array
+            call cuda_multiplication<<<blocks,threads>>>(arrayin,shift_array_d, arrayout,sqrt(normalisation),nopiy,nopix) !multiply by the qspace shift array
             call cufftExec(plan,arrayout,arrayout,CUFFT_INVERSE)!inverse fourier transform
 	end subroutine
 

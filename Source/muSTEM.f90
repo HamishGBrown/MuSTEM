@@ -120,7 +120,6 @@
         endif
        
         
-        
         ! Set up user input routines, nfiles is the number
         ! of user input files to play if "play all" is inputted
         nfiles = init_input()
@@ -275,6 +274,7 @@
                 case (1)
                     ! CBED pattern
                     call place_probe(probe_initial_position)
+					double_channeling = .false.
                 case (2)
                     ! STEM images
                     call STEM_options(STEM,ionization,PACBED,istem,double_channeling)

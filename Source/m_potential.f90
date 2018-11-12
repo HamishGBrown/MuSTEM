@@ -219,6 +219,7 @@ module m_potential
         use m_precision, only: fp_kind
         use global_variables, only: nopiy, nopix,inverse_sinc
         use CUFFT_wrapper, only: fft2
+        use output
         
         implicit none
     
@@ -227,91 +228,62 @@ module m_potential
         real(fp_kind),intent(in) :: tau(:,:)
         
         integer :: j
-        integer :: xpixel, ypixel
-        real(fp_kind) :: xpos, ypos, fracx, fracy
+        integer :: uxpixel, uypixel,lxpixel, lypixel
+        real(fp_kind) :: xpos, ypos, ufracx, ufracy, lfracx, lfracy
     
         site_factor = 0.0_fp_kind
         
-        !$OMP PARALLEL PRIVATE(xpos, ypos, j, xpixel,ypixel,fracx,fracy)
+        !$OMP PARALLEL PRIVATE(xpos, ypos, j, uxpixel,uypixel,lxpixel,lypixel,ufracx,ufracy,lfracx,lfracy)
         !$OMP DO
         do j = 1, size(tau, 2)
             xpos = tau(1,j)*nopix
             ypos = tau(2,j)*nopiy
             
             ! Ensure that the pixel positions are in range
-            
-            if (ceiling(xpos).gt.nopix) then
-                xpos = xpos - float(nopix)
-            elseif (floor(xpos).lt.1) then
-                xpos = xpos + float(nopix)
-            endif
-            
-            if (ceiling(ypos).gt.nopiy) then
-                ypos = ypos - float(nopiy)
-            elseif (floor(ypos).lt.1) then
-                ypos = ypos + float(nopiy)
-            endif
+            xpos = modulo(xpos-1,real(nopix,kind=fp_kind))+1
+            ypos = modulo(ypos-1,real(nopiy,kind=fp_kind))+1
             
             !fraction of the pixel top right
-            xpixel = ceiling(xpos)
-            ypixel = ceiling(ypos)
-            fracx = mod(xpos, 1.0_fp_kind)
-            fracy = mod(ypos, 1.0_fp_kind)
+            call frac_upper(xpos,nopix,uxpixel,ufracx)
+            call frac_upper(ypos,nopiy,uypixel,ufracy)
+            call frac_lower(xpos,nopix,lxpixel,lfracx)
+            call frac_lower(ypos,nopiy,lypixel,lfracy)
+            site_factor(uypixel,uxpixel) = site_factor(uypixel,uxpixel) + ufracy*ufracx
+            site_factor(uypixel,lxpixel) = site_factor(uypixel,lxpixel) + ufracy*lfracx
+            site_factor(lypixel,uxpixel) = site_factor(lypixel,uxpixel) + lfracy*ufracx
+            site_factor(lypixel,lxpixel) = site_factor(lypixel,lxpixel) + lfracy*lfracx
             
-            call pixel_check(xpixel, ypixel)
-            site_factor(ypixel,xpixel) = site_factor(ypixel,xpixel) + fracx*fracy
-            
-            !fraction of the pixel top left
-            xpixel = floor(xpos)
-            ypixel = ceiling(ypos) 
-            fracx = 1.0_fp_kind - mod(xpos, 1.0_fp_kind)
-            fracy = mod(ypos, 1.0_fp_kind)
-            
-            call pixel_check(xpixel, ypixel)
-            site_factor(ypixel,xpixel) = site_factor(ypixel,xpixel) + fracx*fracy
-            
-            !fraction of the pixel bottom right
-            xpixel = ceiling(xpos)
-            ypixel = floor(ypos)
-            fracx = mod(xpos, 1.0_fp_kind)
-            fracy = 1.0_fp_kind - mod(ypos,1.0_fp_kind)
-            
-            call pixel_check(xpixel, ypixel)
-            site_factor(ypixel,xpixel) = site_factor(ypixel,xpixel) + fracx*fracy
-            
-            !fraction of the pixel bottom left
-            xpixel = floor(xpos)
-            ypixel = floor(ypos)
-            fracx = 1.0_fp_kind - mod(xpos, 1.0_fp_kind)
-            fracy = 1.0_fp_kind - mod(ypos, 1.0_fp_kind)
-            
-            call pixel_check(xpixel, ypixel)
-            site_factor(ypixel,xpixel) = site_factor(ypixel,xpixel) + fracx*fracy
         enddo
         !$OMP end do
         !$OMP end parallel
-        !fix pixel offset
-        site_factor = cshift(site_factor,SHIFT = -1,DIM=1)
-        site_factor = cshift(site_factor,SHIFT = -1,DIM=2)
-
         call fft2(nopiy, nopix, site_factor, nopiy, site_factor, nopiy)
         site_factor = site_factor * inverse_sinc/sqrt(float(nopiy)*float(nopix))!_new * sqrt(float(nopiy)*float(nopix))
         
-        contains
+    contains
+    
+    subroutine frac_upper(pos,npixel,pixel,frac)
+        real(fp_kind),intent(in)::pos
+        integer*4,intent(in)::npixel
+        real(fp_kind),intent(out)::frac
+        integer*4,intent(out)::pixel
         
-        subroutine pixel_check(x, y)
-            ! Wrap pixel coordinates around so that they remain in range.
+        pixel = ceiling(pos)
+        frac = mod(pos,1.0_fp_kind)
+        pixel = modulo(pixel-1,npixel)+1
+        
+    end subroutine
     
-            implicit none
-    
-            integer(4) :: x,y
-    
-            if(x.eq.0) x = nopix
-            if(x.eq.nopix+1) x = 1
-            if(y.eq.0) y = nopiy
-            if(y.eq.nopiy+1) y = 1
-    
-        end subroutine pixel_check
+    subroutine frac_lower(pos,npixel,pixel,frac)
+        real(fp_kind),intent(in)::pos
+        integer*4,intent(in)::npixel
+        real(fp_kind),intent(out)::frac
+        integer*4,intent(out)::pixel
+        
+        pixel = floor(pos)
+        frac = 1.0_fp_kind - mod(pos,1.0_fp_kind)
+        pixel = modulo(pixel-1,npixel)+1
+        
+    end subroutine
     
     end subroutine make_site_factor_hybrid
 

@@ -1,6 +1,18 @@
 module FFTW3
     use, intrinsic :: iso_c_binding
     include 'fftw3.f03'
+!      INTEGER FFTW_FORWARD
+!      PARAMETER (FFTW_FORWARD=-1)
+!      INTEGER FFTW_BACKWARD
+!      PARAMETER (FFTW_BACKWARD=+1)
+!      INTEGER FFTW_MEASURE
+!      PARAMETER (FFTW_MEASURE=0)
+!      INTEGER FFTW_EXHAUSTIVE
+!      PARAMETER (FFTW_EXHAUSTIVE=8)
+!      INTEGER FFTW_PATIENT
+!      PARAMETER (FFTW_PATIENT=32)
+!      INTEGER FFTW_ESTIMATE
+!      PARAMETER (FFTW_ESTIMATE=64)
 
     interface fft_plan
         module procedure         sfft2_plan,        sfft1_plan,        dfft1_plan,        dfft2_plan

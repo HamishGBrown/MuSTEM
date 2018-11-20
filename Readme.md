@@ -1,19 +1,16 @@
 #  μSTEM <img src="https://raw.githubusercontent.com/HamishGBrown/MuSTEM/master/Manual/Figures/350x350_inelastic_cbed.png" width="64" height="64" />
 
 μSTEM is a transmission electron microscopy (TEM) simulation suite, in particular for scanning transmission electron microscopy (STEM) images, that was developed mainly at the University of Melbourne. The computing suite is based on the multislice
-method. More detail can be found in the [manual](Manual/muSTEM_manual.pdf) and the following scientific paper:
+method. More detail can be found in the [manual](https://github.com/HamishGBrown/MuSTEM/raw/master/Manual/muSTEM_manual.pdf) and the following scientific paper:
 
 [Modelling the inelastic scattering of fast electrons,
 L.J. Allen, A.J. D'Alfonso and S.D. Findlay,
 Ultramicroscopy, Vol. 151, pp. 11-22, (2015).](http://www.sciencedirect.com/science/article/pii/S0304399114002034)
 
-![PACBED pattern](Manual/Figures/512x512_out_PACBED.png "PACBED pattern")
-
+<img src="https://raw.githubusercontent.com/HamishGBrown/MuSTEM/master/Manual/Figures/512x512_out_PACBED.png" width="512" height="512" />
 ## Prerequisites
 
 ### GPU version
-
-#### To run precompiled executables
 
 * 64 bit windows OS
 * A CUDA enabled GPU with compute class 3.0 or greater
@@ -21,9 +18,7 @@ Ultramicroscopy, Vol. 151, pp. 11-22, (2015).](http://www.sciencedirect.com/scie
 
 #### To compile source code
 
-* [PGI Visual Fortran](https://www.pgroup.com/products/pvf.htm)
-* A CUDA enabled GPU
-* Any operating system that the PGI compiler supports, this includes Windows as well as most versions of Linux and MacOS
+* [PGI Visual Fortran and Microsoft Visual Studio](https://www.pgroup.com/products/pvf.htm)
 
 ### CPU version
 
@@ -32,7 +27,6 @@ Ultramicroscopy, Vol. 151, pp. 11-22, (2015).](http://www.sciencedirect.com/scie
 #### To compile source code
 
 * Any Fortran 90 compiler and FFTW libraries
-* Any operating system
 
 ## Precompiled executables
 

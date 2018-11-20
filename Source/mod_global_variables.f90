@@ -33,7 +33,7 @@
     real(fp_kind), allocatable :: bwl_mat(:,:)            !bandwidth limiting matrix
                                           
     integer(4), allocatable    :: nat(:)                     !number of each atom type in the unit celll
-	real(fp_kind), allocatable	:: dz(:)					  !ionicity of each atom type
+    real(fp_kind), allocatable  :: dz(:)                      !ionicity of each atom type
     real(fp_kind), allocatable :: tau(:,:,:)              !position of the atoms in the unit cell
     real(fp_kind), allocatable :: atf(:,:)                !atomic number, occupancy and DWF (urms)
     real(fp_kind), allocatable :: atomf(:,:),fx(:)        !electron scattering factor parameterisation from elsa
@@ -47,9 +47,9 @@
     
     !sample thickness and slicing variables
     real(fp_kind) :: thickness                        !sample thickness
-	real(fp_kind),allocatable:: zarray(:)
-	integer(4),allocatable::ncells(:)
-	integer(4)::nz
+    real(fp_kind),allocatable:: zarray(:)
+    integer(4),allocatable::ncells(:)
+    integer(4)::nz
     integer(4) :: n_cells  
 
     complex(fp_kind), allocatable :: fz(:,:,:)            !the scattering factors, in reciprocal space, calculated on the grid (supercell)
@@ -66,7 +66,7 @@
     !output variables
     integer(4) :: ndet,nseg ,nopiyout,nopixout                           !number of integrating detectors and 4D STEM output
     real(fp_kind) :: seg_det_offset
-	logical::segments
+    logical::segments
     real(fp_kind), allocatable :: outer(:),inner(:)       !detector ranges (in inverse angstrom)
     
     !interpolation variables
@@ -96,9 +96,9 @@
     
     logical :: on_the_fly = .false.
     logical :: high_accuracy
-	logical :: ionic = .false.
+    logical :: ionic = .false.
     
-	contains
+    contains
      
     
       function wavev(e)
@@ -142,7 +142,7 @@
           
           delk = ak - ak1
 
-	    write(6,*) 'Pertinent quantities for the crystal:'
+        write(6,*) 'Pertinent quantities for the crystal:'
           write(6,111) ekv,ak,char(143),ak1,char(143),delk,char(143),relm
       111 format('          E = ',F12.3,' keV',/,&
          &' Crystal Ko = ',G20.10,1x,a1,'-1 (1/lambda)',/,&

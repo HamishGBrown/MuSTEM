@@ -64,7 +64,7 @@ subroutine absorptive_tem
     implicit none
 
     !dummy variables
-    integer(4) :: i_cell,i_slice,z_indx(1),lengthz,lengthdf,i,idum,ntilt
+    integer(4) :: i_cell,z_indx(1),lengthz,lengthdf,i,ntilt,n,idf
     type(C_PTR) :: forward_plan,inverse_plan
 
     !probe variables
@@ -73,7 +73,7 @@ subroutine absorptive_tem
     complex(fp_kind),dimension(nopiy,nopix,n_slices)::projected_potential,prop,transf_absorptive
 
     !output
-    real(fp_kind),dimension(nopiy,nopix) :: cbed,image,tem_image,temp_image
+    real(fp_kind),dimension(nopiy,nopix) :: cbed,tem_image
 
     !diagnostic variables
     real(fp_kind) :: intensity, t1, delta
@@ -215,14 +215,43 @@ subroutine absorptive_tem
 900     format(a1, 1x, 'Cell: ', i5, ' Intensity: ', f12.6)
 #else
     psi = psi_initial
-    do i_cell = 1, maxval(ncells)
-        do i_slice = 1, n_slices
-            call multislice_iteration(psi,prop(:,:,i_slice),transf_absorptive(:,:,i_slice),nopiy,nopix,forward_plan,inverse_plan)
-        enddo ! End loop over slices
-
-        !If this thickness corresponds to any of the output values then output images
-        if (any(i_cell==ncells)) then
-            cbed = abs(fft(nopiy, nopix, psi,norm=.true.))**2
+    do i=1,max(size(ncells)-1,1)
+!    do i_cell = 1, maxval(ncells)
+!        do i_slice = 1, n_slices
+!            call multislice_iteration(psi,prop(:,:,i_slice),transf_absorptive(:,:,i_slice),nopiy,nopix,forward_plan,inverse_plan)
+!        enddo ! End loop over slices
+!
+!
+!
+!        !If this thickness corresponds to any of the output values then output images
+!        if (any(i_cell==ncells)) then
+!            cbed = abs(fft(nopiy, nopix, psi,norm=.true.))**2
+!            z_indx = minloc(abs(ncells-i_cell))
+!            filename = trim(adjustl(output_prefix))
+!            if (nz>1) filename = trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(z_indx(1))),lengthz)//'_A'
+!            if (n_tilts_total>1) filename = trim(adjustl(filename))//tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2)
+!            call binary_out_unwrap(nopiy, nopix, cbed, trim(adjustl(filename))//'_DiffractionPattern')
+!
+!
+!            if(pw_illum) then
+!            call binary_out(nopiy, nopix, abs(psi)**2, trim(adjustl(filename))//'_exit_surface_intensity')
+!            call binary_out(nopiy, nopix, atan2(imag(psi),real(psi)), trim(adjustl(filename))//'_exit_surface_phase')
+!            do i=1,imaging_ndf
+!
+!                psi_out = fft(nopiy, nopix, psi,norm=.true.)*lens_ctf(:,:,i)
+!                call inplace_ifft(nopiy, nopix, psi_out,norm=.true.)
+!                tem_image = abs(psi_out)**2
+!                fnam_df = trim(adjustl(filename))// '_Image'
+!                if(imaging_ndf>1) fnam_df = trim(adjustl(fnam_df))//'_Defocus_'//zero_padded_int(int(imaging_df(i))&
+!                                                                                                  ,lengthdf)//'_Ang'
+!                call binary_out(nopiy, nopix, tem_image, fnam_df)
+!            enddo
+!            endif
+           if (i==1) n = ncells(i)
+           if (i>1 ) n = ncells(i)-ncells(i-1)
+           call multislice_iteration_many_slices_gpu(psi,prop,transf_absorptive,nopiy,nopix,&
+                                                       n,n_slices,forward_plan,inverse_plan)
+           cbed = abs(fft(nopiy, nopix, psi,norm=.true.))**2
             z_indx = minloc(abs(ncells-i_cell))
             filename = trim(adjustl(output_prefix))
             if (nz>1) filename = trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(z_indx(1))),lengthz)//'_A'
@@ -231,9 +260,9 @@ subroutine absorptive_tem
 
 
             if(pw_illum) then
-            call binary_out(nopiy, nopix, abs(psi)**2, trim(adjustl(filename))//'_exit_surface_intensity')
-            call binary_out(nopiy, nopix, atan2(imag(psi),real(psi)), trim(adjustl(filename))//'_exit_surface_phase')
-            do i=1,imaging_ndf
+                call binary_out(nopiy, nopix, abs(psi)**2, trim(adjustl(filename))//'_exit_surface_intensity')
+                call binary_out(nopiy, nopix, atan2(imag(psi),real(psi)), trim(adjustl(filename))//'_exit_surface_phase')
+                do idf=1,imaging_ndf
 
                 psi_out = fft(nopiy, nopix, psi,norm=.true.)*lens_ctf(:,:,i)
                 call inplace_ifft(nopiy, nopix, psi_out,norm=.true.)
@@ -242,9 +271,8 @@ subroutine absorptive_tem
                 if(imaging_ndf>1) fnam_df = trim(adjustl(fnam_df))//'_Defocus_'//zero_padded_int(int(imaging_df(i))&
                                                                                                   ,lengthdf)//'_Ang'
                 call binary_out(nopiy, nopix, tem_image, fnam_df)
-            enddo
+                enddo
             endif
-        endif
         intensity = sum(abs(psi)**2)
 
         if(n_tilts_total<2) write(6,900,advance='no') achar(13),i_cell, intensity

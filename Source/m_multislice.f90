@@ -104,9 +104,7 @@ module m_multislice
         complex(fp_kind),intent(inout)::psi(nopiy,nopix)
         complex(fp_kind),intent(in)::propagator(nopiy,nopix),transmission(nopiy,nopix)
         integer*4,intent(in)::nopiy,nopix
-        integer*4::i
         type(C_PTR),intent(in),optional :: forward_plan,inverse_plan
-        real ::start,finish
 
 
         ! Transmit through slice potential (assumes transmission function divided by 1/nopiy/nopix)
@@ -124,6 +122,78 @@ module m_multislice
         else
             call inplace_ifft(nopiy,nopix,psi)
         endif
+    end subroutine
+
+    !This subroutine performs many iterations of the multislice algorithm (called in CPU versions only)
+    !Probe (psi) input and output is in real space
+    subroutine multislice_iteration_many_slices(psi,propagator,transmission,nopiy,nopix,ncells,nslices,forward_plan,inverse_plan)
+        use FFTW3
+        use output
+        complex(fp_kind),intent(inout)::psi(nopiy,nopix)
+        complex(fp_kind),intent(in),dimension(nopiy,nopix,nslices)::propagator,transmission
+        integer*4,intent(in)::nopiy,nopix,ncells,nslices
+        integer*4::icell,islice
+        type(C_PTR),intent(in),optional :: forward_plan,inverse_plan
+
+        do icell=1,ncells;do islice=1,nslices
+        ! Transmit through slice potential (assumes transmission function divided by 1/nopiy/nopix)
+        psi = psi*transmission(:,:,islice)
+        ! Propagate to next slice
+        if(present(forward_plan)) then
+            call inplace_fft(nopiy,nopix,psi,forward_plan)
+        else
+            call inplace_fft(nopiy,nopix,psi)
+        endif
+        psi = psi*propagator(:,:,islice)
+
+        if(present(inverse_plan)) then
+            call inplace_ifft(nopiy,nopix,psi,inverse_plan)
+        else
+            call inplace_ifft(nopiy,nopix,psi)
+        endif
+        enddo;enddo
+    end subroutine
+    !This subroutine performs many iterations of the multislice algorithm on the GPU
+    !Probe (psi) input and output is in real space
+    subroutine multislice_iteration_many_slices_gpu(psi,propagator,transmission,nopiy,nopix,&
+                                                    ncells,nslices,forward_plan,inverse_plan)
+        use FFTW3
+        use output
+        complex(fp_kind),intent(inout)::psi(nopiy,nopix)
+        complex(fp_kind),intent(in),dimension(nopiy,nopix,nslices)::propagator,transmission
+        integer*4,intent(in)::nopiy,nopix,ncells,nslices
+        integer*4::icell,islice,y,x
+        type(C_PTR),intent(in),optional :: forward_plan,inverse_plan
+
+        !$acc data
+        do icell=1,ncells;do islice=1,nslices
+        ! Transmit through slice potential (assumes transmission function divided by 1/nopiy/nopix)
+        !$acc parallel loop
+        do y=1,nopiy
+            !$acc parallel loop
+            do x =1,nopix
+        psi(y,x) = psi(y,x)*transmission(y,x,islice)
+        enddo;enddo
+        ! Propagate to next slice
+        if(present(forward_plan)) then
+            call inplace_fft(nopiy,nopix,psi,forward_plan)
+        else
+            call inplace_fft(nopiy,nopix,psi)
+        endif
+        !$acc parallel loop
+        do y=1,nopiy
+            !$acc parallel loop
+            do x =1,nopix
+        psi(y,x) = psi(y,x)*propagator(y,x,islice)
+        enddo;enddo
+
+        if(present(inverse_plan)) then
+            call inplace_ifft(nopiy,nopix,psi,inverse_plan)
+        else
+            call inplace_ifft(nopiy,nopix,psi)
+        endif
+        enddo;enddo
+        !$acc end data
     end subroutine
 
     subroutine prompt_output_probe_intensity

@@ -15,3 +15,4 @@ obj/*
 *.depend
 *.mod
 *.depend
+*.save-failed

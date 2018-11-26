@@ -16,3 +16,7 @@ obj/*
 *.mod
 *.depend
 *.save-failed
+*.bin
+Executables/muSTEM
+Executables/GPU_test.txt
+Executables/user_input.txt

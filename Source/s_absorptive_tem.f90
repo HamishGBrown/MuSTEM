@@ -200,9 +200,9 @@ subroutine absorptive_tem
             if(pw_illum) then
             do i=1,imaging_ndf
                 psi = psi_d
-                call inplace_fft(nopiy, nopix, psi)
+                call inplace_fft(nopiy, nopix, psi,norm=.true.)
                 psi = psi*lens_ctf(:,:,i)
-                call inplace_ifft(nopiy, nopix, psi)
+                call inplace_ifft(nopiy, nopix, psi,norm=.true.)
                 tem_image = abs(psi)**2
                 fnam_df = trim(adjustl(filename))// '_Image'
                 if(imaging_ndf>1) fnam_df = trim(adjustl(fnam_df))//'_Defocus_'//zero_padded_int(int(imaging_df(i)),lengthdf)//'_Ang'

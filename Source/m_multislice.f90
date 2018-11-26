@@ -170,7 +170,7 @@ module m_multislice
         ! Transmit through slice potential (assumes transmission function divided by 1/nopiy/nopix)
         !$acc parallel loop
         do y=1,nopiy
-            !$acc parallel loop
+            !!$acc parallel loop
             do x =1,nopix
         psi(y,x) = psi(y,x)*transmission(y,x,islice)
         enddo;enddo
@@ -182,7 +182,7 @@ module m_multislice
         endif
         !$acc parallel loop
         do y=1,nopiy
-            !$acc parallel loop
+            !!$acc parallel loop
             do x =1,nopix
         psi(y,x) = psi(y,x)*propagator(y,x,islice)
         enddo;enddo
@@ -969,4 +969,3 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
 
 
 end module
-

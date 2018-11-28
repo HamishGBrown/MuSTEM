@@ -95,11 +95,11 @@ module m_tilt
 		bt_y = float(nint(bt_y * ifactory))/ifactory
 		
 		!Store tilt vector as a vector
-		bvec = [bt_y,bt_x,0]
+		bvec = [bt_y,bt_x,0.0_fp_kind]
 		
 		!Recalculate theta and phi for output only
         tilt_phi_ = -atan2(bvec(1),bvec(2))*1e3
-        tilt_theta_ = asin(sqrt(sum((bvec*[trimi(ig1,ss),trimi(ig2,ss),0_fp_kind])**2))/ak1)*1e3
+        tilt_theta_ = asin(sqrt(sum((bvec*[trimi(ig1,ss),trimi(ig2,ss),0.0_fp_kind])**2))/ak1)*1e3
 
         write(6,30) tilt_theta*1e3_fp_kind,tilt_theta_,tilt_phi*1e3_fp_kind,tilt_phi_
                 
@@ -153,7 +153,7 @@ module m_tilt
         do i=1,n_tilt;do j=1,n_azimuth
                 index = (i-1)*n_azimuth+j
                 Kz(index) = ak1 * cos( tilt_array(i)*1e-3_fp_kind )
-                claue(:,index)  = ak1 * [ sin(tilt_array(i)*1e-3_fp_kind)*cos(azimuth_array(j)*1e-3_fp_kind)/trimi(ig1,ss), sin(tilt_array(i)*1e-3_fp_kind)*sin(azimuth_array(j)*1e-3_fp_kind)/trimi(ig2,ss),0_fp_kind]
+                claue(:,index)  = ak1 * [ sin(tilt_array(i)*1e-3_fp_kind)*cos(azimuth_array(j)*1e-3_fp_kind)/trimi(ig1,ss), sin(tilt_array(i)*1e-3_fp_kind)*sin(azimuth_array(j)*1e-3_fp_kind)/trimi(ig2,ss),0.0_fp_kind]
         enddo;enddo
     end subroutine      
     

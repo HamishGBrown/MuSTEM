@@ -1,8 +1,10 @@
 .SUFFIXES: .mod .o .f90
 
+
 FC = ifort
-FCFLAGS = -mkl  -fpp -c -qopenmp  -assume nobscc -Dsingle_precision  -I /opt/intel/composer_xe_2015.1.133/mkl/include/fftw -I /opt/intel/composer_xe_2015.1.133/mkl/include/
-LDFLAGS = -mkl  -L${MKLROOT}/lib/intel64 -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl   -qopenmp  -I /opt/intel/composer_xe_2015.1.133/mkl/include/ -I /opt/intel/composer_xe_2015.1.133/mkl/include/fftw
+MKLROOT = /usr/local/intel/2015.0.090/mkl
+FCFLAGS = -mkl  -fpp -c -qopenmp  -assume nobscc -Dsingle_precision  -I ${MKLROOT}/include/fftw -I ${MKLROOT}/include/
+LDFLAGS = -mkl  -L${MKLROOT}/lib/intel64 -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl   -qopenmp  -I ${MKLROOT}/include/ -I ${MKLROOT}/include/fftw
 
 SUFFIX = .f90
 

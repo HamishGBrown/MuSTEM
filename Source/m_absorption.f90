@@ -72,7 +72,7 @@ module m_absorption
 
     function absorptive_scattering_factors(ig1,ig2,ifactory,ifactorx,nopiy,nopix,nt,a0,ss,atf,nat, ak, relm, orthog,thmin,thmax)
 
-        use m_crystallography,only:make_g_vec_array,trimr
+        use m_crystallography,only:make_g_vec_array,trimr,trimi
         use m_numerical_tools, only: cubspl,ppvalu
 
         integer(4),intent(in)::ig1(3),ig2(3),ifactory,ifactorx,nopiy,nopix,nat(nt),nt
@@ -89,27 +89,34 @@ module m_absorption
 
         real(8),parameter :: pi = 4.0d0*atan(1.0d0)
 
-        xstep = sqrt( real( dot_product(ig1,ig1) ,kind=fp_kind) ) / float(ifactorx)
-        ystep = sqrt( real( dot_product(ig2,ig2) ,kind=fp_kind) ) / float(ifactory)
+        !Work out sampling of grid on which to evaluate the inelastic scattering
+        !factors.
+        !First evaluate the size of the reciprocal space pixels in the x and
+        !y directions
+        xstep = trimi(ig1,ss) / float(ifactorx)
+        ystep = trimi(ig2,ss) / float(ifactory)
+        !Now take the smallest of these as the step size
         min_step = min( xstep, ystep )
 
-        if (abs(min_step-xstep).lt.1.0e-10_fp_kind) then
+
+        if (xstep<ystep) then
            kstep(1:3) = float( ig1(1:3) ) / float(ifactorx)
            delta_kstep = kstep(1)/a0(1)
-
         else
            kstep(1:3) = float( ig2(1:3) ) / float(ifactory)
            delta_kstep = kstep(2)/a0(2)
 
         endif
 
+        !Work out the maximum reciprocal space coordinate that will be evaluated
         max_dist = sqrt( (xstep/2.0_fp_kind * nopix)**2 + (ystep/2.0_fp_kind * nopiy)**2 )
+        !And the number of steps that the scattering factors will be evaluated
+        !on
         max_int = nint( max_dist / min_step ) + 2
-
         allocate(tds(max_int,nt))
         tds=0
+        !Evaluate inelastic form factors (inelffs)
         call get_inelffs(tds, max_int, kstep, ss, atf, nat, ak, relm, orthog, thmin,thmax)
-
         !Set up interpolation routines
         allocate(xdata(max_int),adfbrcoeff_(4,max_int,nt))
         do i=1,max_int; xdata(i) = (i-1)* delta_kstep; enddo
@@ -137,7 +144,7 @@ module m_absorption
         use global_variables, only: nt
         use m_crystallography, only: trimi, trimr
         use m_string
-        use output, only: output_prefix,timing
+        use output, only: output_prefix,timing,printout_2d
         use m_electron, only:element
 
         implicit none
@@ -157,7 +164,6 @@ module m_absorption
         ! Double precision variables for accuracy
         real(8),parameter :: pi = 4.0d0*atan(1.0d0)
         real(8) :: sum1
-        !real(8) :: sum2,sum3,diff,mu(1000)
         real(fp_kind) :: t1, delta
 
 
@@ -212,6 +218,7 @@ module m_absorption
 
             g2 = trimr(g,ss)**2
 
+
             ! Loop over atomic species
             do i_species = 1, nt
                 Z=nint(atf(1,i_species))
@@ -222,7 +229,7 @@ module m_absorption
                 !if (thmin<1e-2.and.thmax>pi-1e-2) then
                 !    sum1= imag(FSCATT(real(sqrt(g2)*2*pi,kind=4),sqrt(atf(3,i_species)),Z,element(Z),300.0_4,1,.false.,.false.))/(16*2*pi*pi)**2
                 !else
-                    call qag ( tds_calc_theta, thmin, thmax, abs_tol, rel_tol, 1, sum1, abserr, m, ier )
+                    call qag ( tds_calc_theta, thmin, thmax, abs_tol, rel_tol, 2, sum1, abserr, m, ier )
                 !endif
 
                 ! Fractional occupancy
@@ -237,9 +244,9 @@ module m_absorption
                 endif
 
             enddo
-
+            !write(*,*) ipa,sqrt(g2)
         enddo
-
+        ! call printout_2d(tdsbr_t,max_int,nt,'tdsbr.dat')
         write(*,*)
         write(*,*)
         !close(17)
@@ -344,7 +351,6 @@ module m_absorption
         real(8),parameter :: twopi = 8.0d0*atan(1.0d0)
 
         integer*4:: m,ier
-
         st = sin(theta);ct = cos(theta)
         total_one=0;total_two=0
 
@@ -352,7 +358,7 @@ module m_absorption
 
 
         call qag ( tds_calc_phi, 0.0_8, pi, abs_tol, rel_tol, 1, total_one, abserr, m, ier )
-        call qag ( tds_calc_phi, pi, 2*pi, abs_tol, rel_tol, 1, total_two, abserr, m, ier )
+        call qag ( tds_calc_phi, pi,  2*pi, abs_tol, rel_tol, 1, total_two, abserr, m, ier )
 
         tds_calc_theta = (total_one + total_two) * st
 
@@ -378,7 +384,7 @@ module m_absorption
         real(8) :: dwf1
 
         qx = ak * qxunit * real(st * cos(phi),kind=fp_kind)
-        qy =ak * qyunit *  real(st * sin(phi),kind=fp_kind)
+        qy = ak * qyunit * real(st * sin(phi),kind=fp_kind)
 
         q1 = qx + qy + qz
         q2 = qx + qy + qz - g
@@ -397,7 +403,6 @@ module m_absorption
 
 
         dwf1 = exp( - tp2 * atf(3,i_species) * (q1_sq + q2_sq) )
-
         tds_calc_phi = f1*f2*(dwf-dwf1)
 
     end function tds_calc_phi

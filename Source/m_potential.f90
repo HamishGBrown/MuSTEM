@@ -1,6 +1,6 @@
 !--------------------------------------------------------------------------------
 !
-!  Copyright (C) 2017  L. J. Allen, H. G. Brown, A. J. D’Alfonso, S.D. Findlay, B. D. Forbes
+!  Copyright (C) 2017  L. J. Allen, H. G. Brown, A. J. Dï¿½Alfonso, S.D. Findlay, B. D. Forbes
 !
 !  This program is free software: you can redistribute it and/or modify
 !  it under the terms of the GNU General Public License as published by
@@ -665,8 +665,8 @@ module m_potential
       use m_multislice
       use global_variables!, only:adf,nopiy,nopix,high_accuracy,nt,ss,ndet,ig1,ig2,ifactory
       use m_absorption
-      !use m_string
-      !use output
+      use m_string
+      use output
 
       implicit none
 
@@ -695,7 +695,6 @@ module m_potential
           !factors are assumed isotropic and this is only an approximation for inelastic scattering to segmented detectors
           fz_adf(:,:,:,(k-1)*nseg+1:k*nseg) = spread(absorptive_scattering_factors(ig1,ig2,ifactory,ifactorx,nopiy,nopix,&
                                                      nt,a0,ss,atf,nat, ak, relm, orthog,thmin,thmax),dim=4,ncopies=nseg)/nseg
-
       enddo
       endif
 

@@ -76,6 +76,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 
     !dummy variables
     integer(4) :: i, j, k, i_df, ny, nx,z_indx(1),ii,length,ntilt,lengthdf,idet
+    real(8)::thmin,thmax
 
     !probe variables
     complex(fp_kind),dimension(nopiy,nopix) :: psi
@@ -260,7 +261,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
         prop(:,:,i) = prop(:,:,i) * bwl_mat
         !! Bandwith limit the phase grate, psi is used for temporary storage
         call inplace_fft(nopiy, nopix, transf_absorptive(:,:,i),norm=.true.)
-        transf_absorptive(:,:,i) = transf_absorptive(:,:,i) * bwl_mat/nopiy/nopix
+        transf_absorptive(:,:,i) = transf_absorptive(:,:,i) * bwl_mat
         call inplace_ifft(nopiy, nopix, transf_absorptive(:,:,i),norm=.true.)
     enddo
 
@@ -310,6 +311,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 
             ! Calculate inelastic cross sections
             if ((stem.and.adf).or.ionization) call cuda_mod<<<blocks,threads>>>(psi_d,psi_intensity_d,1.0_fp_kind,nopiy,nopix)
+            temp = adf_potential_d(:,:,j,3)
             if((stem.and.adf)) then
                 do k=1,ndet
                 if(on_the_fly) then
@@ -321,6 +323,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
                 call cuda_addition<<<blocks,threads>>>(temp_d,adf_image_d(:,:,k),adf_image_d(:,:,k),1.0_fp_kind,nopiy,nopix)                          !depth sum
                 enddo
             endif
+
             if(ionization) then
                 do ii=1,num_ionizations
                     if(on_the_fly) then
@@ -340,6 +343,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
             else
                 call cuda_multiplication<<<blocks,threads>>>(psi_d,transf_d(:,:,j), psi_d,1.0_fp_kind,nopiy,nopix)
             endif
+
             ! Propagate to next slice
             call cufftExec(plan,psi_d,psi_d,CUFFT_FORWARD)
             call cuda_multiplication<<<blocks,threads>>>(psi_d,prop_d(:,:,j), psi_d,normalisation,nopiy,nopix)

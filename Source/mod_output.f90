@@ -113,7 +113,7 @@ module output
 
 
                 j = index(filepath,'/',back=.true.)
-                j = max(j,index(filepath,'\',back=.true.))
+                j = max(j,index(filepath,'\\',back=.true.))
 
                 if(j>0) then
                     dir = trim(adjustl(filepath(:j-1)))

@@ -82,6 +82,7 @@ subroutine qep_stem(STEM,ionization,PACBED)
     !dummy variables
     integer(4) ::  i,j,i_qep_pass,iz,k,ii,ntilt
     integer(4) ::  ny,nx,i_df,idet
+    integer(4) :: shiftx,shifty
     type(C_PTR) :: forward_plan,inverse_plan
 
 

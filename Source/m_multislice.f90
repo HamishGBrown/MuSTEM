@@ -165,10 +165,10 @@ module m_multislice
         integer*4::icell,islice,y,x
         type(C_PTR),intent(in),optional :: forward_plan,inverse_plan
 
-        !$acc data
+        !!$acc data
         do icell=1,ncells;do islice=1,nslices
         ! Transmit through slice potential (assumes transmission function divided by 1/nopiy/nopix)
-        !$acc parallel loop
+        !!$acc parallel loop
         do y=1,nopiy
             !!$acc parallel loop
             do x =1,nopix
@@ -180,7 +180,7 @@ module m_multislice
         else
             call inplace_fft(nopiy,nopix,psi)
         endif
-        !$acc parallel loop
+        !!$acc parallel loop
         do y=1,nopiy
             !!$acc parallel loop
             do x =1,nopix
@@ -193,7 +193,7 @@ module m_multislice
             call inplace_ifft(nopiy,nopix,psi)
         endif
         enddo;enddo
-        !$acc end data
+        !!$acc end data
     end subroutine
 
     subroutine prompt_output_probe_intensity
@@ -322,14 +322,14 @@ module m_multislice
         character(1024) :: filename,dir,fnam
 
         j = index(output_prefix,'/',back=.true.)
-        j = max(j,index(output_prefix,'\',back=.true.))
+        j = max(j,index(output_prefix,'\\',back=.true.))
 
         if(j>0) then
             dir = trim(adjustl(output_prefix(:j)))
             fnam = trim(adjustl(output_prefix(j:)))
             filename = trim(adjustl(dir))//'\Probe_intensity'//trim(adjustl(fnam))//'_probe_intensity_thicknesss.txt'
         else
-            filename = 'Probe_intensity\'//trim(adjustl(output_prefix))//'_probe_intensity_thicknesss.txt'
+            filename = 'Probe_intensity\\'//trim(adjustl(output_prefix))//'_probe_intensity_thicknesss.txt'
         endif
 
         write(*,*) 'The thicknesses at which the probe intensity'
@@ -363,15 +363,15 @@ module m_multislice
     character*1024::filename,fnam,dir
 
         j = index(output_prefix,'/',back=.true.)
-        j = max(j,index(output_prefix,'\',back=.true.))
+        j = max(j,index(output_prefix,'\\',back=.true.))
         z = size(output_thickness_list)
 
         if(j>0) then
             dir = trim(adjustl(output_prefix(:j)))
             fnam = trim(adjustl(output_prefix(j:)))
-            filename = trim(adjustl(dir))//'\Probe_intensity\'//trim(adjustl(fnam))//'_ProbeIntensity'
+            filename = trim(adjustl(dir))//'\\Probe_intensity\\'//trim(adjustl(fnam))//'_ProbeIntensity'
         else
-            filename = 'Probe_intensity\'//trim(adjustl(output_prefix))//'_ProbeIntensity'
+            filename = 'Probe_intensity\\'//trim(adjustl(output_prefix))//'_ProbeIntensity'
         endif
 
         if (probe_ndf.gt.1) filename = trim(filename) // '_df' // to_string(i_df)

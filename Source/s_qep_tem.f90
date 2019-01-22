@@ -62,6 +62,7 @@ subroutine qep_tem
     use cuda_potential, only: cuda_setup_many_phasegrate, ccd_slice_array, cuda_fph_make_potential
     use cuda_setup, only: GPU_memory_message
     use cuda_array_library
+    use cufft
 #endif
     use output, only: output_prefix, binary_out, binary_out_unwrap,timing
     use m_tilt
@@ -73,6 +74,7 @@ subroutine qep_tem
 
     !dummy variables
     integer(4) :: i_cell, i_slice, i_qep_pass,i,j,ntilt,length,z_indx(1)
+    integer(4) :: shiftx,shifty
     type(C_PTR) :: forward_plan,inverse_plan
 
     !random variables

@@ -64,7 +64,7 @@ subroutine absorptive_tem
     implicit none
 
     !dummy variables
-    integer(4) :: i_cell,z_indx(1),lengthz,lengthdf,i,ntilt,n,idf
+    integer(4) :: i_cell,z_indx(1),lengthz,lengthdf,i,ntilt,n,idf,i_slice
     type(C_PTR) :: forward_plan,inverse_plan
 
     !probe variables

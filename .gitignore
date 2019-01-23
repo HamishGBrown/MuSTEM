@@ -11,3 +11,11 @@ WaasmeierKohl.f90
 *.out
 *.synctex.gz
 *.toc
+*.bin
+Executables/GPU_test.txt
+Executables/muSTEM
+Executables/user_input.txt
+MuSTEM.cbp
+MuSTEM.depend
+*.mod
+*.o

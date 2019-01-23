@@ -3,10 +3,14 @@
 
 #Switch for Gfortran and PGIFortran (for GPU) compilation
 Compiler = PGIFortran
-#Compiler = GFortran
+# Compiler = GFortran
 
 #Precision (double or single)
 precision = single
+# precision = double
+
+#CUDA version
+CUDA_VER = 9.1
 
 #PGI compiler install directory
 PGIDIR = /opt/pgi/linux86-64
@@ -92,7 +96,6 @@ SRC_DIR_f90d1 = Source/
 OBJS_DIR = obj/Release/Source/
 MOD_DIR = obj/Release/mod/
 EXE_DIR = Executables/
-CUDA_VER = 9.1
 
 EXE = muSTEM
 
@@ -102,14 +105,14 @@ PGILD = pgfortran
 FC = gfortran
 LD = gfortran
 
-CFLAGS = -cpp -D$(precision)_precision -DGCC  -O3 -mp -fast  $(IDIR)
+CFLAGS = -cpp -D$(precision)_precision -DGCC  -O3
 
-PGICFLAGS = -DGPU -ta=tesla:ccall -ta=tesla:cuda$(CUDA_VER) \
-             -Mcuda=cuda$(CUDA_VER) -Mcudalib=cufft -module $(MOD_DIR)
-PGILFLAGS = -Mcuda=cuda$(CUDA_VER) -ta=tesla:cuda$(CUDA_VER)   \
-	           -Bstatic_pgi -pgf90libs
-GCFLAGS = -Wall -fopenmp -J$(OBJS_DIR)
-GLFLAGS = -s -fopenmp
+PGICFLAGS  = -DGPU -ta=tesla:ccall -ta=tesla:cuda$(CUDA_VER)
+PGICFLAGS += -Mcuda=cuda$(CUDA_VER) -Mcudalib=cufft -module $(MOD_DIR) -mp -fast
+PGILFLAGS  = -Mcuda=cuda$(CUDA_VER) -ta=tesla:cuda$(CUDA_VER)   -ta=tesla:ccall
+PGILFLAGS += -Bstatic_pgi -pgf90libs -Mcuda=cuda$(CUDA_VER) -Mcudalib=cufft
+GCFLAGS = -fopenmp -J$(OBJS_DIR)
+GLFLAGS = -s -fopenmp -lfftw3 -lfftw3f
 
 VPATH = $(SRC_DIR_f90d1):$(OBJS_DIR)
 OBJS = $(addprefix $(OBJS_DIR), $(OBJS_f90d1))
@@ -121,8 +124,7 @@ all : $(EXE)
 $(EXE) : $(OBJS_f90d1)
 ifeq ($(Compiler),PGIFortran)
 	@mkdir -p $(EXE_DIR)
-	$(PGILD) -o $(EXE_DIR)$(EXE) $(OBJS) $(LFLAGS) \
-	$(PGILFLAGS) $(PGILIBS)
+	$(PGILD) -o $(EXE_DIR)$(EXE) $(OBJS) $(LFLAGS) $(PGILFLAGS) $(PGILIBS)
 else
 	@mkdir -p $(EXE_DIR)
 	$(LD) -o $(EXE_DIR)$(EXE) $(OBJS) $(LFLAGS) $(GLFLAGS) $(FFTWLIBS)
@@ -132,10 +134,11 @@ $(OBJS_f90d1):
 ifeq ($(Compiler),PGIFortran)
 	@mkdir -p $(OBJS_DIR)
 	@mkdir -p $(MOD_DIR)
-	$(PGIFC) $(CFLAGS) $(PGICFLAGS) -c $(SRC_DIR_f90d1)$(@:.o=.f90) -o $(OBJS_DIR)$@
+	$(PGIFC) $(CFLAGS) $(PGICFLAGS) $(PGIIDIR) -c $(SRC_DIR_f90d1)$(@:.o=.f90) -o $(OBJS_DIR)$@
 else
 	@mkdir -p $(OBJS_DIR)
-	$(FC) $(CFLAGS) $(GCFLAGS) -c $(SRC_DIR_f90d1)$(@:.o=.f90) -o $(OBJS_DIR)$@
+	$(FC) $(CFLAGS) $(GCFLAGS) -c $(FFTWIDIR) $(SRC_DIR_f90d1)$(@:.o=.f90) -o $(OBJS_DIR)$@
+
 endif
 
 clean :

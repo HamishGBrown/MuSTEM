@@ -1,39 +1,39 @@
 !--------------------------------------------------------------------------------
 !
-!  Copyright (C) 2017  L. J. Allen, H. G. Brown, A. J. D’Alfonso, S.D. Findlay, B. D. Forbes
+!  Copyright (C) 2017  L. J. Allen, H. G. Brown, A. J. DAlfonso, S.D. Findlay, B. D. Forbes
 !
 !  This program is free software: you can redistribute it and/or modify
 !  it under the terms of the GNU General Public License as published by
 !  the Free Software Foundation, either version 3 of the License, or
 !  (at your option) any later version.
-!  
+!
 !  This program is distributed in the hope that it will be useful,
 !  but WITHOUT ANY WARRANTY; without even the implied warranty of
 !  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 !  GNU General Public License for more details.
-!   
+!
 !  You should have received a copy of the GNU General Public License
 !  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-!                       
+!
 !--------------------------------------------------------------------------------
 
 module m_electron
-    
+
     use m_precision
     implicit none
-    
-      
+
+
     interface elsa_ext
         module procedure single_elsa_ext
         module procedure double_elsa_ext
     end interface
-    
+
     interface Peng_ionic_FF
         module procedure Peng_ionic_FF_fractional_ionicity
         module procedure Peng_ionic_FF_integer_ionicity
     end interface
-    
-    
+
+
 !X-RAY FORM FACTORS
 character(2), parameter :: element(92) = &
 (/'H ','He','Li','Be','B ','C ','N ','O ','F ','Ne','Na','Mg','Al','Si','P ','S ','Cl','Ar','K ','Ca','Sc','Ti','V ', &
@@ -41,106 +41,290 @@ character(2), parameter :: element(92) = &
   'Ag','Cd','In','Sn','Sb','Te','I ','Xe','Cs','Ba','La','Ce','Pr','Nd','Pm','Sm','Eu','Gd','Tb','Dy','Ho','Er','Tm', &
   'Yb','Lu','Hf','Ta','W ','Re','Os','Ir','Pt','Au','Hg','Tl','Pb','Bi','Po','At','Rn','Fr','Ra','Ac','Th','Pa','U '  /)
 real(fp_kind), parameter :: xrayFF(14,92) = reshape( &
-(/1.00_fp_kind,0.73235400_fp_kind,0.7538960_fp_kind,0.2838190_fp_kind,0.1900030_fp_kind,0.0391390_fp_kind,11.553918_fp_kind,4.59583100_fp_kind,1.54629900_fp_kind,26.4639640_fp_kind,0.37752300_fp_kind,0.00048700_fp_kind,2.0_fp_kind,8.769017454422158E-3_fp_kind,&
-  2.00_fp_kind,0.73235400_fp_kind,0.7538960_fp_kind,0.2838190_fp_kind,0.1900030_fp_kind,0.0391390_fp_kind,11.553918_fp_kind,4.59583100_fp_kind,1.54629900_fp_kind,26.4639640_fp_kind,0.37752300_fp_kind,0.00048700_fp_kind,2.0_fp_kind,8.769017454422158E-3_fp_kind,&
-  3.00_fp_kind,0.97463700_fp_kind,0.1584720_fp_kind,0.8118550_fp_kind,0.2624160_fp_kind,0.7901080_fp_kind,4.3349460_fp_kind,0.34245100_fp_kind,97.1029690_fp_kind,201.363824_fp_kind,1.40923400_fp_kind,0.00254200_fp_kind,3.0_fp_kind,3.053829815542358E-2_fp_kind,&
-  4.00_fp_kind,1.53371200_fp_kind,0.6382830_fp_kind,0.6010520_fp_kind,0.1061390_fp_kind,1.1184140_fp_kind,42.662078_fp_kind,0.59542000_fp_kind,99.1065010_fp_kind,0.15134000_fp_kind,1.84309300_fp_kind,0.00251100_fp_kind,4.0_fp_kind,2.673011412693727E-2_fp_kind,&
-  5.00_fp_kind,2.08518500_fp_kind,1.0645800_fp_kind,1.0627880_fp_kind,0.1405150_fp_kind,0.6417840_fp_kind,23.494069_fp_kind,1.13789400_fp_kind,61.2389750_fp_kind,0.11488600_fp_kind,0.39903600_fp_kind,0.00382300_fp_kind,5.0_fp_kind,4.375691177284862E-2_fp_kind,&
-  6.00_fp_kind,2.65750600_fp_kind,1.0780790_fp_kind,1.4909090_fp_kind,-4.241070_fp_kind,0.7137910_fp_kind,14.780758_fp_kind,0.77677500_fp_kind,42.0868430_fp_kind,-0.0002940_fp_kind,0.23953500_fp_kind,4.29798300_fp_kind,6.0_fp_kind,7.163539380752063E-2_fp_kind,&
-  7.00_fp_kind,11.8937800_fp_kind,3.2774790_fp_kind,1.8580920_fp_kind,0.8589270_fp_kind,0.9129850_fp_kind,0.0001580_fp_kind,10.2327230_fp_kind,30.3446900_fp_kind,0.65606500_fp_kind,0.21728700_fp_kind,-11.804902_fp_kind,7.0_fp_kind,0.112381925459201_fp_kind,&
-  8.00_fp_kind,2.96042700_fp_kind,2.5088180_fp_kind,0.6378530_fp_kind,0.7228380_fp_kind,1.1427560_fp_kind,14.182259_fp_kind,5.93685800_fp_kind,0.11272600_fp_kind,34.9584810_fp_kind,0.39024000_fp_kind,0.02701400_fp_kind,8.0_fp_kind,0.171987724092682_fp_kind,&
-  9.00_fp_kind,3.51195400_fp_kind,2.7722440_fp_kind,0.6783850_fp_kind,0.9151590_fp_kind,1.0892610_fp_kind,10.687859_fp_kind,4.38046600_fp_kind,0.09398200_fp_kind,27.2552030_fp_kind,0.31306600_fp_kind,0.03255700_fp_kind,9.0_fp_kind,0.223745513843300_fp_kind,&
-  10.0_fp_kind,4.1837490_fp_kind,2.9057260_fp_kind,0.5205130_fp_kind,1.1356410_fp_kind,1.2280650_fp_kind,8.1754570_fp_kind,3.25253600_fp_kind,0.06329500_fp_kind,21.8139090_fp_kind,0.22495200_fp_kind,0.02557600_fp_kind,10.0_fp_kind,0.287627317325155_fp_kind,&
-  11.0_fp_kind,4.9101270_fp_kind,3.0817830_fp_kind,1.2620670_fp_kind,1.0989380_fp_kind,0.5609910_fp_kind,3.2814340_fp_kind,9.11917800_fp_kind,0.10276300_fp_kind,132.013942_fp_kind,0.40587800_fp_kind,0.07971200_fp_kind,11.0_fp_kind,0.366747421044202_fp_kind,&
-  12.0_fp_kind,4.7089710_fp_kind,1.1948140_fp_kind,1.5581570_fp_kind,1.1704130_fp_kind,3.2394030_fp_kind,4.8752070_fp_kind,108.506079_fp_kind,0.11151600_fp_kind,48.2924070_fp_kind,1.92817100_fp_kind,0.12684200_fp_kind,12.0_fp_kind,0.470985327996563_fp_kind,&
-  13.0_fp_kind,4.7307960_fp_kind,2.3139510_fp_kind,1.5419800_fp_kind,1.1175640_fp_kind,3.1547540_fp_kind,3.6289310_fp_kind,43.0511660_fp_kind,0.09596000_fp_kind,108.932389_fp_kind,1.55591800_fp_kind,0.13950900_fp_kind,13.0_fp_kind,0.528931702148052_fp_kind,&
-  14.0_fp_kind,5.2753290_fp_kind,3.1910380_fp_kind,1.5115140_fp_kind,1.3568490_fp_kind,2.5191140_fp_kind,2.6313380_fp_kind,33.7307280_fp_kind,0.08111900_fp_kind,86.2886400_fp_kind,1.17008700_fp_kind,0.14507300_fp_kind,14.0_fp_kind,0.592196010700308_fp_kind,&
-  15.0_fp_kind,1.9505410_fp_kind,4.1469300_fp_kind,1.4945600_fp_kind,1.5220420_fp_kind,5.7297110_fp_kind,0.9081390_fp_kind,27.0449530_fp_kind,0.07128000_fp_kind,67.5201900_fp_kind,1.98117300_fp_kind,0.15523300_fp_kind,15.0_fp_kind,0.660050129218602_fp_kind,&
-  16.0_fp_kind,6.3721570_fp_kind,5.1545680_fp_kind,1.4737320_fp_kind,1.6350730_fp_kind,1.2093720_fp_kind,1.5143470_fp_kind,22.0925280_fp_kind,0.06137300_fp_kind,55.4451760_fp_kind,0.64692500_fp_kind,0.15472200_fp_kind,16.0_fp_kind,0.726458197799532_fp_kind,&
-  17.0_fp_kind,1.4460710_fp_kind,6.8706090_fp_kind,6.1518010_fp_kind,1.7503470_fp_kind,0.6341680_fp_kind,0.0523570_fp_kind,1.19316500_fp_kind,18.3434160_fp_kind,46.3983940_fp_kind,0.40100500_fp_kind,0.14677300_fp_kind,17.0_fp_kind,0.792912007492641_fp_kind,&
-  18.0_fp_kind,7.1880040_fp_kind,6.6384540_fp_kind,0.4541800_fp_kind,1.9295930_fp_kind,1.5236540_fp_kind,0.9562210_fp_kind,15.3398770_fp_kind,15.3398620_fp_kind,39.0438240_fp_kind,0.06240900_fp_kind,0.26595400_fp_kind,18.0_fp_kind,0.874904035952563_fp_kind,&
-  19.0_fp_kind,8.1639910_fp_kind,7.1469450_fp_kind,1.0701400_fp_kind,0.8773160_fp_kind,1.4864340_fp_kind,12.816323_fp_kind,0.80894500_fp_kind,210.327009_fp_kind,39.5976510_fp_kind,0.05282100_fp_kind,0.25361400_fp_kind,19.0_fp_kind,0.924257331263367_fp_kind,&
-  20.0_fp_kind,8.5936550_fp_kind,1.4773240_fp_kind,1.4362540_fp_kind,1.1828390_fp_kind,7.1132580_fp_kind,10.460644_fp_kind,0.04189100_fp_kind,81.3903820_fp_kind,169.847839_fp_kind,0.68809800_fp_kind,0.19625500_fp_kind,20.0_fp_kind,0.967132503306553_fp_kind,&
-  21.0_fp_kind,1.4765660_fp_kind,1.4872780_fp_kind,1.6001870_fp_kind,9.1774630_fp_kind,7.0997500_fp_kind,53.131022_fp_kind,0.03532500_fp_kind,137.319495_fp_kind,9.09803100_fp_kind,0.60210200_fp_kind,0.15776500_fp_kind,21.0_fp_kind,1.012975070461970_fp_kind,&
-  22.0_fp_kind,9.8185240_fp_kind,1.5226460_fp_kind,1.7031010_fp_kind,1.7687740_fp_kind,7.0825550_fp_kind,8.0018790_fp_kind,0.02976300_fp_kind,39.8854230_fp_kind,120.158000_fp_kind,0.53240500_fp_kind,0.10247300_fp_kind,22.0_fp_kind,1.050876425199770_fp_kind,&
-  23.0_fp_kind,10.473575_fp_kind,1.5478810_fp_kind,1.9863810_fp_kind,1.8656160_fp_kind,7.0562500_fp_kind,7.0819400_fp_kind,0.02604000_fp_kind,31.9096720_fp_kind,108.022844_fp_kind,0.47488200_fp_kind,0.06774400_fp_kind,23.0_fp_kind,1.086704198113510_fp_kind,&
-  24.0_fp_kind,11.007069_fp_kind,1.5554770_fp_kind,2.9852930_fp_kind,1.3478550_fp_kind,7.0347790_fp_kind,6.3662810_fp_kind,0.02398700_fp_kind,23.2448380_fp_kind,105.774500_fp_kind,0.42936900_fp_kind,0.06551000_fp_kind,24.0_fp_kind,1.115649280845480_fp_kind,&
-  25.0_fp_kind,11.709542_fp_kind,1.7334140_fp_kind,2.6731410_fp_kind,2.0233680_fp_kind,7.0031800_fp_kind,5.5971200_fp_kind,0.01780000_fp_kind,21.7884190_fp_kind,89.5179150_fp_kind,0.38305400_fp_kind,-0.1472930_fp_kind,25.0_fp_kind,1.137904401534530_fp_kind,&
-  26.0_fp_kind,12.311098_fp_kind,1.8766230_fp_kind,3.0661770_fp_kind,2.0704510_fp_kind,6.9751850_fp_kind,5.0094150_fp_kind,0.01446100_fp_kind,18.7430410_fp_kind,82.7678740_fp_kind,0.34650600_fp_kind,-0.3049310_fp_kind,26.0_fp_kind,1.157781969494130_fp_kind,&
-  27.0_fp_kind,12.914510_fp_kind,2.4819080_fp_kind,3.4668940_fp_kind,2.1063510_fp_kind,6.9608920_fp_kind,4.5071380_fp_kind,0.00912600_fp_kind,16.4381300_fp_kind,76.9873170_fp_kind,0.31441800_fp_kind,-0.9365720_fp_kind,27.0_fp_kind,1.170782166833100_fp_kind,&
-  28.0_fp_kind,13.521865_fp_kind,6.9472850_fp_kind,3.8660280_fp_kind,2.1359000_fp_kind,4.2847310_fp_kind,4.0772770_fp_kind,0.28676300_fp_kind,14.6226340_fp_kind,71.9660780_fp_kind,0.00443700_fp_kind,-2.7626970_fp_kind,28.0_fp_kind,1.181463309062120_fp_kind,&
-  29.0_fp_kind,14.014192_fp_kind,4.7845770_fp_kind,5.0568060_fp_kind,1.4579710_fp_kind,6.9329960_fp_kind,3.7382800_fp_kind,0.00374400_fp_kind,13.0349820_fp_kind,72.5547930_fp_kind,0.26566600_fp_kind,-3.2544770_fp_kind,29.0_fp_kind,1.189120722007890_fp_kind,&
-  30.0_fp_kind,14.741002_fp_kind,6.9077480_fp_kind,4.6423370_fp_kind,2.1917660_fp_kind,38.424042_fp_kind,3.3882320_fp_kind,0.24331500_fp_kind,11.9036890_fp_kind,63.3121300_fp_kind,0.00039700_fp_kind,-36.915828_fp_kind,30.0_fp_kind,1.195267016288100_fp_kind,&
-  31.0_fp_kind,15.758946_fp_kind,6.8411230_fp_kind,4.1210160_fp_kind,2.7146810_fp_kind,2.3952460_fp_kind,3.1217540_fp_kind,0.22605700_fp_kind,12.4821960_fp_kind,66.2036220_fp_kind,0.00723800_fp_kind,-0.8473950_fp_kind,31.0_fp_kind,1.200512778463350_fp_kind,&
-  32.0_fp_kind,16.540614_fp_kind,1.5679000_fp_kind,3.7278290_fp_kind,3.3450980_fp_kind,6.7850790_fp_kind,2.8666180_fp_kind,0.01219800_fp_kind,13.4321630_fp_kind,58.8660460_fp_kind,0.21097400_fp_kind,0.01872600_fp_kind,32.0_fp_kind,1.200655847244250_fp_kind,&
-  33.0_fp_kind,17.025643_fp_kind,4.5034410_fp_kind,3.7159040_fp_kind,3.9372000_fp_kind,6.7901750_fp_kind,2.5977390_fp_kind,0.00301200_fp_kind,14.2721190_fp_kind,50.4379970_fp_kind,0.19301500_fp_kind,-2.9841170_fp_kind,33.0_fp_kind,1.198314141346290_fp_kind,&
-  34.0_fp_kind,17.354071_fp_kind,4.6532480_fp_kind,4.2594890_fp_kind,4.1364550_fp_kind,6.7491630_fp_kind,2.3497870_fp_kind,0.00255000_fp_kind,15.5794600_fp_kind,45.1812010_fp_kind,0.17743200_fp_kind,-3.1609820_fp_kind,34.0_fp_kind,1.198528926857700_fp_kind,&
-  35.0_fp_kind,17.550570_fp_kind,5.4118820_fp_kind,3.9371800_fp_kind,3.8806450_fp_kind,6.7077930_fp_kind,2.1192260_fp_kind,16.5571850_fp_kind,0.00248100_fp_kind,42.1640090_fp_kind,0.16212100_fp_kind,-2.4920880_fp_kind,35.0_fp_kind,1.199161541836410_fp_kind,&
-  36.0_fp_kind,17.655279_fp_kind,6.8481050_fp_kind,4.1710040_fp_kind,3.4467600_fp_kind,6.6852000_fp_kind,1.9082310_fp_kind,16.6062350_fp_kind,0.00159800_fp_kind,39.9174710_fp_kind,0.14689600_fp_kind,-2.8105920_fp_kind,36.0_fp_kind,1.199687791703070_fp_kind,&
-  37.0_fp_kind,8.1231340_fp_kind,2.1380420_fp_kind,6.7617020_fp_kind,1.1560510_fp_kind,17.679547_fp_kind,15.142385_fp_kind,33.5426660_fp_kind,0.12937200_fp_kind,224.132506_fp_kind,1.71336800_fp_kind,1.13954800_fp_kind,37.0_fp_kind,1.210575215851800_fp_kind,&
-  38.0_fp_kind,17.730219_fp_kind,9.7958670_fp_kind,6.0997630_fp_kind,2.6200250_fp_kind,0.6000530_fp_kind,1.5630600_fp_kind,14.3108680_fp_kind,0.12057400_fp_kind,135.771318_fp_kind,0.12057400_fp_kind,1.14025100_fp_kind,38.0_fp_kind,1.201749013781440_fp_kind,&
-  39.0_fp_kind,17.792040_fp_kind,10.253252_fp_kind,5.7149490_fp_kind,3.1705160_fp_kind,0.9182510_fp_kind,1.4296910_fp_kind,13.1328160_fp_kind,0.11217300_fp_kind,108.197029_fp_kind,0.11217300_fp_kind,1.31787000_fp_kind,39.0_fp_kind,1.375021858691620_fp_kind,&
-  40.0_fp_kind,17.859771_fp_kind,10.911038_fp_kind,5.8211150_fp_kind,3.5125130_fp_kind,0.7469650_fp_kind,1.3106920_fp_kind,12.3192850_fp_kind,0.10435300_fp_kind,91.7775440_fp_kind,0.10435300_fp_kind,1.12485900_fp_kind,40.0_fp_kind,1.188442917505480_fp_kind,&
-  41.0_fp_kind,17.958398_fp_kind,12.063054_fp_kind,5.0070150_fp_kind,3.2876670_fp_kind,1.5310190_fp_kind,1.2115900_fp_kind,12.2466870_fp_kind,0.09861500_fp_kind,75.0119440_fp_kind,0.09861500_fp_kind,1.12345200_fp_kind,41.0_fp_kind,1.189359603719730_fp_kind,&
-  42.0_fp_kind,6.2362180_fp_kind,17.987711_fp_kind,12.973127_fp_kind,3.4514260_fp_kind,0.2108990_fp_kind,0.0907800_fp_kind,1.10831000_fp_kind,11.4687200_fp_kind,66.6841530_fp_kind,0.09078000_fp_kind,1.10877000_fp_kind,42.0_fp_kind,1.199482060769910_fp_kind,&
-  43.0_fp_kind,17.840964_fp_kind,3.4282360_fp_kind,1.3730120_fp_kind,12.947364_fp_kind,6.3354690_fp_kind,1.0057290_fp_kind,41.9013830_fp_kind,119.320541_fp_kind,9.78154200_fp_kind,0.08339100_fp_kind,1.07478400_fp_kind,43.0_fp_kind,1.202197031328830_fp_kind,&
-  44.0_fp_kind,6.2716240_fp_kind,17.906739_fp_kind,14.123269_fp_kind,3.7460080_fp_kind,0.9082350_fp_kind,0.0770400_fp_kind,0.92822200_fp_kind,9.55534500_fp_kind,35.8606780_fp_kind,123.552247_fp_kind,1.04399200_fp_kind,44.0_fp_kind,1.214228346945880_fp_kind,&
-  45.0_fp_kind,6.2166480_fp_kind,17.919738_fp_kind,3.8542520_fp_kind,0.8403260_fp_kind,15.173498_fp_kind,0.0707890_fp_kind,0.85612100_fp_kind,33.8894840_fp_kind,121.686688_fp_kind,9.02951700_fp_kind,0.99545200_fp_kind,45.0_fp_kind,1.225662002307150_fp_kind,&
-  46.0_fp_kind,6.1215110_fp_kind,4.7840630_fp_kind,16.631683_fp_kind,4.3182580_fp_kind,13.246773_fp_kind,0.0625490_fp_kind,0.78403100_fp_kind,8.75139100_fp_kind,34.4899830_fp_kind,0.78403100_fp_kind,0.88309900_fp_kind,46.0_fp_kind,1.236213451657990_fp_kind,&
-  47.0_fp_kind,6.0738740_fp_kind,17.155437_fp_kind,4.1733440_fp_kind,0.8522380_fp_kind,17.988685_fp_kind,0.0553330_fp_kind,7.89651200_fp_kind,28.4437390_fp_kind,110.376108_fp_kind,0.71680900_fp_kind,0.75660300_fp_kind,47.0_fp_kind,1.256597538627620_fp_kind,&
-  48.0_fp_kind,6.0809860_fp_kind,18.019468_fp_kind,4.0181970_fp_kind,1.3035100_fp_kind,17.974669_fp_kind,0.0489900_fp_kind,7.27364600_fp_kind,29.1192830_fp_kind,95.8312080_fp_kind,0.66123100_fp_kind,0.60350400_fp_kind,48.0_fp_kind,1.278260006400250_fp_kind,&
-  49.0_fp_kind,6.1964770_fp_kind,18.816183_fp_kind,4.0504790_fp_kind,1.6389290_fp_kind,17.962912_fp_kind,0.0420720_fp_kind,6.69566500_fp_kind,31.0097910_fp_kind,103.284350_fp_kind,0.61071400_fp_kind,0.33309700_fp_kind,49.0_fp_kind,1.290470357489140_fp_kind,&
-  50.0_fp_kind,19.325171_fp_kind,6.2815710_fp_kind,4.4988660_fp_kind,1.8569340_fp_kind,17.917318_fp_kind,6.1181040_fp_kind,0.03691500_fp_kind,32.5290470_fp_kind,95.0371820_fp_kind,0.56565100_fp_kind,0.11902400_fp_kind,50.0_fp_kind,1.330549377714000_fp_kind,&
-  51.0_fp_kind,5.3949560_fp_kind,6.5495700_fp_kind,19.650681_fp_kind,1.8278200_fp_kind,17.867833_fp_kind,33.326523_fp_kind,0.03097400_fp_kind,5.56492900_fp_kind,87.1309650_fp_kind,0.52399200_fp_kind,-0.2905060_fp_kind,51.0_fp_kind,1.360402686938670_fp_kind,&
-  52.0_fp_kind,6.6603020_fp_kind,6.9407560_fp_kind,19.847015_fp_kind,1.5571750_fp_kind,17.802427_fp_kind,33.031656_fp_kind,0.02575000_fp_kind,5.06554700_fp_kind,84.1016130_fp_kind,0.48766000_fp_kind,-0.8066680_fp_kind,52.0_fp_kind,1.395171636062690_fp_kind,&
-  53.0_fp_kind,19.884502_fp_kind,6.7365930_fp_kind,8.1105160_fp_kind,1.1709530_fp_kind,17.548715_fp_kind,4.6285910_fp_kind,0.02775400_fp_kind,31.8490960_fp_kind,84.4063910_fp_kind,0.46355000_fp_kind,-0.4488110_fp_kind,53.0_fp_kind,1.434934988906490_fp_kind,&
-  54.0_fp_kind,19.978920_fp_kind,11.774945_fp_kind,9.3321820_fp_kind,1.2447490_fp_kind,17.737501_fp_kind,4.1433560_fp_kind,0.01014200_fp_kind,28.7961990_fp_kind,75.2806880_fp_kind,0.41361600_fp_kind,-6.0659020_fp_kind,54.0_fp_kind,1.461928150660960_fp_kind,&
-  55.0_fp_kind,17.418675_fp_kind,8.3144440_fp_kind,10.323193_fp_kind,1.3838340_fp_kind,19.876252_fp_kind,0.3998280_fp_kind,0.01687200_fp_kind,25.6058280_fp_kind,233.339674_fp_kind,3.82691500_fp_kind,-2.3228020_fp_kind,55.0_fp_kind,1.504734672998740_fp_kind,&
-  56.0_fp_kind,19.747344_fp_kind,17.368476_fp_kind,10.465718_fp_kind,2.5926020_fp_kind,11.003653_fp_kind,3.4818230_fp_kind,0.37122400_fp_kind,21.2266410_fp_kind,173.834271_fp_kind,0.01071900_fp_kind,-5.1834970_fp_kind,56.0_fp_kind,1.540051791581430_fp_kind,&
-  57.0_fp_kind,19.966018_fp_kind,27.329654_fp_kind,11.018425_fp_kind,3.0866960_fp_kind,17.335454_fp_kind,3.1974080_fp_kind,0.00344600_fp_kind,19.9554920_fp_kind,141.381979_fp_kind,0.34181700_fp_kind,-21.745489_fp_kind,57.0_fp_kind,1.579460053005520_fp_kind,&
-  58.0_fp_kind,17.355121_fp_kind,43.988498_fp_kind,20.546650_fp_kind,3.1306700_fp_kind,11.353665_fp_kind,0.3283690_fp_kind,0.00204700_fp_kind,3.08819600_fp_kind,134.907661_fp_kind,18.8329610_fp_kind,-38.386017_fp_kind,58.0_fp_kind,1.606421481188560_fp_kind,&
-  59.0_fp_kind,21.551311_fp_kind,17.161729_fp_kind,11.903859_fp_kind,2.6791030_fp_kind,9.5641970_fp_kind,2.9956750_fp_kind,0.31249100_fp_kind,17.7167050_fp_kind,152.192827_fp_kind,0.01046800_fp_kind,-3.8710680_fp_kind,59.0_fp_kind,1.720026152321630_fp_kind,&
-  60.0_fp_kind,17.331244_fp_kind,62.783923_fp_kind,12.160097_fp_kind,2.6634830_fp_kind,22.239951_fp_kind,0.3002690_fp_kind,0.00132000_fp_kind,17.0260010_fp_kind,148.748986_fp_kind,2.91026800_fp_kind,-57.189844_fp_kind,60.0_fp_kind,1.683652354338470_fp_kind,&
-  61.0_fp_kind,17.286388_fp_kind,51.560161_fp_kind,12.478557_fp_kind,2.6755150_fp_kind,22.960947_fp_kind,0.2866200_fp_kind,0.00155000_fp_kind,16.2237550_fp_kind,143.984513_fp_kind,2.79648000_fp_kind,-45.973681_fp_kind,61.0_fp_kind,1.724693404362830_fp_kind,&
-  62.0_fp_kind,23.700364_fp_kind,23.072215_fp_kind,12.777782_fp_kind,2.6842170_fp_kind,17.204366_fp_kind,2.6895390_fp_kind,0.00349100_fp_kind,15.4954370_fp_kind,139.862475_fp_kind,0.27453600_fp_kind,-17.452166_fp_kind,62.0_fp_kind,1.764012158926800_fp_kind,&
-  63.0_fp_kind,17.186195_fp_kind,37.156839_fp_kind,13.103387_fp_kind,2.7072460_fp_kind,24.419271_fp_kind,0.2616780_fp_kind,0.00199500_fp_kind,14.7873600_fp_kind,134.816293_fp_kind,2.58188300_fp_kind,-31.586687_fp_kind,63.0_fp_kind,1.797805735087610_fp_kind,&
-  64.0_fp_kind,24.898118_fp_kind,17.104951_fp_kind,13.222581_fp_kind,3.2661520_fp_kind,48.995214_fp_kind,2.4350280_fp_kind,0.24696100_fp_kind,13.9963250_fp_kind,110.863093_fp_kind,0.00138300_fp_kind,-43.505684_fp_kind,64.0_fp_kind,1.840118637821660_fp_kind,&
-  65.0_fp_kind,25.910013_fp_kind,32.344139_fp_kind,13.765117_fp_kind,2.7514040_fp_kind,17.064405_fp_kind,2.3739120_fp_kind,0.00203400_fp_kind,13.4819690_fp_kind,125.836511_fp_kind,0.23691600_fp_kind,-26.851970_fp_kind,65.0_fp_kind,1.871313100571290_fp_kind,&
-  66.0_fp_kind,26.671785_fp_kind,88.687577_fp_kind,14.065445_fp_kind,2.7684970_fp_kind,17.067782_fp_kind,2.2825930_fp_kind,0.00066500_fp_kind,12.9202300_fp_kind,121.937188_fp_kind,0.22553100_fp_kind,-83.279831_fp_kind,66.0_fp_kind,1.903720643077100_fp_kind,&
-  67.0_fp_kind,27.150190_fp_kind,16.999819_fp_kind,14.059334_fp_kind,3.3869790_fp_kind,46.546471_fp_kind,2.1696600_fp_kind,0.21541400_fp_kind,12.2131480_fp_kind,100.506781_fp_kind,0.00121100_fp_kind,-41.165253_fp_kind,67.0_fp_kind,1.926235156557560_fp_kind,&
-  68.0_fp_kind,28.174886_fp_kind,82.493269_fp_kind,14.624002_fp_kind,2.8027560_fp_kind,17.018515_fp_kind,2.1209950_fp_kind,0.00064000_fp_kind,11.9152560_fp_kind,114.529936_fp_kind,0.20751900_fp_kind,-77.135221_fp_kind,68.0_fp_kind,1.946913272263270_fp_kind,&
-  69.0_fp_kind,28.925894_fp_kind,76.173796_fp_kind,14.904704_fp_kind,2.8148120_fp_kind,16.998117_fp_kind,2.0462030_fp_kind,0.00065600_fp_kind,11.4653750_fp_kind,111.411979_fp_kind,0.19937600_fp_kind,-70.839813_fp_kind,69.0_fp_kind,1.963724205103120_fp_kind,&
-  70.0_fp_kind,29.676760_fp_kind,65.624068_fp_kind,15.160854_fp_kind,2.8302880_fp_kind,16.997850_fp_kind,1.9776300_fp_kind,0.00072000_fp_kind,11.0446220_fp_kind,108.139150_fp_kind,0.19211000_fp_kind,-60.313812_fp_kind,70.0_fp_kind,1.979258983014140_fp_kind,&
-  71.0_fp_kind,30.122865_fp_kind,15.099346_fp_kind,56.314899_fp_kind,3.5409800_fp_kind,16.943730_fp_kind,1.8830900_fp_kind,10.3427640_fp_kind,0.00078000_fp_kind,89.5592480_fp_kind,0.18384900_fp_kind,-51.049417_fp_kind,71.0_fp_kind,1.995446352857520_fp_kind,&
-  72.0_fp_kind,30.617033_fp_kind,15.145351_fp_kind,54.933548_fp_kind,4.0962530_fp_kind,16.896157_fp_kind,1.7956130_fp_kind,9.93446900_fp_kind,0.00073900_fp_kind,76.1897070_fp_kind,0.17591400_fp_kind,-49.719838_fp_kind,72.0_fp_kind,2.006728379573300_fp_kind,&
-  73.0_fp_kind,31.066358_fp_kind,15.341823_fp_kind,49.278296_fp_kind,4.5776650_fp_kind,16.828321_fp_kind,1.7087320_fp_kind,9.61845500_fp_kind,0.00076000_fp_kind,66.3462020_fp_kind,0.16800200_fp_kind,-44.119025_fp_kind,73.0_fp_kind,2.014810640008000_fp_kind,&
-  74.0_fp_kind,31.507901_fp_kind,15.682498_fp_kind,37.960127_fp_kind,4.8855090_fp_kind,16.792113_fp_kind,1.6294850_fp_kind,9.44644800_fp_kind,0.00089800_fp_kind,59.9806750_fp_kind,0.16079800_fp_kind,-32.864576_fp_kind,74.0_fp_kind,2.024233087057100_fp_kind,&
-  75.0_fp_kind,31.888456_fp_kind,16.117103_fp_kind,42.390296_fp_kind,5.2116690_fp_kind,16.767591_fp_kind,1.5492380_fp_kind,9.23347400_fp_kind,0.00068900_fp_kind,54.5163710_fp_kind,0.15281500_fp_kind,-37.412681_fp_kind,75.0_fp_kind,2.032203945323960_fp_kind,&
-  76.0_fp_kind,32.210298_fp_kind,16.678440_fp_kind,48.559907_fp_kind,5.4558390_fp_kind,16.735532_fp_kind,1.4735310_fp_kind,9.04969500_fp_kind,0.00051900_fp_kind,50.2102010_fp_kind,0.14577100_fp_kind,-43.677954_fp_kind,76.0_fp_kind,2.037562299152530_fp_kind,&
-  77.0_fp_kind,32.004437_fp_kind,1.9754540_fp_kind,17.070104_fp_kind,15.939454_fp_kind,5.9900030_fp_kind,1.3537670_fp_kind,81.0141720_fp_kind,0.12809300_fp_kind,7.66119600_fp_kind,26.6594030_fp_kind,4.01889300_fp_kind,77.0_fp_kind,2.070931471354530_fp_kind,&
-  78.0_fp_kind,31.273891_fp_kind,18.445441_fp_kind,17.063745_fp_kind,5.5559330_fp_kind,1.5752700_fp_kind,1.3169920_fp_kind,8.79715400_fp_kind,0.12474100_fp_kind,40.1779940_fp_kind,1.31699700_fp_kind,4.05039400_fp_kind,78.0_fp_kind,2.070307656542580_fp_kind,&
-  79.0_fp_kind,16.777389_fp_kind,19.317156_fp_kind,32.979682_fp_kind,5.5954530_fp_kind,10.576854_fp_kind,0.1227370_fp_kind,8.62157000_fp_kind,1.25690200_fp_kind,38.0088210_fp_kind,0.00060100_fp_kind,-6.2790780_fp_kind,79.0_fp_kind,2.058834893082310_fp_kind,&
-  80.0_fp_kind,16.839889_fp_kind,20.023823_fp_kind,28.428565_fp_kind,5.8815640_fp_kind,4.7147060_fp_kind,0.1159050_fp_kind,8.25692700_fp_kind,1.19525000_fp_kind,39.2472260_fp_kind,1.19525000_fp_kind,4.07647800_fp_kind,80.0_fp_kind,2.063026432193550_fp_kind,&
-  81.0_fp_kind,16.630795_fp_kind,19.386615_fp_kind,32.808570_fp_kind,1.7471910_fp_kind,6.3568620_fp_kind,0.1107040_fp_kind,7.18140100_fp_kind,1.11973000_fp_kind,90.6602620_fp_kind,26.0149780_fp_kind,4.06693900_fp_kind,81.0_fp_kind,2.055981336260000_fp_kind,&
-  82.0_fp_kind,16.419567_fp_kind,32.738592_fp_kind,6.5302470_fp_kind,2.3427420_fp_kind,19.916475_fp_kind,0.1054990_fp_kind,1.05504900_fp_kind,25.0258900_fp_kind,80.9065960_fp_kind,6.66444900_fp_kind,4.04982400_fp_kind,82.0_fp_kind,2.050009704660440_fp_kind,&
-  83.0_fp_kind,16.282274_fp_kind,32.725137_fp_kind,6.6783020_fp_kind,2.6947500_fp_kind,20.576559_fp_kind,0.1011800_fp_kind,1.00228700_fp_kind,25.7141450_fp_kind,77.0575500_fp_kind,6.29188200_fp_kind,4.04091400_fp_kind,83.0_fp_kind,2.047846539848800_fp_kind,&
-  84.0_fp_kind,16.289164_fp_kind,32.807170_fp_kind,21.095164_fp_kind,2.5059010_fp_kind,7.2545890_fp_kind,0.0981210_fp_kind,0.96626500_fp_kind,6.04662200_fp_kind,76.5980710_fp_kind,28.0961280_fp_kind,4.04655600_fp_kind,84.0_fp_kind,2.048640858343320_fp_kind,&
-  85.0_fp_kind,16.011461_fp_kind,32.615549_fp_kind,8.1138990_fp_kind,2.8840820_fp_kind,21.377867_fp_kind,0.0926390_fp_kind,0.90441600_fp_kind,26.5432560_fp_kind,68.3729610_fp_kind,5.49951200_fp_kind,3.99568400_fp_kind,85.0_fp_kind,2.043577109058100_fp_kind,&
-  86.0_fp_kind,16.070228_fp_kind,32.641105_fp_kind,21.489659_fp_kind,2.2992180_fp_kind,9.4801840_fp_kind,0.0904370_fp_kind,0.87640900_fp_kind,5.23968700_fp_kind,69.1884770_fp_kind,27.6326400_fp_kind,4.02097700_fp_kind,86.0_fp_kind,2.053343320831720_fp_kind,&
-  87.0_fp_kind,16.007386_fp_kind,32.663830_fp_kind,21.594351_fp_kind,1.5984970_fp_kind,11.121192_fp_kind,0.0870310_fp_kind,0.84018700_fp_kind,4.95446700_fp_kind,199.805805_fp_kind,26.9051060_fp_kind,4.00347200_fp_kind,87.0_fp_kind,2.056402858312870_fp_kind,&
-  88.0_fp_kind,32.563691_fp_kind,21.396671_fp_kind,11.298093_fp_kind,2.8346880_fp_kind,15.914965_fp_kind,0.8019800_fp_kind,4.59066600_fp_kind,22.7589730_fp_kind,160.404392_fp_kind,0.08354400_fp_kind,3.98177300_fp_kind,88.0_fp_kind,2.062350469636460_fp_kind,&
-  89.0_fp_kind,15.914053_fp_kind,32.535042_fp_kind,21.553976_fp_kind,11.433394_fp_kind,3.6124090_fp_kind,0.0805110_fp_kind,0.77066900_fp_kind,4.35220600_fp_kind,21.3816220_fp_kind,130.500748_fp_kind,3.93921200_fp_kind,89.0_fp_kind,2.059606329205960_fp_kind,&
-  90.0_fp_kind,15.784024_fp_kind,32.454898_fp_kind,21.849222_fp_kind,4.2390770_fp_kind,11.736191_fp_kind,0.0770670_fp_kind,0.73513700_fp_kind,4.09797600_fp_kind,109.464113_fp_kind,20.5121380_fp_kind,3.92253300_fp_kind,90.0_fp_kind,2.076093709574790_fp_kind,&
-  91.0_fp_kind,32.740208_fp_kind,21.973674_fp_kind,12.957398_fp_kind,3.6838320_fp_kind,15.744058_fp_kind,0.7095450_fp_kind,4.05088100_fp_kind,19.2315420_fp_kind,117.255006_fp_kind,0.07404000_fp_kind,3.88606600_fp_kind,91.0_fp_kind,2.084768702621660_fp_kind,&
-  92.0_fp_kind,15.679275_fp_kind,32.824305_fp_kind,13.660459_fp_kind,3.6872610_fp_kind,22.279435_fp_kind,0.0712060_fp_kind,0.68117700_fp_kind,18.2361570_fp_kind,112.500040_fp_kind,3.93032500_fp_kind,3.85444400_fp_kind,92.0_fp_kind,2.096286630784310_fp_kind/),&
-  shape(xrayFF))
+[1.00_fp_kind,0.73235400_fp_kind,0.7538960_fp_kind,0.2838190_fp_kind,0.1900030_fp_kind,0.0391390_fp_kind,&
+               11.553918_fp_kind,4.59583100_fp_kind,1.54629900_fp_kind,26.4639640_fp_kind,0.37752300_fp_kind,&
+              0.00048700_fp_kind,2.0_fp_kind,8.769017454422158E-3_fp_kind,&
+  2.00_fp_kind,0.73235400_fp_kind,0.7538960_fp_kind,0.2838190_fp_kind,0.1900030_fp_kind,0.0391390_fp_kind,&
+              11.553918_fp_kind,4.59583100_fp_kind,1.54629900_fp_kind,26.4639640_fp_kind,0.37752300_fp_kind,&
+              0.00048700_fp_kind,2.0_fp_kind,8.769017454422158E-3_fp_kind,&
+  3.00_fp_kind,0.97463700_fp_kind,0.1584720_fp_kind,0.8118550_fp_kind,0.2624160_fp_kind,0.7901080_fp_kind,&
+              4.3349460_fp_kind,0.34245100_fp_kind,97.1029690_fp_kind,201.363824_fp_kind,1.40923400_fp_kind,&
+              0.00254200_fp_kind,3.0_fp_kind,3.053829815542358E-2_fp_kind,&
+  4.00_fp_kind,1.53371200_fp_kind,0.6382830_fp_kind,0.6010520_fp_kind,0.1061390_fp_kind,1.1184140_fp_kind,&
+              42.662078_fp_kind,0.59542000_fp_kind,99.1065010_fp_kind,0.15134000_fp_kind,1.84309300_fp_kind,&
+              0.00251100_fp_kind,4.0_fp_kind,2.673011412693727E-2_fp_kind,&
+  5.00_fp_kind,2.08518500_fp_kind,1.0645800_fp_kind,1.0627880_fp_kind,0.1405150_fp_kind,0.6417840_fp_kind,&
+              23.494069_fp_kind,1.13789400_fp_kind,61.2389750_fp_kind,0.11488600_fp_kind,0.39903600_fp_kind,&
+               0.00382300_fp_kind,5.0_fp_kind,4.375691177284862E-2_fp_kind,&
+  6.00_fp_kind,2.65750600_fp_kind,1.0780790_fp_kind,1.4909090_fp_kind,-4.241070_fp_kind,0.7137910_fp_kind,&
+              14.780758_fp_kind,0.77677500_fp_kind,42.0868430_fp_kind,-0.0002940_fp_kind,0.23953500_fp_kind,&
+              4.29798300_fp_kind, 6.0_fp_kind, 7.163539380752063E-2_fp_kind,&
+  7.0_fp_kind,1.18937800e+01_fp_kind,3.27747900e+00_fp_kind,1.85809200e+00_fp_kind,8.58927000e-01_fp_kind,9.12985000e-01_fp_kind,&
+               1.58000000e-04_fp_kind,1.02327230e+01_fp_kind,3.03446900e+01_fp_kind,6.56065000e-01_fp_kind,2.17287000e-01_fp_kind,&
+               -1.18049020e+01_fp_kind,7.00000000e+00_fp_kind,1.12381925e-01_fp_kind,&
+   8.0_fp_kind,2.96042700e+00_fp_kind,2.50881800e+00_fp_kind,6.37853000e-01_fp_kind,7.22838000e-01_fp_kind,1.14275600e+00_fp_kind,&
+               1.41822590e+01_fp_kind,5.93685800e+00_fp_kind,1.12726000e-01_fp_kind,3.49584810e+01_fp_kind,3.90240000e-01_fp_kind,&
+               2.70140000e-02_fp_kind,8.00000000e+00_fp_kind,1.71987724e-01_fp_kind,&
+   9.0_fp_kind,3.51195400e+00_fp_kind,2.77224400e+00_fp_kind,6.78385000e-01_fp_kind,9.15159000e-01_fp_kind,1.08926100e+00_fp_kind,&
+               1.06878590e+01_fp_kind,4.38046600e+00_fp_kind,9.39820000e-02_fp_kind,2.72552030e+01_fp_kind,3.13066000e-01_fp_kind,&
+               3.25570000e-02_fp_kind,9.00000000e+00_fp_kind,2.23745514e-01_fp_kind,&
+  10.00_fp_kind,4.18374900e+00_fp_kind,2.90572600e+00_fp_kind,5.20513000e-01_fp_kind,1.13564100e+00_fp_kind,1.22806500e+00_fp_kind,&
+               8.17545700e+00_fp_kind,3.25253600e+00_fp_kind,6.32950000e-02_fp_kind,2.18139090e+01_fp_kind,2.24952000e-01_fp_kind,&
+               2.55760000e-02_fp_kind,1.00000000e+01_fp_kind,2.87627317e-01_fp_kind,&
+  11.00_fp_kind,4.91012700e+00_fp_kind,3.08178300e+00_fp_kind,1.26206700e+00_fp_kind,1.09893800e+00_fp_kind,5.60991000e-01_fp_kind,&
+               3.28143400e+00_fp_kind,9.11917800e+00_fp_kind,1.02763000e-01_fp_kind,1.32013942e+02_fp_kind,4.05878000e-01_fp_kind,&
+               7.97120000e-02_fp_kind,1.10000000e+01_fp_kind,3.66747421e-01_fp_kind,&
+  12.00_fp_kind,4.70897100e+00_fp_kind,1.19481400e+00_fp_kind,1.55815700e+00_fp_kind,1.17041300e+00_fp_kind,3.23940300e+00_fp_kind,&
+               4.87520700e+00_fp_kind,1.08506079e+02_fp_kind,1.11516000e-01_fp_kind,4.82924070e+01_fp_kind,1.92817100e+00_fp_kind,&
+               1.26842000e-01_fp_kind,1.20000000e+01_fp_kind,4.70985328e-01_fp_kind,&
+  13.00_fp_kind,4.73079600e+00_fp_kind,2.31395100e+00_fp_kind,1.54198000e+00_fp_kind,1.11756400e+00_fp_kind,3.15475400e+00_fp_kind,&
+               3.62893100e+00_fp_kind,4.30511660e+01_fp_kind,9.59600000e-02_fp_kind,1.08932389e+02_fp_kind,1.55591800e+00_fp_kind,&
+               1.39509000e-01_fp_kind,1.30000000e+01_fp_kind,5.28931702e-01_fp_kind,&
+  14.00_fp_kind,5.27532900e+00_fp_kind,3.19103800e+00_fp_kind,1.51151400e+00_fp_kind,1.35684900e+00_fp_kind,2.51911400e+00_fp_kind,&
+               2.63133800e+00_fp_kind,3.37307280e+01_fp_kind,8.11190000e-02_fp_kind,8.62886400e+01_fp_kind,1.17008700e+00_fp_kind,&
+               1.45073000e-01_fp_kind,1.40000000e+01_fp_kind,5.92196011e-01_fp_kind,&
+  15.00_fp_kind,1.95054100e+00_fp_kind,4.14693000e+00_fp_kind,1.49456000e+00_fp_kind,1.52204200e+00_fp_kind,5.72971100e+00_fp_kind,&
+               9.08139000e-01_fp_kind,2.70449530e+01_fp_kind,7.12800000e-02_fp_kind,6.75201900e+01_fp_kind,1.98117300e+00_fp_kind,&
+               1.55233000e-01_fp_kind,1.50000000e+01_fp_kind,6.60050129e-01_fp_kind,&
+  16.00_fp_kind,6.37215700e+00_fp_kind,5.15456800e+00_fp_kind,1.47373200e+00_fp_kind,1.63507300e+00_fp_kind,1.20937200e+00_fp_kind,&
+               1.51434700e+00_fp_kind,2.20925280e+01_fp_kind,6.13730000e-02_fp_kind,5.54451760e+01_fp_kind,6.46925000e-01_fp_kind,&
+               1.54722000e-01_fp_kind,1.60000000e+01_fp_kind,7.26458198e-01_fp_kind,&
+  17.00_fp_kind,1.44607100e+00_fp_kind,6.87060900e+00_fp_kind,6.15180100e+00_fp_kind,1.75034700e+00_fp_kind,6.34168000e-01_fp_kind,&
+               5.23570000e-02_fp_kind,1.19316500e+00_fp_kind,1.83434160e+01_fp_kind,4.63983940e+01_fp_kind,4.01005000e-01_fp_kind,&
+               1.46773000e-01_fp_kind,1.70000000e+01_fp_kind,7.92912007e-01_fp_kind,&
+  18.00_fp_kind,7.18800400e+00_fp_kind,6.63845400e+00_fp_kind,4.54180000e-01_fp_kind,1.92959300e+00_fp_kind,1.52365400e+00_fp_kind,&
+               9.56221000e-01_fp_kind,1.53398770e+01_fp_kind,1.53398620e+01_fp_kind,3.90438240e+01_fp_kind,6.24090000e-02_fp_kind,&
+               2.65954000e-01_fp_kind,1.80000000e+01_fp_kind,8.74904036e-01_fp_kind,&
+  19.00_fp_kind,8.16399100e+00_fp_kind,7.14694500e+00_fp_kind,1.07014000e+00_fp_kind,8.77316000e-01_fp_kind,1.48643400e+00_fp_kind,&
+               1.28163230e+01_fp_kind,8.08945000e-01_fp_kind,2.10327009e+02_fp_kind,3.95976510e+01_fp_kind,5.28210000e-02_fp_kind,&
+               2.53614000e-01_fp_kind,1.90000000e+01_fp_kind,9.24257331e-01_fp_kind,&
+  20.00_fp_kind,8.59365500e+00_fp_kind,1.47732400e+00_fp_kind,1.43625400e+00_fp_kind,1.18283900e+00_fp_kind,7.11325800e+00_fp_kind,&
+               1.04606440e+01_fp_kind,4.18910000e-02_fp_kind,8.13903820e+01_fp_kind,1.69847839e+02_fp_kind,6.88098000e-01_fp_kind,&
+               1.96255000e-01_fp_kind,2.00000000e+01_fp_kind,9.67132503e-01_fp_kind,&
+  21.00_fp_kind,1.47656600e+00_fp_kind,1.48727800e+00_fp_kind,1.60018700e+00_fp_kind,9.17746300e+00_fp_kind,7.09975000e+00_fp_kind,&
+               5.31310220e+01_fp_kind,3.53250000e-02_fp_kind,1.37319495e+02_fp_kind,9.09803100e+00_fp_kind,6.02102000e-01_fp_kind,&
+               1.57765000e-01_fp_kind,2.10000000e+01_fp_kind,1.01297507e+00_fp_kind,&
+  22.00_fp_kind,9.81852400e+00_fp_kind,1.52264600e+00_fp_kind,1.70310100e+00_fp_kind,1.76877400e+00_fp_kind,7.08255500e+00_fp_kind,&
+               8.00187900e+00_fp_kind,2.97630000e-02_fp_kind,3.98854230e+01_fp_kind,1.20158000e+02_fp_kind,5.32405000e-01_fp_kind,&
+               1.02473000e-01_fp_kind,2.20000000e+01_fp_kind,1.05087643e+00_fp_kind,&
+  23.00_fp_kind,1.04735750e+01_fp_kind,1.54788100e+00_fp_kind,1.98638100e+00_fp_kind,1.86561600e+00_fp_kind,7.05625000e+00_fp_kind,&
+               7.08194000e+00_fp_kind,2.60400000e-02_fp_kind,3.19096720e+01_fp_kind,1.08022844e+02_fp_kind,4.74882000e-01_fp_kind,&
+               6.77440000e-02_fp_kind,2.30000000e+01_fp_kind,1.08670420e+00_fp_kind,&
+  24.00_fp_kind,1.10070690e+01_fp_kind,1.55547700e+00_fp_kind,2.98529300e+00_fp_kind,1.34785500e+00_fp_kind,7.03477900e+00_fp_kind,&
+               6.36628100e+00_fp_kind,2.39870000e-02_fp_kind,2.32448380e+01_fp_kind,1.05774500e+02_fp_kind,4.29369000e-01_fp_kind,&
+               6.55100000e-02_fp_kind,2.40000000e+01_fp_kind,1.11564928e+00_fp_kind,&
+  25.00_fp_kind,1.17095420e+01_fp_kind,1.73341400e+00_fp_kind,2.67314100e+00_fp_kind,2.02336800e+00_fp_kind,7.00318000e+00_fp_kind,&
+               5.59712000e+00_fp_kind,1.78000000e-02_fp_kind,2.17884190e+01_fp_kind,8.95179150e+01_fp_kind,3.83054000e-01_fp_kind,&
+               -1.47293000e-01_fp_kind,2.50000000e+01_fp_kind,1.13790440e+00_fp_kind,&
+  26.00_fp_kind,1.23110980e+01_fp_kind,1.87662300e+00_fp_kind,3.06617700e+00_fp_kind,2.07045100e+00_fp_kind,6.97518500e+00_fp_kind,&
+               5.00941500e+00_fp_kind,1.44610000e-02_fp_kind,1.87430410e+01_fp_kind,8.27678740e+01_fp_kind,3.46506000e-01_fp_kind,&
+               -3.04931000e-01_fp_kind,2.60000000e+01_fp_kind,1.15778197e+00_fp_kind,&
+  27.00_fp_kind,1.29145100e+01_fp_kind,2.48190800e+00_fp_kind,3.46689400e+00_fp_kind,2.10635100e+00_fp_kind,6.96089200e+00_fp_kind,&
+               4.50713800e+00_fp_kind,9.12600000e-03_fp_kind,1.64381300e+01_fp_kind,7.69873170e+01_fp_kind,3.14418000e-01_fp_kind,&
+               -9.36572000e-01_fp_kind,2.70000000e+01_fp_kind,1.17078217e+00_fp_kind,&
+  28.00_fp_kind,1.35218650e+01_fp_kind,6.94728500e+00_fp_kind,3.86602800e+00_fp_kind,2.13590000e+00_fp_kind,4.28473100e+00_fp_kind,&
+               4.07727700e+00_fp_kind,2.86763000e-01_fp_kind,1.46226340e+01_fp_kind,7.19660780e+01_fp_kind,4.43700000e-03_fp_kind,&
+               -2.76269700e+00_fp_kind,2.80000000e+01_fp_kind,1.18146331e+00_fp_kind,&
+  29.00_fp_kind,1.40141920e+01_fp_kind,4.78457700e+00_fp_kind,5.05680600e+00_fp_kind,1.45797100e+00_fp_kind,6.93299600e+00_fp_kind,&
+               3.73828000e+00_fp_kind,3.74400000e-03_fp_kind,1.30349820e+01_fp_kind,7.25547930e+01_fp_kind,2.65666000e-01_fp_kind,&
+               -3.25447700e+00_fp_kind,2.90000000e+01_fp_kind,1.18912072e+00_fp_kind,&
+  30.00_fp_kind,1.47410020e+01_fp_kind,6.90774800e+00_fp_kind,4.64233700e+00_fp_kind,2.19176600e+00_fp_kind,3.84240420e+01_fp_kind,&
+               3.38823200e+00_fp_kind,2.43315000e-01_fp_kind,1.19036890e+01_fp_kind,6.33121300e+01_fp_kind,3.97000000e-04_fp_kind,&
+               -3.69158280e+01_fp_kind,3.00000000e+01_fp_kind,1.19526702e+00_fp_kind,&
+  31.00_fp_kind,1.57589460e+01_fp_kind,6.84112300e+00_fp_kind,4.12101600e+00_fp_kind,2.71468100e+00_fp_kind,2.39524600e+00_fp_kind,&
+               3.12175400e+00_fp_kind,2.26057000e-01_fp_kind,1.24821960e+01_fp_kind,6.62036220e+01_fp_kind,7.23800000e-03_fp_kind,&
+               -8.47395000e-01_fp_kind,3.10000000e+01_fp_kind,1.20051278e+00_fp_kind,&
+  32.00_fp_kind,1.65406140e+01_fp_kind,1.56790000e+00_fp_kind,3.72782900e+00_fp_kind,3.34509800e+00_fp_kind,6.78507900e+00_fp_kind,&
+               2.86661800e+00_fp_kind,1.21980000e-02_fp_kind,1.34321630e+01_fp_kind,5.88660460e+01_fp_kind,2.10974000e-01_fp_kind,&
+               1.87260000e-02_fp_kind,3.20000000e+01_fp_kind,1.20065585e+00_fp_kind,&
+  33.00_fp_kind,1.70256430e+01_fp_kind,4.50344100e+00_fp_kind,3.71590400e+00_fp_kind,3.93720000e+00_fp_kind,6.79017500e+00_fp_kind,&
+               2.59773900e+00_fp_kind,3.01200000e-03_fp_kind,1.42721190e+01_fp_kind,5.04379970e+01_fp_kind,1.93015000e-01_fp_kind,&
+               -2.98411700e+00_fp_kind,3.30000000e+01_fp_kind,1.19831414e+00_fp_kind,&
+  34.00_fp_kind,1.73540710e+01_fp_kind,4.65324800e+00_fp_kind,4.25948900e+00_fp_kind,4.13645500e+00_fp_kind,6.74916300e+00_fp_kind,&
+               2.34978700e+00_fp_kind,2.55000000e-03_fp_kind,1.55794600e+01_fp_kind,4.51812010e+01_fp_kind,1.77432000e-01_fp_kind,&
+               -3.16098200e+00_fp_kind,3.40000000e+01_fp_kind,1.19852893e+00_fp_kind,&
+  35.00_fp_kind,1.75505700e+01_fp_kind,5.41188200e+00_fp_kind,3.93718000e+00_fp_kind,3.88064500e+00_fp_kind,6.70779300e+00_fp_kind,&
+               2.11922600e+00_fp_kind,1.65571850e+01_fp_kind,2.48100000e-03_fp_kind,4.21640090e+01_fp_kind,1.62121000e-01_fp_kind,&
+               -2.49208800e+00_fp_kind,3.50000000e+01_fp_kind,1.19916154e+00_fp_kind,&
+  36.00_fp_kind,1.76552790e+01_fp_kind,6.84810500e+00_fp_kind,4.17100400e+00_fp_kind,3.44676000e+00_fp_kind,6.68520000e+00_fp_kind,&
+               1.90823100e+00_fp_kind,1.66062350e+01_fp_kind,1.59800000e-03_fp_kind,3.99174710e+01_fp_kind,1.46896000e-01_fp_kind,&
+               -2.81059200e+00_fp_kind,3.60000000e+01_fp_kind,1.19968779e+00_fp_kind,&
+  37.00_fp_kind,8.12313400e+00_fp_kind,2.13804200e+00_fp_kind,6.76170200e+00_fp_kind,1.15605100e+00_fp_kind,1.76795470e+01_fp_kind,&
+               1.51423850e+01_fp_kind,3.35426660e+01_fp_kind,1.29372000e-01_fp_kind,2.24132506e+02_fp_kind,1.71336800e+00_fp_kind,&
+               1.13954800e+00_fp_kind,3.70000000e+01_fp_kind,1.21057522e+00_fp_kind,&
+  38.00_fp_kind,1.77302190e+01_fp_kind,9.79586700e+00_fp_kind,6.09976300e+00_fp_kind,2.62002500e+00_fp_kind,6.00053000e-01_fp_kind,&
+               1.56306000e+00_fp_kind,1.43108680e+01_fp_kind,1.20574000e-01_fp_kind,1.35771318e+02_fp_kind,1.20574000e-01_fp_kind,&
+               1.14025100e+00_fp_kind,3.80000000e+01_fp_kind,1.20174901e+00_fp_kind,&
+  39.00_fp_kind,1.77920400e+01_fp_kind,1.02532520e+01_fp_kind,5.71494900e+00_fp_kind,3.17051600e+00_fp_kind,9.18251000e-01_fp_kind,&
+               1.42969100e+00_fp_kind,1.31328160e+01_fp_kind,1.12173000e-01_fp_kind,1.08197029e+02_fp_kind,1.12173000e-01_fp_kind,&
+               1.31787000e+00_fp_kind,3.90000000e+01_fp_kind,1.37502186e+00_fp_kind,&
+  40.00_fp_kind,1.78597710e+01_fp_kind,1.09110380e+01_fp_kind,5.82111500e+00_fp_kind,3.51251300e+00_fp_kind,7.46965000e-01_fp_kind,&
+               1.31069200e+00_fp_kind,1.23192850e+01_fp_kind,1.04353000e-01_fp_kind,9.17775440e+01_fp_kind,1.04353000e-01_fp_kind,&
+               1.12485900e+00_fp_kind,4.00000000e+01_fp_kind,1.18844292e+00_fp_kind,&
+  41.00_fp_kind,1.79583980e+01_fp_kind,1.20630540e+01_fp_kind,5.00701500e+00_fp_kind,3.28766700e+00_fp_kind,1.53101900e+00_fp_kind,&
+               1.21159000e+00_fp_kind,1.22466870e+01_fp_kind,9.86150000e-02_fp_kind,7.50119440e+01_fp_kind,9.86150000e-02_fp_kind,&
+               1.12345200e+00_fp_kind,4.10000000e+01_fp_kind,1.18935960e+00_fp_kind,&
+  42.00_fp_kind,6.23621800e+00_fp_kind,1.79877110e+01_fp_kind,1.29731270e+01_fp_kind,3.45142600e+00_fp_kind,2.10899000e-01_fp_kind,&
+               9.07800000e-02_fp_kind,1.10831000e+00_fp_kind,1.14687200e+01_fp_kind,6.66841530e+01_fp_kind,9.07800000e-02_fp_kind,&
+               1.10877000e+00_fp_kind,4.20000000e+01_fp_kind,1.19948206e+00_fp_kind,&
+  43.00_fp_kind,1.78409640e+01_fp_kind,3.42823600e+00_fp_kind,1.37301200e+00_fp_kind,1.29473640e+01_fp_kind,6.33546900e+00_fp_kind,&
+               1.00572900e+00_fp_kind,4.19013830e+01_fp_kind,1.19320541e+02_fp_kind,9.78154200e+00_fp_kind,8.33910000e-02_fp_kind,&
+               1.07478400e+00_fp_kind,4.30000000e+01_fp_kind,1.20219703e+00_fp_kind,&
+  44.00_fp_kind,6.27162400e+00_fp_kind,1.79067390e+01_fp_kind,1.41232690e+01_fp_kind,3.74600800e+00_fp_kind,9.08235000e-01_fp_kind,&
+               7.70400000e-02_fp_kind,9.28222000e-01_fp_kind,9.55534500e+00_fp_kind,3.58606780e+01_fp_kind,1.23552247e+02_fp_kind,&
+               1.04399200e+00_fp_kind,4.40000000e+01_fp_kind,1.21422835e+00_fp_kind,&
+  45.00_fp_kind,6.21664800e+00_fp_kind,1.79197380e+01_fp_kind,3.85425200e+00_fp_kind,8.40326000e-01_fp_kind,1.51734980e+01_fp_kind,&
+               7.07890000e-02_fp_kind,8.56121000e-01_fp_kind,3.38894840e+01_fp_kind,1.21686688e+02_fp_kind,9.02951700e+00_fp_kind,&
+               9.95452000e-01_fp_kind,4.50000000e+01_fp_kind,1.22566200e+00_fp_kind,&
+  46.00_fp_kind,6.12151100e+00_fp_kind,4.78406300e+00_fp_kind,1.66316830e+01_fp_kind,4.31825800e+00_fp_kind,1.32467730e+01_fp_kind,&
+               6.25490000e-02_fp_kind,7.84031000e-01_fp_kind,8.75139100e+00_fp_kind,3.44899830e+01_fp_kind,7.84031000e-01_fp_kind,&
+               8.83099000e-01_fp_kind,4.60000000e+01_fp_kind,1.23621345e+00_fp_kind,&
+  47.00_fp_kind,6.07387400e+00_fp_kind,1.71554370e+01_fp_kind,4.17334400e+00_fp_kind,8.52238000e-01_fp_kind,1.79886850e+01_fp_kind,&
+               5.53330000e-02_fp_kind,7.89651200e+00_fp_kind,2.84437390e+01_fp_kind,1.10376108e+02_fp_kind,7.16809000e-01_fp_kind,&
+               7.56603000e-01_fp_kind,4.70000000e+01_fp_kind,1.25659754e+00_fp_kind,&
+  48.00_fp_kind,6.08098600e+00_fp_kind,1.80194680e+01_fp_kind,4.01819700e+00_fp_kind,1.30351000e+00_fp_kind,1.79746690e+01_fp_kind,&
+               4.89900000e-02_fp_kind,7.27364600e+00_fp_kind,2.91192830e+01_fp_kind,9.58312080e+01_fp_kind,6.61231000e-01_fp_kind,&
+               6.03504000e-01_fp_kind,4.80000000e+01_fp_kind,1.27826001e+00_fp_kind,&
+  49.00_fp_kind,6.19647700e+00_fp_kind,1.88161830e+01_fp_kind,4.05047900e+00_fp_kind,1.63892900e+00_fp_kind,1.79629120e+01_fp_kind,&
+               4.20720000e-02_fp_kind,6.69566500e+00_fp_kind,3.10097910e+01_fp_kind,1.03284350e+02_fp_kind,6.10714000e-01_fp_kind,&
+               3.33097000e-01_fp_kind,4.90000000e+01_fp_kind,1.29047036e+00_fp_kind,&
+  50.00_fp_kind,1.93251710e+01_fp_kind,6.28157100e+00_fp_kind,4.49886600e+00_fp_kind,1.85693400e+00_fp_kind,1.79173180e+01_fp_kind,&
+               6.11810400e+00_fp_kind,3.69150000e-02_fp_kind,3.25290470e+01_fp_kind,9.50371820e+01_fp_kind,5.65651000e-01_fp_kind,&
+               1.19024000e-01_fp_kind,5.00000000e+01_fp_kind,1.33054938e+00_fp_kind,&
+  51.00_fp_kind,5.39495600e+00_fp_kind,6.54957000e+00_fp_kind,1.96506810e+01_fp_kind,1.82782000e+00_fp_kind,1.78678330e+01_fp_kind,&
+               3.33265230e+01_fp_kind,3.09740000e-02_fp_kind,5.56492900e+00_fp_kind,8.71309650e+01_fp_kind,5.23992000e-01_fp_kind,&
+               -2.90506000e-01_fp_kind,5.10000000e+01_fp_kind,1.36040269e+00_fp_kind,&
+  52.00_fp_kind,6.66030200e+00_fp_kind,6.94075600e+00_fp_kind,1.98470150e+01_fp_kind,1.55717500e+00_fp_kind,1.78024270e+01_fp_kind,&
+               3.30316560e+01_fp_kind,2.57500000e-02_fp_kind,5.06554700e+00_fp_kind,8.41016130e+01_fp_kind,4.87660000e-01_fp_kind,&
+               -8.06668000e-01_fp_kind,5.20000000e+01_fp_kind,1.39517164e+00_fp_kind,&
+  53.00_fp_kind,1.98845020e+01_fp_kind,6.73659300e+00_fp_kind,8.11051600e+00_fp_kind,1.17095300e+00_fp_kind,1.75487150e+01_fp_kind,&
+               4.62859100e+00_fp_kind,2.77540000e-02_fp_kind,3.18490960e+01_fp_kind,8.44063910e+01_fp_kind,4.63550000e-01_fp_kind,&
+               -4.48811000e-01_fp_kind,5.30000000e+01_fp_kind,1.43493499e+00_fp_kind,&
+  54.00_fp_kind,1.99789200e+01_fp_kind,1.17749450e+01_fp_kind,9.33218200e+00_fp_kind,1.24474900e+00_fp_kind,1.77375010e+01_fp_kind,&
+               4.14335600e+00_fp_kind,1.01420000e-02_fp_kind,2.87961990e+01_fp_kind,7.52806880e+01_fp_kind,4.13616000e-01_fp_kind,&
+               -6.06590200e+00_fp_kind,5.40000000e+01_fp_kind,1.46192815e+00_fp_kind,&
+  55.00_fp_kind,1.74186750e+01_fp_kind,8.31444400e+00_fp_kind,1.03231930e+01_fp_kind,1.38383400e+00_fp_kind,1.98762520e+01_fp_kind,&
+               3.99828000e-01_fp_kind,1.68720000e-02_fp_kind,2.56058280e+01_fp_kind,2.33339674e+02_fp_kind,3.82691500e+00_fp_kind,&
+               -2.32280200e+00_fp_kind,5.50000000e+01_fp_kind,1.50473467e+00_fp_kind,&
+  56.00_fp_kind,1.97473440e+01_fp_kind,1.73684760e+01_fp_kind,1.04657180e+01_fp_kind,2.59260200e+00_fp_kind,1.10036530e+01_fp_kind,&
+               3.48182300e+00_fp_kind,3.71224000e-01_fp_kind,2.12266410e+01_fp_kind,1.73834271e+02_fp_kind,1.07190000e-02_fp_kind,&
+               -5.18349700e+00_fp_kind,5.60000000e+01_fp_kind,1.54005179e+00_fp_kind,&
+  57.00_fp_kind,1.99660180e+01_fp_kind,2.73296540e+01_fp_kind,1.10184250e+01_fp_kind,3.08669600e+00_fp_kind,1.73354540e+01_fp_kind,&
+               3.19740800e+00_fp_kind,3.44600000e-03_fp_kind,1.99554920e+01_fp_kind,1.41381979e+02_fp_kind,3.41817000e-01_fp_kind,&
+               -2.17454890e+01_fp_kind,5.70000000e+01_fp_kind,1.57946005e+00_fp_kind,&
+  58.00_fp_kind,1.73551210e+01_fp_kind,4.39884980e+01_fp_kind,2.05466500e+01_fp_kind,3.13067000e+00_fp_kind,1.13536650e+01_fp_kind,&
+               3.28369000e-01_fp_kind,2.04700000e-03_fp_kind,3.08819600e+00_fp_kind,1.34907661e+02_fp_kind,1.88329610e+01_fp_kind,&
+               -3.83860170e+01_fp_kind,5.80000000e+01_fp_kind,1.60642148e+00_fp_kind,&
+  59.00_fp_kind,2.15513110e+01_fp_kind,1.71617290e+01_fp_kind,1.19038590e+01_fp_kind,2.67910300e+00_fp_kind,9.56419700e+00_fp_kind,&
+               2.99567500e+00_fp_kind,3.12491000e-01_fp_kind,1.77167050e+01_fp_kind,1.52192827e+02_fp_kind,1.04680000e-02_fp_kind,&
+               -3.87106800e+00_fp_kind,5.90000000e+01_fp_kind,1.72002615e+00_fp_kind,&
+  60.00_fp_kind,1.73312440e+01_fp_kind,6.27839230e+01_fp_kind,1.21600970e+01_fp_kind,2.66348300e+00_fp_kind,2.22399510e+01_fp_kind,&
+               3.00269000e-01_fp_kind,1.32000000e-03_fp_kind,1.70260010e+01_fp_kind,1.48748986e+02_fp_kind,2.91026800e+00_fp_kind,&
+               -5.71898440e+01_fp_kind,6.00000000e+01_fp_kind,1.68365235e+00_fp_kind,&
+  61.00_fp_kind,1.72863880e+01_fp_kind,5.15601610e+01_fp_kind,1.24785570e+01_fp_kind,2.67551500e+00_fp_kind,2.29609470e+01_fp_kind,&
+               2.86620000e-01_fp_kind,1.55000000e-03_fp_kind,1.62237550e+01_fp_kind,1.43984513e+02_fp_kind,2.79648000e+00_fp_kind,&
+               -4.59736810e+01_fp_kind,6.10000000e+01_fp_kind,1.72469340e+00_fp_kind,&
+  62.00_fp_kind,2.37003640e+01_fp_kind,2.30722150e+01_fp_kind,1.27777820e+01_fp_kind,2.68421700e+00_fp_kind,1.72043660e+01_fp_kind,&
+               2.68953900e+00_fp_kind,3.49100000e-03_fp_kind,1.54954370e+01_fp_kind,1.39862475e+02_fp_kind,2.74536000e-01_fp_kind,&
+               -1.74521660e+01_fp_kind,6.20000000e+01_fp_kind,1.76401216e+00_fp_kind,&
+  63.00_fp_kind,1.71861950e+01_fp_kind,3.71568390e+01_fp_kind,1.31033870e+01_fp_kind,2.70724600e+00_fp_kind,2.44192710e+01_fp_kind,&
+               2.61678000e-01_fp_kind,1.99500000e-03_fp_kind,1.47873600e+01_fp_kind,1.34816293e+02_fp_kind,2.58188300e+00_fp_kind,&
+               -3.15866870e+01_fp_kind,6.30000000e+01_fp_kind,1.79780574e+00_fp_kind,&
+  64.00_fp_kind,2.48981180e+01_fp_kind,1.71049510e+01_fp_kind,1.32225810e+01_fp_kind,3.26615200e+00_fp_kind,4.89952140e+01_fp_kind,&
+               2.43502800e+00_fp_kind,2.46961000e-01_fp_kind,1.39963250e+01_fp_kind,1.10863093e+02_fp_kind,1.38300000e-03_fp_kind,&
+               -4.35056840e+01_fp_kind,6.40000000e+01_fp_kind,1.84011864e+00_fp_kind,&
+  65.00_fp_kind,2.59100130e+01_fp_kind,3.23441390e+01_fp_kind,1.37651170e+01_fp_kind,2.75140400e+00_fp_kind,1.70644050e+01_fp_kind,&
+               2.37391200e+00_fp_kind,2.03400000e-03_fp_kind,1.34819690e+01_fp_kind,1.25836511e+02_fp_kind,2.36916000e-01_fp_kind,&
+               -2.68519700e+01_fp_kind,6.50000000e+01_fp_kind,1.87131310e+00_fp_kind,&
+  66.00_fp_kind,2.66717850e+01_fp_kind,8.86875770e+01_fp_kind,1.40654450e+01_fp_kind,2.76849700e+00_fp_kind,1.70677820e+01_fp_kind,&
+               2.28259300e+00_fp_kind,6.65000000e-04_fp_kind,1.29202300e+01_fp_kind,1.21937188e+02_fp_kind,2.25531000e-01_fp_kind,&
+               -8.32798310e+01_fp_kind,6.60000000e+01_fp_kind,1.90372064e+00_fp_kind,&
+  67.00_fp_kind,2.71501900e+01_fp_kind,1.69998190e+01_fp_kind,1.40593340e+01_fp_kind,3.38697900e+00_fp_kind,4.65464710e+01_fp_kind,&
+               2.16966000e+00_fp_kind,2.15414000e-01_fp_kind,1.22131480e+01_fp_kind,1.00506781e+02_fp_kind,1.21100000e-03_fp_kind,&
+               -4.11652530e+01_fp_kind,6.70000000e+01_fp_kind,1.92623516e+00_fp_kind,&
+  68.00_fp_kind,2.81748860e+01_fp_kind,8.24932690e+01_fp_kind,1.46240020e+01_fp_kind,2.80275600e+00_fp_kind,1.70185150e+01_fp_kind,&
+               2.12099500e+00_fp_kind,6.40000000e-04_fp_kind,1.19152560e+01_fp_kind,1.14529936e+02_fp_kind,2.07519000e-01_fp_kind,&
+               -7.71352210e+01_fp_kind,6.80000000e+01_fp_kind,1.94691327e+00_fp_kind,&
+  69.00_fp_kind,2.89258940e+01_fp_kind,7.61737960e+01_fp_kind,1.49047040e+01_fp_kind,2.81481200e+00_fp_kind,1.69981170e+01_fp_kind,&
+               2.04620300e+00_fp_kind,6.56000000e-04_fp_kind,1.14653750e+01_fp_kind,1.11411979e+02_fp_kind,1.99376000e-01_fp_kind,&
+               -7.08398130e+01_fp_kind,6.90000000e+01_fp_kind,1.96372421e+00_fp_kind,&
+  70.00_fp_kind,2.96767600e+01_fp_kind,6.56240680e+01_fp_kind,1.51608540e+01_fp_kind,2.83028800e+00_fp_kind,1.69978500e+01_fp_kind,&
+               1.97763000e+00_fp_kind,7.20000000e-04_fp_kind,1.10446220e+01_fp_kind,1.08139150e+02_fp_kind,1.92110000e-01_fp_kind,&
+               -6.03138120e+01_fp_kind,7.00000000e+01_fp_kind,1.97925898e+00_fp_kind,&
+  71.00_fp_kind,3.01228650e+01_fp_kind,1.50993460e+01_fp_kind,5.63148990e+01_fp_kind,3.54098000e+00_fp_kind,1.69437300e+01_fp_kind,&
+               1.88309000e+00_fp_kind,1.03427640e+01_fp_kind,7.80000000e-04_fp_kind,8.95592480e+01_fp_kind,1.83849000e-01_fp_kind,&
+               -5.10494170e+01_fp_kind,7.10000000e+01_fp_kind,1.99544635e+00_fp_kind,&
+  72.00_fp_kind,3.06170330e+01_fp_kind,1.51453510e+01_fp_kind,5.49335480e+01_fp_kind,4.09625300e+00_fp_kind,1.68961570e+01_fp_kind,&
+               1.79561300e+00_fp_kind,9.93446900e+00_fp_kind,7.39000000e-04_fp_kind,7.61897070e+01_fp_kind,1.75914000e-01_fp_kind,&
+               -4.97198380e+01_fp_kind,7.20000000e+01_fp_kind,2.00672838e+00_fp_kind,&
+  73.00_fp_kind,3.10663580e+01_fp_kind,1.53418230e+01_fp_kind,4.92782960e+01_fp_kind,4.57766500e+00_fp_kind,1.68283210e+01_fp_kind,&
+               1.70873200e+00_fp_kind,9.61845500e+00_fp_kind,7.60000000e-04_fp_kind,6.63462020e+01_fp_kind,1.68002000e-01_fp_kind,&
+               -4.41190250e+01_fp_kind,7.30000000e+01_fp_kind,2.01481064e+00_fp_kind,&
+  74.00_fp_kind,3.15079010e+01_fp_kind,1.56824980e+01_fp_kind,3.79601270e+01_fp_kind,4.88550900e+00_fp_kind,1.67921130e+01_fp_kind,&
+               1.62948500e+00_fp_kind,9.44644800e+00_fp_kind,8.98000000e-04_fp_kind,5.99806750e+01_fp_kind,1.60798000e-01_fp_kind,&
+               -3.28645760e+01_fp_kind,7.40000000e+01_fp_kind,2.02423309e+00_fp_kind,&
+  75.00_fp_kind,3.18884560e+01_fp_kind,1.61171030e+01_fp_kind,4.23902960e+01_fp_kind,5.21166900e+00_fp_kind,1.67675910e+01_fp_kind,&
+               1.54923800e+00_fp_kind,9.23347400e+00_fp_kind,6.89000000e-04_fp_kind,5.45163710e+01_fp_kind,1.52815000e-01_fp_kind,&
+               -3.74126810e+01_fp_kind,7.50000000e+01_fp_kind,2.03220395e+00_fp_kind,&
+  76.00_fp_kind,3.22102980e+01_fp_kind,1.66784400e+01_fp_kind,4.85599070e+01_fp_kind,5.45583900e+00_fp_kind,1.67355320e+01_fp_kind,&
+               1.47353100e+00_fp_kind,9.04969500e+00_fp_kind,5.19000000e-04_fp_kind,5.02102010e+01_fp_kind,1.45771000e-01_fp_kind,&
+               -4.36779540e+01_fp_kind,7.60000000e+01_fp_kind,2.03756230e+00_fp_kind,&
+  77.00_fp_kind,3.20044370e+01_fp_kind,1.97545400e+00_fp_kind,1.70701040e+01_fp_kind,1.59394540e+01_fp_kind,5.99000300e+00_fp_kind,&
+               1.35376700e+00_fp_kind,8.10141720e+01_fp_kind,1.28093000e-01_fp_kind,7.66119600e+00_fp_kind,2.66594030e+01_fp_kind,&
+               4.01889300e+00_fp_kind,7.70000000e+01_fp_kind,2.07093147e+00_fp_kind,&
+  78.00_fp_kind,3.12738910e+01_fp_kind,1.84454410e+01_fp_kind,1.70637450e+01_fp_kind,5.55593300e+00_fp_kind,1.57527000e+00_fp_kind,&
+               1.31699200e+00_fp_kind,8.79715400e+00_fp_kind,1.24741000e-01_fp_kind,4.01779940e+01_fp_kind,1.31699700e+00_fp_kind,&
+               4.05039400e+00_fp_kind,7.80000000e+01_fp_kind,2.07030766e+00_fp_kind,&
+  79.00_fp_kind,1.67773890e+01_fp_kind,1.93171560e+01_fp_kind,3.29796820e+01_fp_kind,5.59545300e+00_fp_kind,1.05768540e+01_fp_kind,&
+               1.22737000e-01_fp_kind,8.62157000e+00_fp_kind,1.25690200e+00_fp_kind,3.80088210e+01_fp_kind,6.01000000e-04_fp_kind,&
+               -6.27907800e+00_fp_kind,7.90000000e+01_fp_kind,2.05883489e+00_fp_kind,&
+  80.00_fp_kind,1.68398890e+01_fp_kind,2.00238230e+01_fp_kind,2.84285650e+01_fp_kind,5.88156400e+00_fp_kind,4.71470600e+00_fp_kind,&
+               1.15905000e-01_fp_kind,8.25692700e+00_fp_kind,1.19525000e+00_fp_kind,3.92472260e+01_fp_kind,1.19525000e+00_fp_kind,&
+               4.07647800e+00_fp_kind,8.00000000e+01_fp_kind,2.06302643e+00_fp_kind,&
+  81.00_fp_kind,1.66307950e+01_fp_kind,1.93866150e+01_fp_kind,3.28085700e+01_fp_kind,1.74719100e+00_fp_kind,6.35686200e+00_fp_kind,&
+               1.10704000e-01_fp_kind,7.18140100e+00_fp_kind,1.11973000e+00_fp_kind,9.06602620e+01_fp_kind,2.60149780e+01_fp_kind,&
+               4.06693900e+00_fp_kind,8.10000000e+01_fp_kind,2.05598134e+00_fp_kind,&
+  82.00_fp_kind,1.64195670e+01_fp_kind,3.27385920e+01_fp_kind,6.53024700e+00_fp_kind,2.34274200e+00_fp_kind,1.99164750e+01_fp_kind,&
+               1.05499000e-01_fp_kind,1.05504900e+00_fp_kind,2.50258900e+01_fp_kind,8.09065960e+01_fp_kind,6.66444900e+00_fp_kind,&
+               4.04982400e+00_fp_kind,8.20000000e+01_fp_kind,2.05000970e+00_fp_kind,&
+  83.00_fp_kind,1.62822740e+01_fp_kind,3.27251370e+01_fp_kind,6.67830200e+00_fp_kind,2.69475000e+00_fp_kind,2.05765590e+01_fp_kind,&
+               1.01180000e-01_fp_kind,1.00228700e+00_fp_kind,2.57141450e+01_fp_kind,7.70575500e+01_fp_kind,6.29188200e+00_fp_kind,&
+               4.04091400e+00_fp_kind,8.30000000e+01_fp_kind,2.04784654e+00_fp_kind,&
+  84.00_fp_kind,1.62891640e+01_fp_kind,3.28071700e+01_fp_kind,2.10951640e+01_fp_kind,2.50590100e+00_fp_kind,7.25458900e+00_fp_kind,&
+               9.81210000e-02_fp_kind,9.66265000e-01_fp_kind,6.04662200e+00_fp_kind,7.65980710e+01_fp_kind,2.80961280e+01_fp_kind,&
+               4.04655600e+00_fp_kind,8.40000000e+01_fp_kind,2.04864086e+00_fp_kind,&
+  85.00_fp_kind,1.60114610e+01_fp_kind,3.26155490e+01_fp_kind,8.11389900e+00_fp_kind,2.88408200e+00_fp_kind,2.13778670e+01_fp_kind,&
+               9.26390000e-02_fp_kind,9.04416000e-01_fp_kind,2.65432560e+01_fp_kind,6.83729610e+01_fp_kind,5.49951200e+00_fp_kind,&
+               3.99568400e+00_fp_kind,8.50000000e+01_fp_kind,2.04357711e+00_fp_kind,&
+  86.00_fp_kind,1.60702280e+01_fp_kind,3.26411050e+01_fp_kind,2.14896590e+01_fp_kind,2.29921800e+00_fp_kind,9.48018400e+00_fp_kind,&
+               9.04370000e-02_fp_kind,8.76409000e-01_fp_kind,5.23968700e+00_fp_kind,6.91884770e+01_fp_kind,2.76326400e+01_fp_kind,&
+               4.02097700e+00_fp_kind,8.60000000e+01_fp_kind,2.05334332e+00_fp_kind,&
+  87.00_fp_kind,1.60073860e+01_fp_kind,3.26638300e+01_fp_kind,2.15943510e+01_fp_kind,1.59849700e+00_fp_kind,1.11211920e+01_fp_kind,&
+               8.70310000e-02_fp_kind,8.40187000e-01_fp_kind,4.95446700e+00_fp_kind,1.99805805e+02_fp_kind,2.69051060e+01_fp_kind,&
+               4.00347200e+00_fp_kind,8.70000000e+01_fp_kind,2.05640286e+00_fp_kind,&
+  88.00_fp_kind,3.25636910e+01_fp_kind,2.13966710e+01_fp_kind,1.12980930e+01_fp_kind,2.83468800e+00_fp_kind,1.59149650e+01_fp_kind,&
+               8.01980000e-01_fp_kind,4.59066600e+00_fp_kind,2.27589730e+01_fp_kind,1.60404392e+02_fp_kind,8.35440000e-02_fp_kind,&
+               3.98177300e+00_fp_kind,8.80000000e+01_fp_kind,2.06235047e+00_fp_kind,&
+  89.00_fp_kind,1.59140530e+01_fp_kind,3.25350420e+01_fp_kind,2.15539760e+01_fp_kind,1.14333940e+01_fp_kind,3.61240900e+00_fp_kind,&
+               8.05110000e-02_fp_kind,7.70669000e-01_fp_kind,4.35220600e+00_fp_kind,2.13816220e+01_fp_kind,1.30500748e+02_fp_kind,&
+               3.93921200e+00_fp_kind,8.90000000e+01_fp_kind,2.05960633e+00_fp_kind,&
+  90.00_fp_kind,1.57840240e+01_fp_kind,3.24548980e+01_fp_kind,2.18492220e+01_fp_kind,4.23907700e+00_fp_kind,1.17361910e+01_fp_kind,&
+               7.70670000e-02_fp_kind,7.35137000e-01_fp_kind,4.09797600e+00_fp_kind,1.09464113e+02_fp_kind,2.05121380e+01_fp_kind,&
+               3.92253300e+00_fp_kind,9.00000000e+01_fp_kind,2.07609371e+00_fp_kind,&
+  91.00_fp_kind,3.27402080e+01_fp_kind,2.19736740e+01_fp_kind,1.29573980e+01_fp_kind,3.68383200e+00_fp_kind,1.57440580e+01_fp_kind,&
+               7.09545000e-01_fp_kind,4.05088100e+00_fp_kind,1.92315420e+01_fp_kind,1.17255006e+02_fp_kind,7.40400000e-02_fp_kind,&
+               3.88606600e+00_fp_kind,9.10000000e+01_fp_kind,2.08476870e+00_fp_kind,&
+  92.00_fp_kind,1.56792750e+01_fp_kind,3.28243050e+01_fp_kind,1.36604590e+01_fp_kind,3.68726100e+00_fp_kind,2.22794350e+01_fp_kind,&
+               7.12060000e-02_fp_kind,6.81177000e-01_fp_kind,1.82361570e+01_fp_kind,1.12500040e+02_fp_kind,3.93032500e+00_fp_kind,&
+               3.85444400e+00_fp_kind,9.20000000e+01_fp_kind,2.09628663e+00_fp_kind],shape(xrayFF))
   !Ionic form factors
 !! Ionic form factor objects
 real(fp_kind), parameter :: ionicKnot(27) = &
-  [0.00d0, 0.05d0, 0.10d0, 0.15d0, 0.20d0, 0.25d0, 0.30d0, 0.35d0, 0.40d0, &
-   0.45d0, 0.50d0, 0.60d0, 0.70d0, 0.80d0, 0.90d0, 1.00d0, 1.20d0, 1.40d0, &
-   1.60d0, 1.80d0, 2.00d0, 2.50d0, 3.00d0, 3.50d0, 4.00d0, 5.00d0, 6.00d0]
-   
+  real([0.00e0_fp_kind, 0.05e0_fp_kind, 0.10e0_fp_kind, 0.15e0_fp_kind, 0.20e0_fp_kind, 0.25e0_fp_kind, 0.30e0_fp_kind,&
+        0.35e0_fp_kind, 0.40e0_fp_kind, 0.45e0_fp_kind, 0.50e0_fp_kind, 0.60e0_fp_kind, 0.70e0_fp_kind, 0.80e0_fp_kind,&
+        0.90e0_fp_kind, 1.00e0_fp_kind, 1.20e0_fp_kind, 1.40e0_fp_kind, 1.60e0_fp_kind, 1.80e0_fp_kind, 2.00e0_fp_kind,&
+        2.50e0_fp_kind, 3.00e0_fp_kind, 3.50e0_fp_kind, 4.00e0_fp_kind, 5.00e0_fp_kind, 6.00e0_fp_kind],kind=fp_kind)
+
 type :: t_ionicFF
   character(2) :: element
   integer      :: Z,dZ
@@ -153,741 +337,1295 @@ end type t_ionicFF
 type(t_ionicFF) :: ionicXrayFF(2,92)
 !no data for H
 data ionicXrayFF( 1, 1 ) / t_ionicFF('H ',  1 ,  0, &
-    [1.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0,&
-     0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0,&
-     0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0], 0.0000000000000000d0, 0.00000d0) /
+     [1.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind], 0.0000000000000000e+00_fp_kind,0.000000e+00_fp_kind) /
 data ionicXrayFF( 2, 1 ) / t_ionicFF('H ',  1 ,  0, &
-    [1.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0,&
-     0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0,&
-     0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0], 0.0000000000000000d0, 0.00000d0) /
+     [1.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind], 0.0000000000000000e+00_fp_kind,0.000000e+00_fp_kind) /
 data ionicXrayFF( 1, 2 ) / t_ionicFF('He',  2 ,  0, &
-    [2.00000d0, 1.95720d0, 1.83730d0, 1.66280d0, 1.46070d0, 1.25450d0, 1.06060d0, 0.88770d0, 0.73870d0,&
-     0.61340d0, 0.50930d0, 0.35320d0, 0.24830d0, 0.17740d0, 0.12900d0, 0.09540d0, 0.05460d0, 0.03310d0, 0.02100d0, 0.01390d0,&
-     0.00950d0, 0.00420d0, 0.00210d0, 0.00120d0, 0.00070d0, 0.00030d0, 0.00010d0], 0.1800090004500987d-2, 0.41730d0) /
+     [2.000000e+00_fp_kind,1.957200e+00_fp_kind,1.837300e+00_fp_kind,1.662800e+00_fp_kind,1.460700e+00_fp_kind,&
+     1.254500e+00_fp_kind,1.060600e+00_fp_kind,8.877000e-01_fp_kind,7.387000e-01_fp_kind,6.134000e-01_fp_kind,&
+     5.093000e-01_fp_kind,3.532000e-01_fp_kind,2.483000e-01_fp_kind,1.774000e-01_fp_kind,1.290000e-01_fp_kind,&
+     9.540000e-02_fp_kind,5.460000e-02_fp_kind,3.310000e-02_fp_kind,2.100000e-02_fp_kind,1.390000e-02_fp_kind,&
+     9.500000e-03_fp_kind,4.200000e-03_fp_kind,2.100000e-03_fp_kind,1.200000e-03_fp_kind,7.000000e-04_fp_kind,&
+     3.000000e-04_fp_kind,1.000000e-04_fp_kind], 1.8000900045009871e-03_fp_kind,4.173000e-01_fp_kind) /
 data ionicXrayFF( 2, 2 ) / t_ionicFF('He',  2 ,  0, &
-    [2.00000d0, 1.95720d0, 1.83730d0, 1.66280d0, 1.46070d0, 1.25450d0, 1.06060d0, 0.88770d0, 0.73870d0,&
-     0.61340d0, 0.50930d0, 0.35320d0, 0.24830d0, 0.17740d0, 0.12900d0, 0.09540d0, 0.05460d0, 0.03310d0, 0.02100d0, 0.01390d0,&
-     0.00950d0, 0.00420d0, 0.00210d0, 0.00120d0, 0.00070d0, 0.00030d0, 0.00010d0], 0.1800090004500987d-2, 0.41730d0) /
+     [2.000000e+00_fp_kind,1.957200e+00_fp_kind,1.837300e+00_fp_kind,1.662800e+00_fp_kind,1.460700e+00_fp_kind,&
+     1.254500e+00_fp_kind,1.060600e+00_fp_kind,8.877000e-01_fp_kind,7.387000e-01_fp_kind,6.134000e-01_fp_kind,&
+     5.093000e-01_fp_kind,3.532000e-01_fp_kind,2.483000e-01_fp_kind,1.774000e-01_fp_kind,1.290000e-01_fp_kind,&
+     9.540000e-02_fp_kind,5.460000e-02_fp_kind,3.310000e-02_fp_kind,2.100000e-02_fp_kind,1.390000e-02_fp_kind,&
+     9.500000e-03_fp_kind,4.200000e-03_fp_kind,2.100000e-03_fp_kind,1.200000e-03_fp_kind,7.000000e-04_fp_kind,&
+     3.000000e-04_fp_kind,1.000000e-04_fp_kind], 1.8000900045009871e-03_fp_kind,4.173000e-01_fp_kind) /
 data ionicXrayFF( 1, 3 ) / t_ionicFF('Li',  3 ,  0, &
-    [3.00000d0, 2.70770d0, 2.21530d0, 1.90380d0, 1.74170d0, 1.62620d0, 1.51290d0, 1.39340d0, 1.27070d0,&
-     1.14930d0, 1.03300d0, 0.82370d0, 0.65080d0, 0.51270d0, 0.40450d0, 0.32050d0, 0.20480d0, 0.13450d0, 0.09080d0, 0.06300d0,&
-     0.04480d0, 0.02090d0, 0.01090d0, 0.00620d0, 0.00370d0, 0.00160d0, 0.00080d0], 0.9602560682843375d-2, 3.25560d0) /
+     [3.000000e+00_fp_kind,2.707700e+00_fp_kind,2.215300e+00_fp_kind,1.903800e+00_fp_kind,1.741700e+00_fp_kind,&
+     1.626200e+00_fp_kind,1.512900e+00_fp_kind,1.393400e+00_fp_kind,1.270700e+00_fp_kind,1.149300e+00_fp_kind,&
+     1.033000e+00_fp_kind,8.237000e-01_fp_kind,6.508000e-01_fp_kind,5.127000e-01_fp_kind,4.045000e-01_fp_kind,&
+     3.205000e-01_fp_kind,2.048000e-01_fp_kind,1.345000e-01_fp_kind,9.080000e-02_fp_kind,6.300000e-02_fp_kind,&
+     4.480000e-02_fp_kind,2.090000e-02_fp_kind,1.090000e-02_fp_kind,6.200000e-03_fp_kind,3.700000e-03_fp_kind,&
+     1.600000e-03_fp_kind,8.000000e-04_fp_kind], 9.6025606828433752e-03_fp_kind,3.255600e+00_fp_kind) /
 data ionicXrayFF( 2, 3 ) / t_ionicFF('Li',  3 ,  1, &
-    [2.00000d0, 1.98370d0, 1.93610d0, 1.86070d0, 1.76270d0, 1.64820d0, 1.52360d0, 1.39460d0, 1.26610d0,&
-     1.14180d0, 1.02420d0, 0.81510d0, 0.64350d0, 0.50690d0, 0.39990d0, 0.31690d0, 0.20250d0, 0.13300d0, 0.08980d0, 0.06230d0,&
-     0.04430d0, 0.02070d0, 0.01080d0, 0.00610d0, 0.00370d0, 0.00160d0, 0.00080d0], 0.9602560682843375d-2, 0.15690d0) /
+     [2.000000e+00_fp_kind,1.983700e+00_fp_kind,1.936100e+00_fp_kind,1.860700e+00_fp_kind,1.762700e+00_fp_kind,&
+     1.648200e+00_fp_kind,1.523600e+00_fp_kind,1.394600e+00_fp_kind,1.266100e+00_fp_kind,1.141800e+00_fp_kind,&
+     1.024200e+00_fp_kind,8.151000e-01_fp_kind,6.435000e-01_fp_kind,5.069000e-01_fp_kind,3.999000e-01_fp_kind,&
+     3.169000e-01_fp_kind,2.025000e-01_fp_kind,1.330000e-01_fp_kind,8.980000e-02_fp_kind,6.230000e-02_fp_kind,&
+     4.430000e-02_fp_kind,2.070000e-02_fp_kind,1.080000e-02_fp_kind,6.100000e-03_fp_kind,3.700000e-03_fp_kind,&
+     1.600000e-03_fp_kind,8.000000e-04_fp_kind], 9.6025606828433752e-03_fp_kind,1.569000e-01_fp_kind) /
 data ionicXrayFF( 1, 4 ) / t_ionicFF('Be',  4 ,  0, &
-    [4.00000d0, 3.70690d0, 3.06570d0, 2.46310d0, 2.06020d0, 1.82790d0, 1.69250d0, 1.59980d0, 1.52070d0,&
-     1.44290d0, 1.36260d0, 1.19570d0, 1.03030d0, 0.87680d0, 0.74030d0, 0.62250d0, 0.43890d0, 0.31120d0, 0.22330d0, 0.16250d0,&
-     0.12020d0, 0.06030d0, 0.03280d0, 0.01920d0, 0.01190d0, 0.00520d0, 0.00260d0], 0.2341521989293227d-1, 3.03830d0) /
+     [4.000000e+00_fp_kind,3.706900e+00_fp_kind,3.065700e+00_fp_kind,2.463100e+00_fp_kind,2.060200e+00_fp_kind,&
+     1.827900e+00_fp_kind,1.692500e+00_fp_kind,1.599800e+00_fp_kind,1.520700e+00_fp_kind,1.442900e+00_fp_kind,&
+     1.362600e+00_fp_kind,1.195700e+00_fp_kind,1.030300e+00_fp_kind,8.768000e-01_fp_kind,7.403000e-01_fp_kind,&
+     6.225000e-01_fp_kind,4.389000e-01_fp_kind,3.112000e-01_fp_kind,2.233000e-01_fp_kind,1.625000e-01_fp_kind,&
+     1.202000e-01_fp_kind,6.030000e-02_fp_kind,3.280000e-02_fp_kind,1.920000e-02_fp_kind,1.190000e-02_fp_kind,&
+     5.200000e-03_fp_kind,2.600000e-03_fp_kind], 2.3415219892932271e-02_fp_kind,3.038300e+00_fp_kind) /
 data ionicXrayFF( 2, 4 ) / t_ionicFF('Be',  4 ,  2, &
-    [2.00000d0, 1.99150d0, 1.96630d0, 1.92540d0, 1.87040d0, 1.80320d0, 1.72610d0, 1.64130d0, 1.55140d0,&
-     1.45840d0, 1.36440d0, 1.17980d0, 1.00750d0, 0.85300d0, 0.71820d0, 0.60310d0, 0.42480d0, 0.30120d0, 0.21620d0, 0.15740d0,&
-     0.11640d0, 0.05840d0, 0.03180d0, 0.01860d0, 0.01150d0, 0.00500d0, 0.00250d0], 0.2251407129455885d-1, 0.08170d0) /
+     [2.000000e+00_fp_kind,1.991500e+00_fp_kind,1.966300e+00_fp_kind,1.925400e+00_fp_kind,1.870400e+00_fp_kind,&
+     1.803200e+00_fp_kind,1.726100e+00_fp_kind,1.641300e+00_fp_kind,1.551400e+00_fp_kind,1.458400e+00_fp_kind,&
+     1.364400e+00_fp_kind,1.179800e+00_fp_kind,1.007500e+00_fp_kind,8.530000e-01_fp_kind,7.182000e-01_fp_kind,&
+     6.031000e-01_fp_kind,4.248000e-01_fp_kind,3.012000e-01_fp_kind,2.162000e-01_fp_kind,1.574000e-01_fp_kind,&
+     1.164000e-01_fp_kind,5.840000e-02_fp_kind,3.180000e-02_fp_kind,1.860000e-02_fp_kind,1.150000e-02_fp_kind,&
+     5.000000e-03_fp_kind,2.500000e-03_fp_kind], 2.2514071294558850e-02_fp_kind,8.170000e-02_fp_kind) /
 data ionicXrayFF( 1, 5 ) / t_ionicFF('B ',  5 ,  0, &
-    [5.00000d0, 4.72460d0, 4.06030d0, 3.31660d0, 2.69940d0, 2.26320d0, 1.97930d0, 1.79920d0, 1.68100d0,&
-     1.59600d0, 1.52670d0, 1.40190d0, 1.27610d0, 1.14750d0, 1.02080d0, 0.90070d0, 0.69060d0, 0.52470d0, 0.39840d0, 0.30390d0,&
-     0.23350d0, 0.12580d0, 0.07190d0, 0.04340d0, 0.02750d0, 0.01240d0, 0.00630d0], 0.4541722570439788d-1, 2.78500d0) /
+     [5.000000e+00_fp_kind,4.724600e+00_fp_kind,4.060300e+00_fp_kind,3.316600e+00_fp_kind,2.699400e+00_fp_kind,&
+     2.263200e+00_fp_kind,1.979300e+00_fp_kind,1.799200e+00_fp_kind,1.681000e+00_fp_kind,1.596000e+00_fp_kind,&
+     1.526700e+00_fp_kind,1.401900e+00_fp_kind,1.276100e+00_fp_kind,1.147500e+00_fp_kind,1.020800e+00_fp_kind,&
+     9.007000e-01_fp_kind,6.906000e-01_fp_kind,5.247000e-01_fp_kind,3.984000e-01_fp_kind,3.039000e-01_fp_kind,&
+     2.335000e-01_fp_kind,1.258000e-01_fp_kind,7.190000e-02_fp_kind,4.340000e-02_fp_kind,2.750000e-02_fp_kind,&
+     1.240000e-02_fp_kind,6.300000e-03_fp_kind], 4.5417225704397879e-02_fp_kind,2.785000e+00_fp_kind) /
 data ionicXrayFF( 2, 5 ) / t_ionicFF('B ',  5 ,  0, &
-    [5.00000d0, 4.72460d0, 4.06030d0, 3.31660d0, 2.69940d0, 2.26320d0, 1.97930d0, 1.79920d0, 1.68100d0,&
-     1.59600d0, 1.52670d0, 1.40190d0, 1.27610d0, 1.14750d0, 1.02080d0, 0.90070d0, 0.69060d0, 0.52470d0, 0.39840d0, 0.30390d0,&
-     0.23350d0, 0.12580d0, 0.07190d0, 0.04340d0, 0.02750d0, 0.01240d0, 0.00630d0], 0.4541722570439788d-1, 2.78500d0) /
+     [5.000000e+00_fp_kind,4.724600e+00_fp_kind,4.060300e+00_fp_kind,3.316600e+00_fp_kind,2.699400e+00_fp_kind,&
+     2.263200e+00_fp_kind,1.979300e+00_fp_kind,1.799200e+00_fp_kind,1.681000e+00_fp_kind,1.596000e+00_fp_kind,&
+     1.526700e+00_fp_kind,1.401900e+00_fp_kind,1.276100e+00_fp_kind,1.147500e+00_fp_kind,1.020800e+00_fp_kind,&
+     9.007000e-01_fp_kind,6.906000e-01_fp_kind,5.247000e-01_fp_kind,3.984000e-01_fp_kind,3.039000e-01_fp_kind,&
+     2.335000e-01_fp_kind,1.258000e-01_fp_kind,7.190000e-02_fp_kind,4.340000e-02_fp_kind,2.750000e-02_fp_kind,&
+     1.240000e-02_fp_kind,6.300000e-03_fp_kind], 4.5417225704397879e-02_fp_kind,2.785000e+00_fp_kind) /
 data ionicXrayFF( 1, 6 ) / t_ionicFF('C ',  6 ,  0, &
-    [6.00000d0, 5.75180d0, 5.11530d0, 4.32220d0, 3.56980d0, 2.95580d0, 2.49770d0, 2.17340d0, 1.94950d0,&
-     1.79490d0, 1.68510d0, 1.53680d0, 1.42580d0, 1.32240d0, 1.21870d0, 1.11450d0, 0.91410d0, 0.73670d0, 0.58840d0, 0.46870d0,&
-     0.37360d0, 0.21600d0, 0.12960d0, 0.08100d0, 0.05260d0, 0.02450d0, 0.01280d0], 0.7696419027258372d-1, 2.47090d0) /
+     [6.000000e+00_fp_kind,5.751800e+00_fp_kind,5.115300e+00_fp_kind,4.322200e+00_fp_kind,3.569800e+00_fp_kind,&
+     2.955800e+00_fp_kind,2.497700e+00_fp_kind,2.173400e+00_fp_kind,1.949500e+00_fp_kind,1.794900e+00_fp_kind,&
+     1.685100e+00_fp_kind,1.536800e+00_fp_kind,1.425800e+00_fp_kind,1.322400e+00_fp_kind,1.218700e+00_fp_kind,&
+     1.114500e+00_fp_kind,9.141000e-01_fp_kind,7.367000e-01_fp_kind,5.884000e-01_fp_kind,4.687000e-01_fp_kind,&
+     3.736000e-01_fp_kind,2.160000e-01_fp_kind,1.296000e-01_fp_kind,8.100000e-02_fp_kind,5.260000e-02_fp_kind,&
+     2.450000e-02_fp_kind,1.280000e-02_fp_kind], 7.6964190272583721e-02_fp_kind,2.470900e+00_fp_kind) /
 data ionicXrayFF( 2, 6 ) / t_ionicFF('C ',  6 ,  0, &
-    [6.00000d0, 5.75180d0, 5.11530d0, 4.32220d0, 3.56980d0, 2.95580d0, 2.49770d0, 2.17340d0, 1.94950d0,&
-     1.79490d0, 1.68510d0, 1.53680d0, 1.42580d0, 1.32240d0, 1.21870d0, 1.11450d0, 0.91410d0, 0.73670d0, 0.58840d0, 0.46870d0,&
-     0.37360d0, 0.21600d0, 0.12960d0, 0.08100d0, 0.05260d0, 0.02450d0, 0.01280d0], 0.7696419027258372d-1, 2.47090d0) /
+     [6.000000e+00_fp_kind,5.751800e+00_fp_kind,5.115300e+00_fp_kind,4.322200e+00_fp_kind,3.569800e+00_fp_kind,&
+     2.955800e+00_fp_kind,2.497700e+00_fp_kind,2.173400e+00_fp_kind,1.949500e+00_fp_kind,1.794900e+00_fp_kind,&
+     1.685100e+00_fp_kind,1.536800e+00_fp_kind,1.425800e+00_fp_kind,1.322400e+00_fp_kind,1.218700e+00_fp_kind,&
+     1.114500e+00_fp_kind,9.141000e-01_fp_kind,7.367000e-01_fp_kind,5.884000e-01_fp_kind,4.687000e-01_fp_kind,&
+     3.736000e-01_fp_kind,2.160000e-01_fp_kind,1.296000e-01_fp_kind,8.100000e-02_fp_kind,5.260000e-02_fp_kind,&
+     2.450000e-02_fp_kind,1.280000e-02_fp_kind], 7.6964190272583721e-02_fp_kind,2.470900e+00_fp_kind) /
 data ionicXrayFF( 1, 7 ) / t_ionicFF('N ',  7 ,  0, &
-    [7.00000d0, 6.77650d0, 6.18100d0, 5.38660d0, 4.56480d0, 3.82680d0, 3.21970d0, 2.74750d0, 2.39290d0,&
-     2.13220d0, 1.94180d0, 1.69740d0, 1.55100d0, 1.44510d0, 1.35330d0, 1.26500d0, 1.09000d0, 0.92180d0, 0.76910d0, 0.63670d0,&
-     0.52510d0, 0.32460d0, 0.20440d0, 0.13240d0, 0.08830d0, 0.04270d0, 0.02270d0], 0.1171226692273564d0, 2.20340d0) /
+     [7.000000e+00_fp_kind,6.776500e+00_fp_kind,6.181000e+00_fp_kind,5.386600e+00_fp_kind,4.564800e+00_fp_kind,&
+     3.826800e+00_fp_kind,3.219700e+00_fp_kind,2.747500e+00_fp_kind,2.392900e+00_fp_kind,2.132200e+00_fp_kind,&
+     1.941800e+00_fp_kind,1.697400e+00_fp_kind,1.551000e+00_fp_kind,1.445100e+00_fp_kind,1.353300e+00_fp_kind,&
+     1.265000e+00_fp_kind,1.090000e+00_fp_kind,9.218000e-01_fp_kind,7.691000e-01_fp_kind,6.367000e-01_fp_kind,&
+     5.251000e-01_fp_kind,3.246000e-01_fp_kind,2.044000e-01_fp_kind,1.324000e-01_fp_kind,8.830000e-02_fp_kind,&
+     4.270000e-02_fp_kind,2.270000e-02_fp_kind], 1.1712266922735640e-01_fp_kind,2.203400e+00_fp_kind) /
 data ionicXrayFF( 2, 7 ) / t_ionicFF('N ',  7 ,  0, &
-    [7.00000d0, 6.77650d0, 6.18100d0, 5.38660d0, 4.56480d0, 3.82680d0, 3.21970d0, 2.74750d0, 2.39290d0,&
-     2.13220d0, 1.94180d0, 1.69740d0, 1.55100d0, 1.44510d0, 1.35330d0, 1.26500d0, 1.09000d0, 0.92180d0, 0.76910d0, 0.63670d0,&
-     0.52510d0, 0.32460d0, 0.20440d0, 0.13240d0, 0.08830d0, 0.04270d0, 0.02270d0], 0.1171226692273564d0, 2.20340d0) /
+     [7.000000e+00_fp_kind,6.776500e+00_fp_kind,6.181000e+00_fp_kind,5.386600e+00_fp_kind,4.564800e+00_fp_kind,&
+     3.826800e+00_fp_kind,3.219700e+00_fp_kind,2.747500e+00_fp_kind,2.392900e+00_fp_kind,2.132200e+00_fp_kind,&
+     1.941800e+00_fp_kind,1.697400e+00_fp_kind,1.551000e+00_fp_kind,1.445100e+00_fp_kind,1.353300e+00_fp_kind,&
+     1.265000e+00_fp_kind,1.090000e+00_fp_kind,9.218000e-01_fp_kind,7.691000e-01_fp_kind,6.367000e-01_fp_kind,&
+     5.251000e-01_fp_kind,3.246000e-01_fp_kind,2.044000e-01_fp_kind,1.324000e-01_fp_kind,8.830000e-02_fp_kind,&
+     4.270000e-02_fp_kind,2.270000e-02_fp_kind], 1.1712266922735640e-01_fp_kind,2.203400e+00_fp_kind) /
 data ionicXrayFF( 1, 8 ) / t_ionicFF('O ',  8 ,  0, &
-    [8.00000d0, 7.79740d0, 7.24390d0, 6.47060d0, 5.62150d0, 4.80640d0, 4.08720d0, 3.48730d0, 3.00540d0,&
-     2.62790d0, 2.33710d0, 1.94550d0, 1.71440d0, 1.56820d0, 1.46350d0, 1.37720d0, 1.22140d0, 1.07070d0, 0.92610d0, 0.79270d0,&
-     0.67390d0, 0.44340d0, 0.29260d0, 0.19630d0, 0.13450d0, 0.06750d0, 0.03680d0], 0.1663652802893338d0, 1.98390d0) /
+     [8.000000e+00_fp_kind,7.797400e+00_fp_kind,7.243900e+00_fp_kind,6.470600e+00_fp_kind,5.621500e+00_fp_kind,&
+     4.806400e+00_fp_kind,4.087200e+00_fp_kind,3.487300e+00_fp_kind,3.005400e+00_fp_kind,2.627900e+00_fp_kind,&
+     2.337100e+00_fp_kind,1.945500e+00_fp_kind,1.714400e+00_fp_kind,1.568200e+00_fp_kind,1.463500e+00_fp_kind,&
+     1.377200e+00_fp_kind,1.221400e+00_fp_kind,1.070700e+00_fp_kind,9.261000e-01_fp_kind,7.927000e-01_fp_kind,&
+     6.739000e-01_fp_kind,4.434000e-01_fp_kind,2.926000e-01_fp_kind,1.963000e-01_fp_kind,1.345000e-01_fp_kind,&
+     6.750000e-02_fp_kind,3.680000e-02_fp_kind], 1.6636528028933381e-01_fp_kind,1.983900e+00_fp_kind) /
 data ionicXrayFF( 2, 8 ) / t_ionicFF('O ',  8 , -2, &
-    [10.0000d0, 9.58840d0, 8.53450d0, 7.21880d0, 5.95580d0, 4.89340d0, 4.05740d0, 3.41900d0, 2.93640d0,&
-     2.57200d0, 2.29630d0, 1.92750d0, 1.70850d0, 1.56780d0, 1.46440d0, 1.37740d0, 1.21910d0, 1.06680d0, 0.92150d0, 0.78810d0,&
-     0.66960d0, 0.44040d0, 0.29070d0, 0.19510d0, 0.13320d0, 0.06860d0, 0.03510d0], 0.1586460595864310d0, 4.09920d0) /
+     [1.000000e+01_fp_kind,9.588400e+00_fp_kind,8.534500e+00_fp_kind,7.218800e+00_fp_kind,5.955800e+00_fp_kind,&
+     4.893400e+00_fp_kind,4.057400e+00_fp_kind,3.419000e+00_fp_kind,2.936400e+00_fp_kind,2.572000e+00_fp_kind,&
+     2.296300e+00_fp_kind,1.927500e+00_fp_kind,1.708500e+00_fp_kind,1.567800e+00_fp_kind,1.464400e+00_fp_kind,&
+     1.377400e+00_fp_kind,1.219100e+00_fp_kind,1.066800e+00_fp_kind,9.215000e-01_fp_kind,7.881000e-01_fp_kind,&
+     6.696000e-01_fp_kind,4.404000e-01_fp_kind,2.907000e-01_fp_kind,1.951000e-01_fp_kind,1.332000e-01_fp_kind,&
+     6.860000e-02_fp_kind,3.510000e-02_fp_kind], 1.5864605958643099e-01_fp_kind,4.099200e+00_fp_kind) /
 data ionicXrayFF( 1, 9 ) / t_ionicFF('F ',  9 ,  0, &
-    [9.00000d0, 8.81520d0, 8.30110d0, 7.55880d0, 6.70800d0, 5.84990d0, 5.05270d0, 4.35150d0, 3.75810d0,&
-     3.26910d0, 2.87380d0, 2.30860d0, 1.95650d0, 1.73470d0, 1.58810d0, 1.48250d0, 1.32390d0, 1.18680d0, 1.05490d0, 0.92840d0,&
-     0.81030d0, 0.56430d0, 0.38940d0, 0.27030d0, 0.19020d0, 0.09930d0, 0.05520d0], 0.2221625972632069d0, 1.80170d0) /
+     [9.000000e+00_fp_kind,8.815200e+00_fp_kind,8.301100e+00_fp_kind,7.558800e+00_fp_kind,6.708000e+00_fp_kind,&
+     5.849900e+00_fp_kind,5.052700e+00_fp_kind,4.351500e+00_fp_kind,3.758100e+00_fp_kind,3.269100e+00_fp_kind,&
+     2.873800e+00_fp_kind,2.308600e+00_fp_kind,1.956500e+00_fp_kind,1.734700e+00_fp_kind,1.588100e+00_fp_kind,&
+     1.482500e+00_fp_kind,1.323900e+00_fp_kind,1.186800e+00_fp_kind,1.054900e+00_fp_kind,9.284000e-01_fp_kind,&
+     8.103000e-01_fp_kind,5.643000e-01_fp_kind,3.894000e-01_fp_kind,2.703000e-01_fp_kind,1.902000e-01_fp_kind,&
+     9.930000e-02_fp_kind,5.520000e-02_fp_kind], 2.2216259726320689e-01_fp_kind,1.801700e+00_fp_kind) /
 data ionicXrayFF( 2, 9 ) / t_ionicFF('F ',  9 , -1, &
-    [10.0000d0, 9.73380d0, 9.01570d0, 8.03240d0, 6.97420d0, 5.97120d0, 5.08780d0, 4.34300d0, 3.73180d0,&
-     3.23890d0, 2.84610d0, 2.29100d0, 1.94750d0, 1.73120d0, 1.58720d0, 1.48250d0, 1.32360d0, 1.18560d0, 1.05300d0, 0.92620d0,&
-     0.80800d0, 0.56250d0, 0.38810d0, 0.26950d0, 0.18950d0, 0.09940d0, 0.05470d0], 0.2201379495377509d0, 2.61590d0) /
+     [1.000000e+01_fp_kind,9.733800e+00_fp_kind,9.015700e+00_fp_kind,8.032400e+00_fp_kind,6.974200e+00_fp_kind,&
+     5.971200e+00_fp_kind,5.087800e+00_fp_kind,4.343000e+00_fp_kind,3.731800e+00_fp_kind,3.238900e+00_fp_kind,&
+     2.846100e+00_fp_kind,2.291000e+00_fp_kind,1.947500e+00_fp_kind,1.731200e+00_fp_kind,1.587200e+00_fp_kind,&
+     1.482500e+00_fp_kind,1.323600e+00_fp_kind,1.185600e+00_fp_kind,1.053000e+00_fp_kind,9.262000e-01_fp_kind,&
+     8.080000e-01_fp_kind,5.625000e-01_fp_kind,3.881000e-01_fp_kind,2.695000e-01_fp_kind,1.895000e-01_fp_kind,&
+     9.940000e-02_fp_kind,5.470000e-02_fp_kind], 2.2013794953775090e-01_fp_kind,2.615900e+00_fp_kind) /
 data ionicXrayFF( 1, 10) / t_ionicFF('Ne',  10,  0, &
-    [10.0000d0, 9.83030d0, 9.35190d0, 8.64420d0, 7.80620d0, 6.92910d0, 6.08090d0, 5.30390d0, 4.61870d0,&
-     4.03080d0, 3.53650d0, 2.79120d0, 2.29640d0, 1.97200d0, 1.75720d0, 1.60980d0, 1.41800d0, 1.28080d0, 1.15860d0, 1.04160d0,&
-     0.92920d0, 0.68080d0, 0.48960d0, 0.35140d0, 0.25400d0, 0.13770d0, 0.07870d0], 0.2855674155604575d0, 1.64940d0) /
+     [1.000000e+01_fp_kind,9.830300e+00_fp_kind,9.351900e+00_fp_kind,8.644200e+00_fp_kind,7.806200e+00_fp_kind,&
+     6.929100e+00_fp_kind,6.080900e+00_fp_kind,5.303900e+00_fp_kind,4.618700e+00_fp_kind,4.030800e+00_fp_kind,&
+     3.536500e+00_fp_kind,2.791200e+00_fp_kind,2.296400e+00_fp_kind,1.972000e+00_fp_kind,1.757200e+00_fp_kind,&
+     1.609800e+00_fp_kind,1.418000e+00_fp_kind,1.280800e+00_fp_kind,1.158600e+00_fp_kind,1.041600e+00_fp_kind,&
+     9.292000e-01_fp_kind,6.808000e-01_fp_kind,4.896000e-01_fp_kind,3.514000e-01_fp_kind,2.540000e-01_fp_kind,&
+     1.377000e-01_fp_kind,7.870000e-02_fp_kind], 2.8556741556045750e-01_fp_kind,1.649400e+00_fp_kind) /
 data ionicXrayFF( 2, 10) / t_ionicFF('Ne',  10,  0, &
-    [10.0000d0, 9.83030d0, 9.35190d0, 8.64420d0, 7.80620d0, 6.92910d0, 6.08090d0, 5.30390d0, 4.61870d0,&
-     4.03080d0, 3.53650d0, 2.79120d0, 2.29640d0, 1.97200d0, 1.75720d0, 1.60980d0, 1.41800d0, 1.28080d0, 1.15860d0, 1.04160d0,&
-     0.92920d0, 0.68080d0, 0.48960d0, 0.35140d0, 0.25400d0, 0.13770d0, 0.07870d0], 0.2855674155604575d0, 1.64940d0) /
+     [1.000000e+01_fp_kind,9.830300e+00_fp_kind,9.351900e+00_fp_kind,8.644200e+00_fp_kind,7.806200e+00_fp_kind,&
+     6.929100e+00_fp_kind,6.080900e+00_fp_kind,5.303900e+00_fp_kind,4.618700e+00_fp_kind,4.030800e+00_fp_kind,&
+     3.536500e+00_fp_kind,2.791200e+00_fp_kind,2.296400e+00_fp_kind,1.972000e+00_fp_kind,1.757200e+00_fp_kind,&
+     1.609800e+00_fp_kind,1.418000e+00_fp_kind,1.280800e+00_fp_kind,1.158600e+00_fp_kind,1.041600e+00_fp_kind,&
+     9.292000e-01_fp_kind,6.808000e-01_fp_kind,4.896000e-01_fp_kind,3.514000e-01_fp_kind,2.540000e-01_fp_kind,&
+     1.377000e-01_fp_kind,7.870000e-02_fp_kind], 2.8556741556045750e-01_fp_kind,1.649400e+00_fp_kind) /
 data ionicXrayFF( 1, 11) / t_ionicFF('Na',  11,  0, &
-    [11.0000d0, 10.5680d0, 9.76070d0, 9.02740d0, 8.33640d0, 7.61960d0, 6.88260d0, 6.15720d0, 5.47300d0,&
-     4.84910d0, 4.29490d0, 3.39890d0, 2.75470d0, 2.30590d0, 1.99750d0, 1.78460d0, 1.52410d0, 1.36710d0, 1.24650d0, 1.13750d0,&
-     1.03300d0, 0.79170d0, 0.59200d0, 0.43930d0, 0.32340d0, 0.18440d0, 0.10670d0], 0.3526204180551389d0, 4.73870d0) /
+     [1.100000e+01_fp_kind,1.056800e+01_fp_kind,9.760700e+00_fp_kind,9.027400e+00_fp_kind,8.336400e+00_fp_kind,&
+     7.619600e+00_fp_kind,6.882600e+00_fp_kind,6.157200e+00_fp_kind,5.473000e+00_fp_kind,4.849100e+00_fp_kind,&
+     4.294900e+00_fp_kind,3.398900e+00_fp_kind,2.754700e+00_fp_kind,2.305900e+00_fp_kind,1.997500e+00_fp_kind,&
+     1.784600e+00_fp_kind,1.524100e+00_fp_kind,1.367100e+00_fp_kind,1.246500e+00_fp_kind,1.137500e+00_fp_kind,&
+     1.033000e+00_fp_kind,7.917000e-01_fp_kind,5.920000e-01_fp_kind,4.393000e-01_fp_kind,3.234000e-01_fp_kind,&
+     1.844000e-01_fp_kind,1.067000e-01_fp_kind], 3.5262041805513888e-01_fp_kind,4.738700e+00_fp_kind) /
 data ionicXrayFF( 2, 11) / t_ionicFF('Na',  11,  1, &
-    [10.0000d0, 9.88320d0, 9.54630d0, 9.02620d0, 8.37460d0, 7.64750d0, 6.89610d0, 6.16140d0, 5.47240d0,&
-     4.84640d0, 4.29170d0, 3.39650d0, 2.75350d0, 2.30580d0, 1.99780d0, 1.78520d0, 1.52460d0, 1.36730d0, 1.24640d0, 1.13710d0,&
-     1.03250d0, 0.79090d0, 0.59120d0, 0.43800d0, 0.32470d0, 0.18270d0, 0.10740d0], 0.3549565760240938d0, 1.12850d0) /
+     [1.000000e+01_fp_kind,9.883200e+00_fp_kind,9.546300e+00_fp_kind,9.026200e+00_fp_kind,8.374600e+00_fp_kind,&
+     7.647500e+00_fp_kind,6.896100e+00_fp_kind,6.161400e+00_fp_kind,5.472400e+00_fp_kind,4.846400e+00_fp_kind,&
+     4.291700e+00_fp_kind,3.396500e+00_fp_kind,2.753500e+00_fp_kind,2.305800e+00_fp_kind,1.997800e+00_fp_kind,&
+     1.785200e+00_fp_kind,1.524600e+00_fp_kind,1.367300e+00_fp_kind,1.246400e+00_fp_kind,1.137100e+00_fp_kind,&
+     1.032500e+00_fp_kind,7.909000e-01_fp_kind,5.912000e-01_fp_kind,4.380000e-01_fp_kind,3.247000e-01_fp_kind,&
+     1.827000e-01_fp_kind,1.074000e-01_fp_kind], 3.5495657602409381e-01_fp_kind,1.128500e+00_fp_kind) /
 data ionicXrayFF( 1, 12) / t_ionicFF('Mg',  12,  0, &
-    [12.0000d0, 11.5076d0, 10.4731d0, 9.50270d0, 8.73640d0, 8.07870d0, 7.44790d0, 6.81830d0, 6.19720d0,&
-     5.59700d0, 5.03540d0, 4.06730d0, 3.29810d0, 2.72960d0, 2.31740d0, 2.02280d0, 1.66010d0, 1.45910d0, 1.32610d0, 1.21900d0,&
-     1.12100d0, 0.89210d0, 0.69120d0, 0.52840d0, 0.39900d0, 0.23720d0, 0.13940d0], 0.4231151881017823d0, 5.17810d0) /
+     [1.200000e+01_fp_kind,1.150760e+01_fp_kind,1.047310e+01_fp_kind,9.502700e+00_fp_kind,8.736400e+00_fp_kind,&
+     8.078700e+00_fp_kind,7.447900e+00_fp_kind,6.818300e+00_fp_kind,6.197200e+00_fp_kind,5.597000e+00_fp_kind,&
+     5.035400e+00_fp_kind,4.067300e+00_fp_kind,3.298100e+00_fp_kind,2.729600e+00_fp_kind,2.317400e+00_fp_kind,&
+     2.022800e+00_fp_kind,1.660100e+00_fp_kind,1.459100e+00_fp_kind,1.326100e+00_fp_kind,1.219000e+00_fp_kind,&
+     1.121000e+00_fp_kind,8.921000e-01_fp_kind,6.912000e-01_fp_kind,5.284000e-01_fp_kind,3.990000e-01_fp_kind,&
+     2.372000e-01_fp_kind,1.394000e-01_fp_kind], 4.2311518810178228e-01_fp_kind,5.178100e+00_fp_kind) /
 data ionicXrayFF( 2, 12) / t_ionicFF('Mg',  12,  2, &
-    [10.0000d0, 9.91390d0, 9.66250d0, 9.26550d0, 8.75230d0, 8.15710d0, 7.51490d0, 6.85760d0, 6.21150d0,&
-     5.59680d0, 5.02680d0, 4.04800d0, 3.28900d0, 2.72480d0, 2.31600d0, 2.02340d0, 1.66210d0, 1.46050d0, 1.32650d0, 1.21850d0,&
-     1.11980d0, 0.89020d0, 0.68920d0, 0.52600d0, 0.39980d0, 0.23360d0, 0.14090d0], 0.4277221711597079d0, 0.83000d0) /
+     [1.000000e+01_fp_kind,9.913900e+00_fp_kind,9.662500e+00_fp_kind,9.265500e+00_fp_kind,8.752300e+00_fp_kind,&
+     8.157100e+00_fp_kind,7.514900e+00_fp_kind,6.857600e+00_fp_kind,6.211500e+00_fp_kind,5.596800e+00_fp_kind,&
+     5.026800e+00_fp_kind,4.048000e+00_fp_kind,3.289000e+00_fp_kind,2.724800e+00_fp_kind,2.316000e+00_fp_kind,&
+     2.023400e+00_fp_kind,1.662100e+00_fp_kind,1.460500e+00_fp_kind,1.326500e+00_fp_kind,1.218500e+00_fp_kind,&
+     1.119800e+00_fp_kind,8.902000e-01_fp_kind,6.892000e-01_fp_kind,5.260000e-01_fp_kind,3.998000e-01_fp_kind,&
+     2.336000e-01_fp_kind,1.409000e-01_fp_kind], 4.2772217115970790e-01_fp_kind,8.300000e-01_fp_kind) /
 data ionicXrayFF( 1, 13) / t_ionicFF('Al',  13,  0, &
-    [13.0000d0, 12.4386d0, 11.2290d0, 10.0592d0, 9.15870d0, 8.46580d0, 7.87430d0, 7.31720d0, 6.76800d0,&
-     6.22430d0, 5.69430d0, 4.71420d0, 3.88490d0, 3.22200d0, 2.71270d0, 2.33110d0, 1.84170d0, 1.57170d0, 1.40850d0, 1.29260d0,&
-     1.19610d0, 0.97990d0, 0.78360d0, 0.61600d0, 0.47690d0, 0.29360d0, 0.17720d0], 0.4974888479895156d0, 5.86650d0) /
+     [1.300000e+01_fp_kind,1.243860e+01_fp_kind,1.122900e+01_fp_kind,1.005920e+01_fp_kind,9.158700e+00_fp_kind,&
+     8.465800e+00_fp_kind,7.874300e+00_fp_kind,7.317200e+00_fp_kind,6.768000e+00_fp_kind,6.224300e+00_fp_kind,&
+     5.694300e+00_fp_kind,4.714200e+00_fp_kind,3.884900e+00_fp_kind,3.222000e+00_fp_kind,2.712700e+00_fp_kind,&
+     2.331100e+00_fp_kind,1.841700e+00_fp_kind,1.571700e+00_fp_kind,1.408500e+00_fp_kind,1.292600e+00_fp_kind,&
+     1.196100e+00_fp_kind,9.799000e-01_fp_kind,7.836000e-01_fp_kind,6.160000e-01_fp_kind,4.769000e-01_fp_kind,&
+     2.936000e-01_fp_kind,1.772000e-01_fp_kind], 4.9748884798951559e-01_fp_kind,5.866500e+00_fp_kind) /
 data ionicXrayFF( 2, 13) / t_ionicFF('Al',  13,  3, &
-    [10.0000d0, 9.93360d0, 9.73830d0, 9.42570d0, 9.01370d0, 8.52390d0, 7.98000d0, 7.40530d0, 6.82090d0,&
-     6.24500d0, 5.69160d0, 4.69050d0, 3.86040d0, 3.20400d0, 2.70180d0, 2.32600d0, 1.84270d0, 1.57400d0, 1.41020d0, 1.29310d0,&
-     1.19550d0, 0.97760d0, 0.78080d0, 0.61280d0, 0.47700d0, 0.28900d0, 0.17890d0], 0.5023281933687471d0, 0.63920d0) /
+     [1.000000e+01_fp_kind,9.933600e+00_fp_kind,9.738300e+00_fp_kind,9.425700e+00_fp_kind,9.013700e+00_fp_kind,&
+     8.523900e+00_fp_kind,7.980000e+00_fp_kind,7.405300e+00_fp_kind,6.820900e+00_fp_kind,6.245000e+00_fp_kind,&
+     5.691600e+00_fp_kind,4.690500e+00_fp_kind,3.860400e+00_fp_kind,3.204000e+00_fp_kind,2.701800e+00_fp_kind,&
+     2.326000e+00_fp_kind,1.842700e+00_fp_kind,1.574000e+00_fp_kind,1.410200e+00_fp_kind,1.293100e+00_fp_kind,&
+     1.195500e+00_fp_kind,9.776000e-01_fp_kind,7.808000e-01_fp_kind,6.128000e-01_fp_kind,4.770000e-01_fp_kind,&
+     2.890000e-01_fp_kind,1.789000e-01_fp_kind], 5.0232819336874712e-01_fp_kind,6.392000e-01_fp_kind) /
 data ionicXrayFF( 1, 14) / t_ionicFF('Si',  14,  0, &
-    [14.0000d0, 13.4381d0, 12.1415d0, 10.7741d0, 9.67410d0, 8.85860d0, 8.23100d0, 7.69870d0, 7.20410d0,&
-     6.72080d0, 6.24220d0, 5.31460d0, 4.47200d0, 3.75200d0, 3.16530d0, 2.70300d0, 2.07650d0, 1.71710d0, 1.50530d0, 1.36770d0,&
-     1.26480d0, 1.05590d0, 0.86770d0, 0.69970d0, 0.55510d0, 0.35290d0, 0.21950d0], 0.5734189615761451d0, 5.75350d0) /
+     [1.400000e+01_fp_kind,1.343810e+01_fp_kind,1.214150e+01_fp_kind,1.077410e+01_fp_kind,9.674100e+00_fp_kind,&
+     8.858600e+00_fp_kind,8.231000e+00_fp_kind,7.698700e+00_fp_kind,7.204100e+00_fp_kind,6.720800e+00_fp_kind,&
+     6.242200e+00_fp_kind,5.314600e+00_fp_kind,4.472000e+00_fp_kind,3.752000e+00_fp_kind,3.165300e+00_fp_kind,&
+     2.703000e+00_fp_kind,2.076500e+00_fp_kind,1.717100e+00_fp_kind,1.505300e+00_fp_kind,1.367700e+00_fp_kind,&
+     1.264800e+00_fp_kind,1.055900e+00_fp_kind,8.677000e-01_fp_kind,6.997000e-01_fp_kind,5.551000e-01_fp_kind,&
+     3.529000e-01_fp_kind,2.195000e-01_fp_kind], 5.7341896157614514e-01_fp_kind,5.753500e+00_fp_kind) /
 data ionicXrayFF( 2, 14) / t_ionicFF('Si',  14,  0, &
-    [14.0000d0, 13.4381d0, 12.1415d0, 10.7741d0, 9.67410d0, 8.85860d0, 8.23100d0, 7.69870d0, 7.20410d0,&
-     6.72080d0, 6.24220d0, 5.31460d0, 4.47200d0, 3.75200d0, 3.16530d0, 2.70300d0, 2.07650d0, 1.71710d0, 1.50530d0, 1.36770d0,&
-     1.26480d0, 1.05590d0, 0.86770d0, 0.69970d0, 0.55510d0, 0.35290d0, 0.21950d0], 0.5734189615761451d0, 5.75350d0) /
+     [1.400000e+01_fp_kind,1.343810e+01_fp_kind,1.214150e+01_fp_kind,1.077410e+01_fp_kind,9.674100e+00_fp_kind,&
+     8.858600e+00_fp_kind,8.231000e+00_fp_kind,7.698700e+00_fp_kind,7.204100e+00_fp_kind,6.720800e+00_fp_kind,&
+     6.242200e+00_fp_kind,5.314600e+00_fp_kind,4.472000e+00_fp_kind,3.752000e+00_fp_kind,3.165300e+00_fp_kind,&
+     2.703000e+00_fp_kind,2.076500e+00_fp_kind,1.717100e+00_fp_kind,1.505300e+00_fp_kind,1.367700e+00_fp_kind,&
+     1.264800e+00_fp_kind,1.055900e+00_fp_kind,8.677000e-01_fp_kind,6.997000e-01_fp_kind,5.551000e-01_fp_kind,&
+     3.529000e-01_fp_kind,2.195000e-01_fp_kind], 5.7341896157614514e-01_fp_kind,5.753500e+00_fp_kind) /
 data ionicXrayFF( 1, 15) / t_ionicFF('P ',  15,  0, &
-    [15.0000d0, 14.4575d0, 13.1369d0, 11.6278d0, 10.3254d0, 9.33410d0, 8.59980d0, 8.03010d0, 7.54830d0,&
-     7.10550d0, 6.67650d0, 5.83170d0, 5.02150d0, 4.28540d0, 3.65010d0, 3.12320d0, 2.36470d0, 1.90330d0, 1.62640d0, 1.45310d0,&
-     1.33390d0, 1.12250d0, 0.94280d0, 0.77800d0, 0.63150d0, 0.41390d0, 0.26550d0], 0.6486816654789749d0, 5.47380d0) /
+     [1.500000e+01_fp_kind,1.445750e+01_fp_kind,1.313690e+01_fp_kind,1.162780e+01_fp_kind,1.032540e+01_fp_kind,&
+     9.334100e+00_fp_kind,8.599800e+00_fp_kind,8.030100e+00_fp_kind,7.548300e+00_fp_kind,7.105500e+00_fp_kind,&
+     6.676500e+00_fp_kind,5.831700e+00_fp_kind,5.021500e+00_fp_kind,4.285400e+00_fp_kind,3.650100e+00_fp_kind,&
+     3.123200e+00_fp_kind,2.364700e+00_fp_kind,1.903300e+00_fp_kind,1.626400e+00_fp_kind,1.453100e+00_fp_kind,&
+     1.333900e+00_fp_kind,1.122500e+00_fp_kind,9.428000e-01_fp_kind,7.780000e-01_fp_kind,6.315000e-01_fp_kind,&
+     4.139000e-01_fp_kind,2.655000e-01_fp_kind], 6.4868166547897488e-01_fp_kind,5.473800e+00_fp_kind) /
 data ionicXrayFF( 2, 15) / t_ionicFF('P ',  15,  0, &
-    [15.0000d0, 14.4575d0, 13.1369d0, 11.6278d0, 10.3254d0, 9.33410d0, 8.59980d0, 8.03010d0, 7.54830d0,&
-     7.10550d0, 6.67650d0, 5.83170d0, 5.02150d0, 4.28540d0, 3.65010d0, 3.12320d0, 2.36470d0, 1.90330d0, 1.62640d0, 1.45310d0,&
-     1.33390d0, 1.12250d0, 0.94280d0, 0.77800d0, 0.63150d0, 0.41390d0, 0.26550d0], 0.6486816654789749d0, 5.47380d0) /
+     [1.500000e+01_fp_kind,1.445750e+01_fp_kind,1.313690e+01_fp_kind,1.162780e+01_fp_kind,1.032540e+01_fp_kind,&
+     9.334100e+00_fp_kind,8.599800e+00_fp_kind,8.030100e+00_fp_kind,7.548300e+00_fp_kind,7.105500e+00_fp_kind,&
+     6.676500e+00_fp_kind,5.831700e+00_fp_kind,5.021500e+00_fp_kind,4.285400e+00_fp_kind,3.650100e+00_fp_kind,&
+     3.123200e+00_fp_kind,2.364700e+00_fp_kind,1.903300e+00_fp_kind,1.626400e+00_fp_kind,1.453100e+00_fp_kind,&
+     1.333900e+00_fp_kind,1.122500e+00_fp_kind,9.428000e-01_fp_kind,7.780000e-01_fp_kind,6.315000e-01_fp_kind,&
+     4.139000e-01_fp_kind,2.655000e-01_fp_kind], 6.4868166547897488e-01_fp_kind,5.473800e+00_fp_kind) /
 data ionicXrayFF( 1, 16) / t_ionicFF('S ',  16,  0, &
-    [16.0000d0, 15.4828d0, 14.1735d0, 12.5781d0, 11.1041d0, 9.92390d0, 9.03820d0, 8.37600d0, 7.85730d0,&
-     7.41900d0, 7.01940d0, 6.25600d0, 5.50710d0, 4.79140d0, 4.13950d0, 3.57120d0, 2.70010d0, 2.13320d0, 1.77910d0, 1.55720d0,&
-     1.41100d0, 1.18270d0, 1.00940d0, 0.85010d0, 0.70450d0, 0.47590d0, 0.31460d0], 0.7220472541344236d0, 5.16400d0) /
+     [1.600000e+01_fp_kind,1.548280e+01_fp_kind,1.417350e+01_fp_kind,1.257810e+01_fp_kind,1.110410e+01_fp_kind,&
+     9.923900e+00_fp_kind,9.038200e+00_fp_kind,8.376000e+00_fp_kind,7.857300e+00_fp_kind,7.419000e+00_fp_kind,&
+     7.019400e+00_fp_kind,6.256000e+00_fp_kind,5.507100e+00_fp_kind,4.791400e+00_fp_kind,4.139500e+00_fp_kind,&
+     3.571200e+00_fp_kind,2.700100e+00_fp_kind,2.133200e+00_fp_kind,1.779100e+00_fp_kind,1.557200e+00_fp_kind,&
+     1.411000e+00_fp_kind,1.182700e+00_fp_kind,1.009400e+00_fp_kind,8.501000e-01_fp_kind,7.045000e-01_fp_kind,&
+     4.759000e-01_fp_kind,3.146000e-01_fp_kind], 7.2204725413442361e-01_fp_kind,5.164000e+00_fp_kind) /
 data ionicXrayFF( 2, 16) / t_ionicFF('S ',  16,  0, &
-    [16.0000d0, 15.4828d0, 14.1735d0, 12.5781d0, 11.1041d0, 9.92390d0, 9.03820d0, 8.37600d0, 7.85730d0,&
-     7.41900d0, 7.01940d0, 6.25600d0, 5.50710d0, 4.79140d0, 4.13950d0, 3.57120d0, 2.70010d0, 2.13320d0, 1.77910d0, 1.55720d0,&
-     1.41100d0, 1.18270d0, 1.00940d0, 0.85010d0, 0.70450d0, 0.47590d0, 0.31460d0], 0.7220472541344236d0, 5.16400d0) /
+     [1.600000e+01_fp_kind,1.548280e+01_fp_kind,1.417350e+01_fp_kind,1.257810e+01_fp_kind,1.110410e+01_fp_kind,&
+     9.923900e+00_fp_kind,9.038200e+00_fp_kind,8.376000e+00_fp_kind,7.857300e+00_fp_kind,7.419000e+00_fp_kind,&
+     7.019400e+00_fp_kind,6.256000e+00_fp_kind,5.507100e+00_fp_kind,4.791400e+00_fp_kind,4.139500e+00_fp_kind,&
+     3.571200e+00_fp_kind,2.700100e+00_fp_kind,2.133200e+00_fp_kind,1.779100e+00_fp_kind,1.557200e+00_fp_kind,&
+     1.411000e+00_fp_kind,1.182700e+00_fp_kind,1.009400e+00_fp_kind,8.501000e-01_fp_kind,7.045000e-01_fp_kind,&
+     4.759000e-01_fp_kind,3.146000e-01_fp_kind], 7.2204725413442361e-01_fp_kind,5.164000e+00_fp_kind) /
 data ionicXrayFF( 1, 17) / t_ionicFF('Cl',  17,  0, &
-    [17.0000d0, 16.5099d0, 15.2319d0, 13.5939d0, 11.9887d0, 10.6318d0, 9.57580d0, 8.78240d0, 8.18210d0,&
-     7.70760d0, 7.30650d0, 6.59680d0, 5.91690d0, 5.24730d0, 4.60850d0, 4.02430d0, 3.07120d0, 2.40540d0, 1.96780d0, 1.68640d0,&
-     1.50260d0, 1.24080d0, 1.06890d0, 0.91560d0, 0.77300d0, 0.53780d0, 0.36560d0], 0.7912278170538229d0, 4.85660d0) /
+     [1.700000e+01_fp_kind,1.650990e+01_fp_kind,1.523190e+01_fp_kind,1.359390e+01_fp_kind,1.198870e+01_fp_kind,&
+     1.063180e+01_fp_kind,9.575800e+00_fp_kind,8.782400e+00_fp_kind,8.182100e+00_fp_kind,7.707600e+00_fp_kind,&
+     7.306500e+00_fp_kind,6.596800e+00_fp_kind,5.916900e+00_fp_kind,5.247300e+00_fp_kind,4.608500e+00_fp_kind,&
+     4.024300e+00_fp_kind,3.071200e+00_fp_kind,2.405400e+00_fp_kind,1.967800e+00_fp_kind,1.686400e+00_fp_kind,&
+     1.502600e+00_fp_kind,1.240800e+00_fp_kind,1.068900e+00_fp_kind,9.156000e-01_fp_kind,7.730000e-01_fp_kind,&
+     5.378000e-01_fp_kind,3.656000e-01_fp_kind], 7.9122781705382295e-01_fp_kind,4.856600e+00_fp_kind) /
 data ionicXrayFF( 2, 17) / t_ionicFF('Cl',  17, -1, &
-    [18.0000d0, 17.3613d0, 15.7140d0, 13.8027d0, 12.0125d0, 10.5850d0, 9.52150d0, 8.74280d0, 8.15950d0,&
-     7.69780d0, 7.30490d0, 6.60190d0, 5.92220d0, 5.25110d0, 4.61090d0, 4.02580d0, 3.07210d0, 2.40620d0, 1.96850d0, 1.68700d0,&
-     1.50300d0, 1.24080d0, 1.06870d0, 0.91540d0, 0.77210d0, 0.53870d0, 0.36450d0], 0.7887950467373983d0, 6.38580d0) /
+     [1.800000e+01_fp_kind,1.736130e+01_fp_kind,1.571400e+01_fp_kind,1.380270e+01_fp_kind,1.201250e+01_fp_kind,&
+     1.058500e+01_fp_kind,9.521500e+00_fp_kind,8.742800e+00_fp_kind,8.159500e+00_fp_kind,7.697800e+00_fp_kind,&
+     7.304900e+00_fp_kind,6.601900e+00_fp_kind,5.922200e+00_fp_kind,5.251100e+00_fp_kind,4.610900e+00_fp_kind,&
+     4.025800e+00_fp_kind,3.072100e+00_fp_kind,2.406200e+00_fp_kind,1.968500e+00_fp_kind,1.687000e+00_fp_kind,&
+     1.503000e+00_fp_kind,1.240800e+00_fp_kind,1.068700e+00_fp_kind,9.154000e-01_fp_kind,7.721000e-01_fp_kind,&
+     5.387000e-01_fp_kind,3.645000e-01_fp_kind], 7.8879504673739831e-01_fp_kind,6.385800e+00_fp_kind) /
 data ionicXrayFF( 1, 18) / t_ionicFF('Ar',  18,  0, &
-    [18.0000d0, 17.5361d0, 16.2988d0, 14.6489d0, 12.9510d0, 11.4426d0, 10.2179d0, 9.27360d0, 8.55920d0,&
-     8.01240d0, 7.57660d0, 6.87620d0, 6.25330d0, 5.64090d0, 5.03730d0, 4.46150d0, 3.46310d0, 2.71380d0, 2.19290d0, 1.84500d0,&
-     1.61450d0, 1.30110d0, 1.12300d0, 0.97470d0, 0.83640d0, 0.59870d0, 0.41790d0], 0.8556657054618029d0, 4.57120d0) /
+     [1.800000e+01_fp_kind,1.753610e+01_fp_kind,1.629880e+01_fp_kind,1.464890e+01_fp_kind,1.295100e+01_fp_kind,&
+     1.144260e+01_fp_kind,1.021790e+01_fp_kind,9.273600e+00_fp_kind,8.559200e+00_fp_kind,8.012400e+00_fp_kind,&
+     7.576600e+00_fp_kind,6.876200e+00_fp_kind,6.253300e+00_fp_kind,5.640900e+00_fp_kind,5.037300e+00_fp_kind,&
+     4.461500e+00_fp_kind,3.463100e+00_fp_kind,2.713800e+00_fp_kind,2.192900e+00_fp_kind,1.845000e+00_fp_kind,&
+     1.614500e+00_fp_kind,1.301100e+00_fp_kind,1.123000e+00_fp_kind,9.747000e-01_fp_kind,8.364000e-01_fp_kind,&
+     5.987000e-01_fp_kind,4.179000e-01_fp_kind], 8.5566570546180287e-01_fp_kind,4.571200e+00_fp_kind) /
 data ionicXrayFF( 2, 18) / t_ionicFF('Ar',  18,  0, &
-    [18.0000d0, 17.5361d0, 16.2988d0, 14.6489d0, 12.9510d0, 11.4426d0, 10.2179d0, 9.27360d0, 8.55920d0,&
-     8.01240d0, 7.57660d0, 6.87620d0, 6.25330d0, 5.64090d0, 5.03730d0, 4.46150d0, 3.46310d0, 2.71380d0, 2.19290d0, 1.84500d0,&
-     1.61450d0, 1.30110d0, 1.12300d0, 0.97470d0, 0.83640d0, 0.59870d0, 0.41790d0], 0.8556657054618029d0, 4.57120d0) /
+     [1.800000e+01_fp_kind,1.753610e+01_fp_kind,1.629880e+01_fp_kind,1.464890e+01_fp_kind,1.295100e+01_fp_kind,&
+     1.144260e+01_fp_kind,1.021790e+01_fp_kind,9.273600e+00_fp_kind,8.559200e+00_fp_kind,8.012400e+00_fp_kind,&
+     7.576600e+00_fp_kind,6.876200e+00_fp_kind,6.253300e+00_fp_kind,5.640900e+00_fp_kind,5.037300e+00_fp_kind,&
+     4.461500e+00_fp_kind,3.463100e+00_fp_kind,2.713800e+00_fp_kind,2.192900e+00_fp_kind,1.845000e+00_fp_kind,&
+     1.614500e+00_fp_kind,1.301100e+00_fp_kind,1.123000e+00_fp_kind,9.747000e-01_fp_kind,8.364000e-01_fp_kind,&
+     5.987000e-01_fp_kind,4.179000e-01_fp_kind], 8.5566570546180287e-01_fp_kind,4.571200e+00_fp_kind) /
 data ionicXrayFF( 1, 19) / t_ionicFF('K ',  19,  0, &
-    [19.0000d0, 18.2046d0, 16.7341d0, 15.2444d0, 13.7301d0, 12.2706d0, 10.9786d0, 9.90990d0, 9.06310d0,&
-     8.40470d0, 7.89000d0, 7.12640d0, 6.52430d0, 5.96320d0, 5.40730d0, 4.86030d0, 3.85620d0, 3.04680d0, 2.45000d0, 2.03300d0,&
-     1.74940d0, 1.36820d0, 1.17510d0, 1.03010d0, 0.89330d0, 0.65900d0, 0.47090d0], 0.9149068222417682d0, 8.89660d0) /
+     [1.900000e+01_fp_kind,1.820460e+01_fp_kind,1.673410e+01_fp_kind,1.524440e+01_fp_kind,1.373010e+01_fp_kind,&
+     1.227060e+01_fp_kind,1.097860e+01_fp_kind,9.909900e+00_fp_kind,9.063100e+00_fp_kind,8.404700e+00_fp_kind,&
+     7.890000e+00_fp_kind,7.126400e+00_fp_kind,6.524300e+00_fp_kind,5.963200e+00_fp_kind,5.407300e+00_fp_kind,&
+     4.860300e+00_fp_kind,3.856200e+00_fp_kind,3.046800e+00_fp_kind,2.450000e+00_fp_kind,2.033000e+00_fp_kind,&
+     1.749400e+00_fp_kind,1.368200e+00_fp_kind,1.175100e+00_fp_kind,1.030100e+00_fp_kind,8.933000e-01_fp_kind,&
+     6.590000e-01_fp_kind,4.709000e-01_fp_kind], 9.1490682224176823e-01_fp_kind,8.896600e+00_fp_kind) /
 data ionicXrayFF( 2, 19) / t_ionicFF('K ',  19,  1, &
-    [18.0000d0, 17.6487d0, 16.6780d0, 15.2987d0, 13.7618d0, 12.2773d0, 10.9744d0, 9.90310d0, 9.05720d0,&
-     8.40070d0, 7.88790d0, 7.12660d0, 6.52510d0, 5.96390d0, 5.40770d0, 4.86030d0, 3.85600d0, 3.04670d0, 2.45000d0, 2.03330d0,&
-     1.74970d0, 1.36770d0, 1.17460d0, 1.02860d0, 0.89510d0, 0.65780d0, 0.47140d0], 0.9159029824163696d0, 3.43000d0) /
+     [1.800000e+01_fp_kind,1.764870e+01_fp_kind,1.667800e+01_fp_kind,1.529870e+01_fp_kind,1.376180e+01_fp_kind,&
+     1.227730e+01_fp_kind,1.097440e+01_fp_kind,9.903100e+00_fp_kind,9.057200e+00_fp_kind,8.400700e+00_fp_kind,&
+     7.887900e+00_fp_kind,7.126600e+00_fp_kind,6.525100e+00_fp_kind,5.963900e+00_fp_kind,5.407700e+00_fp_kind,&
+     4.860300e+00_fp_kind,3.856000e+00_fp_kind,3.046700e+00_fp_kind,2.450000e+00_fp_kind,2.033300e+00_fp_kind,&
+     1.749700e+00_fp_kind,1.367700e+00_fp_kind,1.174600e+00_fp_kind,1.028600e+00_fp_kind,8.951000e-01_fp_kind,&
+     6.578000e-01_fp_kind,4.714000e-01_fp_kind], 9.1590298241636958e-01_fp_kind,3.430000e+00_fp_kind) /
 data ionicXrayFF( 1, 20) / t_ionicFF('Ca',  20,  0, &
-    [20.0000d0, 19.0915d0, 17.3321d0, 15.7245d0, 14.3063d0, 12.9634d0, 11.7074d0, 10.5924d0, 9.65180d0,&
-     8.88690d0, 8.27660d0, 7.39300d0, 6.76330d0, 6.22950d0, 5.71860d0, 5.21080d0, 4.23480d0, 3.39260d0, 2.73340d0, 2.25030d0,&
-     1.90980d0, 1.44460d0, 1.22660d0, 1.08060d0, 0.94580d0, 0.71890d0, 0.52290d0], 0.9664888510096503d0, 9.83710d0) /
+     [2.000000e+01_fp_kind,1.909150e+01_fp_kind,1.733210e+01_fp_kind,1.572450e+01_fp_kind,1.430630e+01_fp_kind,&
+     1.296340e+01_fp_kind,1.170740e+01_fp_kind,1.059240e+01_fp_kind,9.651800e+00_fp_kind,8.886900e+00_fp_kind,&
+     8.276600e+00_fp_kind,7.393000e+00_fp_kind,6.763300e+00_fp_kind,6.229500e+00_fp_kind,5.718600e+00_fp_kind,&
+     5.210800e+00_fp_kind,4.234800e+00_fp_kind,3.392600e+00_fp_kind,2.733400e+00_fp_kind,2.250300e+00_fp_kind,&
+     1.909800e+00_fp_kind,1.444600e+00_fp_kind,1.226600e+00_fp_kind,1.080600e+00_fp_kind,9.458000e-01_fp_kind,&
+     7.189000e-01_fp_kind,5.229000e-01_fp_kind], 9.6648885100965032e-01_fp_kind,9.837100e+00_fp_kind) /
 data ionicXrayFF( 2, 20) / t_ionicFF('Ca',  20,  2, &
-    [18.0000d0, 17.7214d0, 16.9355d0, 15.7755d0, 14.4144d0, 13.0188d0, 11.7149d0, 10.5766d0, 9.63040d0,&
-     8.86850d0, 8.26400d0, 7.39060d0, 6.76540d0, 6.23230d0, 5.72030d0, 5.21130d0, 4.23380d0, 3.39160d0, 2.73290d0, 2.25040d0,&
-     1.91020d0, 1.44460d0, 1.22590d0, 1.07820d0, 0.94870d0, 0.71500d0, 0.52440d0], 0.9693359896485845d0, 2.70750d0) /
+     [1.800000e+01_fp_kind,1.772140e+01_fp_kind,1.693550e+01_fp_kind,1.577550e+01_fp_kind,1.441440e+01_fp_kind,&
+     1.301880e+01_fp_kind,1.171490e+01_fp_kind,1.057660e+01_fp_kind,9.630400e+00_fp_kind,8.868500e+00_fp_kind,&
+     8.264000e+00_fp_kind,7.390600e+00_fp_kind,6.765400e+00_fp_kind,6.232300e+00_fp_kind,5.720300e+00_fp_kind,&
+     5.211300e+00_fp_kind,4.233800e+00_fp_kind,3.391600e+00_fp_kind,2.732900e+00_fp_kind,2.250400e+00_fp_kind,&
+     1.910200e+00_fp_kind,1.444600e+00_fp_kind,1.225900e+00_fp_kind,1.078200e+00_fp_kind,9.487000e-01_fp_kind,&
+     7.150000e-01_fp_kind,5.244000e-01_fp_kind], 9.6933598964858447e-01_fp_kind,2.707500e+00_fp_kind) /
 data ionicXrayFF( 1, 21) / t_ionicFF('Sc',  21,  0, &
-    [21.0000d0, 20.1312d0, 18.3542d0, 16.6416d0, 15.1315d0, 13.7302d0, 12.4228d0, 11.2449d0, 10.2274d0,&
-     9.37930d0, 8.68910d0, 7.68390d0, 6.99800d0, 6.46140d0, 5.97670d0, 5.50290d0, 4.57190d0, 3.72440d0, 3.02390d0, 2.48570d0,&
-     2.09140d0, 1.53400d0, 1.28040d0, 1.12730d0, 0.99540d0, 0.77370d0, 0.57470d0], 0.1012920250865356d1, 9.25020d0) /
+     [2.100000e+01_fp_kind,2.013120e+01_fp_kind,1.835420e+01_fp_kind,1.664160e+01_fp_kind,1.513150e+01_fp_kind,&
+     1.373020e+01_fp_kind,1.242280e+01_fp_kind,1.124490e+01_fp_kind,1.022740e+01_fp_kind,9.379300e+00_fp_kind,&
+     8.689100e+00_fp_kind,7.683900e+00_fp_kind,6.998000e+00_fp_kind,6.461400e+00_fp_kind,5.976700e+00_fp_kind,&
+     5.502900e+00_fp_kind,4.571900e+00_fp_kind,3.724400e+00_fp_kind,3.023900e+00_fp_kind,2.485700e+00_fp_kind,&
+     2.091400e+00_fp_kind,1.534000e+00_fp_kind,1.280400e+00_fp_kind,1.127300e+00_fp_kind,9.954000e-01_fp_kind,&
+     7.737000e-01_fp_kind,5.747000e-01_fp_kind], 1.0129202508653561e+00_fp_kind,9.250200e+00_fp_kind) /
 data ionicXrayFF( 2, 21) / t_ionicFF('Sc',  21,  3, &
-    [18.0000d0, 17.7721d0, 17.1207d0, 16.1347d0, 14.9363d0, 13.6534d0, 12.3961d0, 11.2429d0, 10.2375d0,&
-     9.39350d0, 8.70280d0, 7.69210d0, 7.00270d0, 6.46650d0, 5.98400d0, 5.51280d0, 4.58430d0, 3.73590d0, 3.03300d0, 2.49230d0,&
-     2.09590d0, 1.53500d0, 1.27980d0, 1.12500d0, 0.99790d0, 0.76940d0, 0.57650d0], 0.1016182338972264d1, 2.20780d0) /
+     [1.800000e+01_fp_kind,1.777210e+01_fp_kind,1.712070e+01_fp_kind,1.613470e+01_fp_kind,1.493630e+01_fp_kind,&
+     1.365340e+01_fp_kind,1.239610e+01_fp_kind,1.124290e+01_fp_kind,1.023750e+01_fp_kind,9.393500e+00_fp_kind,&
+     8.702800e+00_fp_kind,7.692100e+00_fp_kind,7.002700e+00_fp_kind,6.466500e+00_fp_kind,5.984000e+00_fp_kind,&
+     5.512800e+00_fp_kind,4.584300e+00_fp_kind,3.735900e+00_fp_kind,3.033000e+00_fp_kind,2.492300e+00_fp_kind,&
+     2.095900e+00_fp_kind,1.535000e+00_fp_kind,1.279800e+00_fp_kind,1.125000e+00_fp_kind,9.979000e-01_fp_kind,&
+     7.694000e-01_fp_kind,5.765000e-01_fp_kind], 1.0161823389722640e+00_fp_kind,2.207800e+00_fp_kind) /
 data ionicXrayFF( 1, 22) / t_ionicFF('Ti',  22,  0, &
-    [22.0000d0, 21.1709d0, 19.4075d0, 17.6297d0, 16.0374d0, 14.5667d0, 13.1953d0, 11.9477d0, 10.8520d0,&
-     9.92080d0, 9.14910d0, 8.00810d0, 7.24180d0, 6.67780d0, 6.20170d0, 5.75380d0, 4.87390d0, 4.04050d0, 3.31710d0, 2.73530d0,&
-     2.29210d0, 1.63790d0, 1.33920d0, 1.17290d0, 1.04150d0, 0.82500d0, 0.62540d0], 0.1053324974502452d1, 8.72700d0) /
+     [2.200000e+01_fp_kind,2.117090e+01_fp_kind,1.940750e+01_fp_kind,1.762970e+01_fp_kind,1.603740e+01_fp_kind,&
+     1.456670e+01_fp_kind,1.319530e+01_fp_kind,1.194770e+01_fp_kind,1.085200e+01_fp_kind,9.920800e+00_fp_kind,&
+     9.149100e+00_fp_kind,8.008100e+00_fp_kind,7.241800e+00_fp_kind,6.677800e+00_fp_kind,6.201700e+00_fp_kind,&
+     5.753800e+00_fp_kind,4.873900e+00_fp_kind,4.040500e+00_fp_kind,3.317100e+00_fp_kind,2.735300e+00_fp_kind,&
+     2.292100e+00_fp_kind,1.637900e+00_fp_kind,1.339200e+00_fp_kind,1.172900e+00_fp_kind,1.041500e+00_fp_kind,&
+     8.250000e-01_fp_kind,6.254000e-01_fp_kind], 1.0533249745024520e+00_fp_kind,8.727000e+00_fp_kind) /
 data ionicXrayFF( 2, 22) / t_ionicFF('Ti',  22,  4, &
-    [18.0000d0, 17.8093d0, 17.2595d0, 16.4123d0, 15.3561d0, 14.1890d0, 13.0027d0, 11.8707d0, 10.8432d0,&
-     9.94650d0, 9.18700d0, 8.03900d0, 7.25840d0, 6.68810d0, 6.21360d0, 5.77090d0, 4.90000d0, 4.06820d0, 3.34070d0, 2.75310d0,&
-     2.30430d0, 1.64120d0, 1.33900d0, 1.17060d0, 1.04350d0, 0.82060d0, 0.62740d0], 0.1056792341596257d1, 1.84290d0) /
+     [1.800000e+01_fp_kind,1.780930e+01_fp_kind,1.725950e+01_fp_kind,1.641230e+01_fp_kind,1.535610e+01_fp_kind,&
+     1.418900e+01_fp_kind,1.300270e+01_fp_kind,1.187070e+01_fp_kind,1.084320e+01_fp_kind,9.946500e+00_fp_kind,&
+     9.187000e+00_fp_kind,8.039000e+00_fp_kind,7.258400e+00_fp_kind,6.688100e+00_fp_kind,6.213600e+00_fp_kind,&
+     5.770900e+00_fp_kind,4.900000e+00_fp_kind,4.068200e+00_fp_kind,3.340700e+00_fp_kind,2.753100e+00_fp_kind,&
+     2.304300e+00_fp_kind,1.641200e+00_fp_kind,1.339000e+00_fp_kind,1.170600e+00_fp_kind,1.043500e+00_fp_kind,&
+     8.206000e-01_fp_kind,6.274000e-01_fp_kind], 1.0567923415962570e+00_fp_kind,1.842900e+00_fp_kind) /
 data ionicXrayFF( 1, 23) / t_ionicFF('V ',  23,  0, &
-    [23.0000d0, 22.2080d0, 20.4716d0, 18.6538d0, 16.9942d0, 15.4567d0, 14.0197d0, 12.7015d0, 11.5283d0,&
-     10.5147d0, 9.66040d0, 8.37360d0, 7.50740d0, 6.89370d0, 6.40750d0, 5.97360d0, 5.14150d0, 4.33550d0, 3.60560d0, 2.99280d0,&
-     2.50760d0, 1.75690d0, 1.40510d0, 1.21920d0, 1.08510d0, 0.87290d0, 0.67470d0], 0.1087967462923231d1, 8.26330d0) /
+     [2.300000e+01_fp_kind,2.220800e+01_fp_kind,2.047160e+01_fp_kind,1.865380e+01_fp_kind,1.699420e+01_fp_kind,&
+     1.545670e+01_fp_kind,1.401970e+01_fp_kind,1.270150e+01_fp_kind,1.152830e+01_fp_kind,1.051470e+01_fp_kind,&
+     9.660400e+00_fp_kind,8.373600e+00_fp_kind,7.507400e+00_fp_kind,6.893700e+00_fp_kind,6.407500e+00_fp_kind,&
+     5.973600e+00_fp_kind,5.141500e+00_fp_kind,4.335500e+00_fp_kind,3.605600e+00_fp_kind,2.992800e+00_fp_kind,&
+     2.507600e+00_fp_kind,1.756900e+00_fp_kind,1.405100e+00_fp_kind,1.219200e+00_fp_kind,1.085100e+00_fp_kind,&
+     8.729000e-01_fp_kind,6.747000e-01_fp_kind], 1.0879674629232310e+00_fp_kind,8.263300e+00_fp_kind) /
 data ionicXrayFF( 2, 23) / t_ionicFF('V ',  23,  5, &
-    [18.0000d0, 17.8377d0, 17.3667d0, 16.6314d0, 15.6972d0, 14.6399d0, 13.5341d0, 12.4456d0, 11.4239d0,&
-     10.5016d0, 9.69480d0, 8.42730d0, 7.54400d0, 6.91530d0, 6.42530d0, 5.99610d0, 5.17910d0, 4.37990d0, 3.64680d0, 3.02590d0,&
-     2.53170d0, 1.76470d0, 1.40600d0, 1.21710d0, 1.08650d0, 0.86860d0, 0.67680d0], 0.1091456422018346d1, 1.56580d0) /
+     [1.800000e+01_fp_kind,1.783770e+01_fp_kind,1.736670e+01_fp_kind,1.663140e+01_fp_kind,1.569720e+01_fp_kind,&
+     1.463990e+01_fp_kind,1.353410e+01_fp_kind,1.244560e+01_fp_kind,1.142390e+01_fp_kind,1.050160e+01_fp_kind,&
+     9.694800e+00_fp_kind,8.427300e+00_fp_kind,7.544000e+00_fp_kind,6.915300e+00_fp_kind,6.425300e+00_fp_kind,&
+     5.996100e+00_fp_kind,5.179100e+00_fp_kind,4.379900e+00_fp_kind,3.646800e+00_fp_kind,3.025900e+00_fp_kind,&
+     2.531700e+00_fp_kind,1.764700e+00_fp_kind,1.406000e+00_fp_kind,1.217100e+00_fp_kind,1.086500e+00_fp_kind,&
+     8.686000e-01_fp_kind,6.768000e-01_fp_kind], 1.0914564220183460e+00_fp_kind,1.565800e+00_fp_kind) /
 data ionicXrayFF( 1, 24) / t_ionicFF('Cr',  24,  0, &
-    [24.0000d0, 23.3268d0, 21.7816d0, 20.0093d0, 18.2458d0, 16.5480d0, 14.9559d0, 13.5062d0, 12.2233d0,&
-     11.1160d0, 10.1795d0, 8.75630d0, 7.79190d0, 7.11900d0, 6.60790d0, 6.17380d0, 5.37470d0, 4.59980d0, 3.87620d0, 3.24590d0,&
-     2.72890d0, 1.88940d0, 1.47950d0, 1.26770d0, 1.12780d0, 0.91640d0, 0.72250d0], 0.1117388035656745d1, 6.95500d0) /
+     [2.400000e+01_fp_kind,2.332680e+01_fp_kind,2.178160e+01_fp_kind,2.000930e+01_fp_kind,1.824580e+01_fp_kind,&
+     1.654800e+01_fp_kind,1.495590e+01_fp_kind,1.350620e+01_fp_kind,1.222330e+01_fp_kind,1.111600e+01_fp_kind,&
+     1.017950e+01_fp_kind,8.756300e+00_fp_kind,7.791900e+00_fp_kind,7.119000e+00_fp_kind,6.607900e+00_fp_kind,&
+     6.173800e+00_fp_kind,5.374700e+00_fp_kind,4.599800e+00_fp_kind,3.876200e+00_fp_kind,3.245900e+00_fp_kind,&
+     2.728900e+00_fp_kind,1.889400e+00_fp_kind,1.479500e+00_fp_kind,1.267700e+00_fp_kind,1.127800e+00_fp_kind,&
+     9.164000e-01_fp_kind,7.225000e-01_fp_kind], 1.1173880356567449e+00_fp_kind,6.955000e+00_fp_kind) /
 data ionicXrayFF( 2, 24) / t_ionicFF('Cr',  24,  4, &
-    [20.0000d0, 19.8015d0, 19.2278d0, 18.3389d0, 17.2207d0, 15.9689d0, 14.6743d0, 13.4121d0, 12.2370d0,&
-     11.1824d0, 10.2635d0, 8.82440d0, 7.82810d0, 7.13320d0, 6.61360d0, 6.18040d0, 5.39270d0, 4.62600d0, 3.90330d0, 3.26940d0,&
-     2.74700d0, 1.89620d0, 1.48080d0, 1.26660d0, 1.12890d0, 0.91360d0, 0.72400d0], 0.1119780030933150d1, 1.91670d0) /
+     [2.000000e+01_fp_kind,1.980150e+01_fp_kind,1.922780e+01_fp_kind,1.833890e+01_fp_kind,1.722070e+01_fp_kind,&
+     1.596890e+01_fp_kind,1.467430e+01_fp_kind,1.341210e+01_fp_kind,1.223700e+01_fp_kind,1.118240e+01_fp_kind,&
+     1.026350e+01_fp_kind,8.824400e+00_fp_kind,7.828100e+00_fp_kind,7.133200e+00_fp_kind,6.613600e+00_fp_kind,&
+     6.180400e+00_fp_kind,5.392700e+00_fp_kind,4.626000e+00_fp_kind,3.903300e+00_fp_kind,3.269400e+00_fp_kind,&
+     2.747000e+00_fp_kind,1.896200e+00_fp_kind,1.480800e+00_fp_kind,1.266600e+00_fp_kind,1.128900e+00_fp_kind,&
+     9.136000e-01_fp_kind,7.240000e-01_fp_kind], 1.1197800309331500e+00_fp_kind,1.916700e+00_fp_kind) /
 data ionicXrayFF( 1, 25) / t_ionicFF('Mn',  25,  0, &
-    [25.0000d0, 24.2739d0, 22.6079d0, 20.7569d0, 19.0021d0, 17.3526d0, 15.7955d0, 14.3450d0, 13.0251d0,&
-     11.8535d0, 10.8369d0, 9.24410d0, 8.13720d0, 7.36920d0, 6.80880d0, 6.36040d0, 5.58760d0, 4.85150d0, 4.14560d0, 3.50750d0,&
-     2.96470d0, 2.03840d0, 1.56400d0, 1.32050d0, 1.16910d0, 0.95960d0, 0.76750d0], 0.1140204271123480d1, 7.47720d0) /
+     [2.500000e+01_fp_kind,2.427390e+01_fp_kind,2.260790e+01_fp_kind,2.075690e+01_fp_kind,1.900210e+01_fp_kind,&
+     1.735260e+01_fp_kind,1.579550e+01_fp_kind,1.434500e+01_fp_kind,1.302510e+01_fp_kind,1.185350e+01_fp_kind,&
+     1.083690e+01_fp_kind,9.244100e+00_fp_kind,8.137200e+00_fp_kind,7.369200e+00_fp_kind,6.808800e+00_fp_kind,&
+     6.360400e+00_fp_kind,5.587600e+00_fp_kind,4.851500e+00_fp_kind,4.145600e+00_fp_kind,3.507500e+00_fp_kind,&
+     2.964700e+00_fp_kind,2.038400e+00_fp_kind,1.564000e+00_fp_kind,1.320500e+00_fp_kind,1.169100e+00_fp_kind,&
+     9.596000e-01_fp_kind,7.675000e-01_fp_kind], 1.1402042711234801e+00_fp_kind,7.477200e+00_fp_kind) /
 data ionicXrayFF( 2, 25) / t_ionicFF('Mn',  25,  2, &
-    [23.0000d0, 22.7058d0, 21.8713d0, 20.6222d0, 19.1174d0, 17.5077d0, 15.9114d0, 14.4095d0, 13.0493d0,&
-     11.8528d0, 10.8237d0, 9.22750d0, 8.12750d0, 7.36610d0, 6.80930d0, 6.36180d0, 5.58700d0, 4.84850d0, 4.14160d0, 3.50380d0,&
-     2.96190d0, 2.03770d0, 1.56390d0, 1.31960d0, 1.17100d0, 0.95600d0, 0.76910d0], 0.1142656690424218d1, 2.85540d0) /
+     [2.300000e+01_fp_kind,2.270580e+01_fp_kind,2.187130e+01_fp_kind,2.062220e+01_fp_kind,1.911740e+01_fp_kind,&
+     1.750770e+01_fp_kind,1.591140e+01_fp_kind,1.440950e+01_fp_kind,1.304930e+01_fp_kind,1.185280e+01_fp_kind,&
+     1.082370e+01_fp_kind,9.227500e+00_fp_kind,8.127500e+00_fp_kind,7.366100e+00_fp_kind,6.809300e+00_fp_kind,&
+     6.361800e+00_fp_kind,5.587000e+00_fp_kind,4.848500e+00_fp_kind,4.141600e+00_fp_kind,3.503800e+00_fp_kind,&
+     2.961900e+00_fp_kind,2.037700e+00_fp_kind,1.563900e+00_fp_kind,1.319600e+00_fp_kind,1.171000e+00_fp_kind,&
+     9.560000e-01_fp_kind,7.691000e-01_fp_kind], 1.1426566904242179e+00_fp_kind,2.855400e+00_fp_kind) /
 data ionicXrayFF( 1, 26) / t_ionicFF('Fe',  26,  0, &
-    [26.0000d0, 25.3031d0, 23.6752d0, 21.8228d0, 20.0362d0, 18.3423d0, 16.7335d0, 15.2239d0, 13.8370d0,&
-     12.5919d0, 11.4977d0, 9.75110d0, 8.51140d0, 7.64530d0, 7.02390d0, 6.54660d0, 5.77690d0, 5.07270d0, 4.38990d0, 3.75480d0,&
-     3.19690d0, 2.19800d0, 1.65870d0, 1.37830d0, 1.21190d0, 0.99900d0, 0.81080d0], 0.1158782335286553d1, 7.14030d0) /
+     [2.600000e+01_fp_kind,2.530310e+01_fp_kind,2.367520e+01_fp_kind,2.182280e+01_fp_kind,2.003620e+01_fp_kind,&
+     1.834230e+01_fp_kind,1.673350e+01_fp_kind,1.522390e+01_fp_kind,1.383700e+01_fp_kind,1.259190e+01_fp_kind,&
+     1.149770e+01_fp_kind,9.751100e+00_fp_kind,8.511400e+00_fp_kind,7.645300e+00_fp_kind,7.023900e+00_fp_kind,&
+     6.546600e+00_fp_kind,5.776900e+00_fp_kind,5.072700e+00_fp_kind,4.389900e+00_fp_kind,3.754800e+00_fp_kind,&
+     3.196900e+00_fp_kind,2.198000e+00_fp_kind,1.658700e+00_fp_kind,1.378300e+00_fp_kind,1.211900e+00_fp_kind,&
+     9.990000e-01_fp_kind,8.108000e-01_fp_kind], 1.1587823352865529e+00_fp_kind,7.140300e+00_fp_kind) /
 data ionicXrayFF( 2, 26) / t_ionicFF('Fe',  26,  2, &
-    [24.0000d0, 23.7101d0, 22.8850d0, 21.6418d0, 20.1310d0, 18.4985d0, 16.8616d0, 15.3031d0, 13.8740d0,&
-     12.6002d0, 11.4899d0, 9.73470d0, 8.49990d0, 7.64030d0, 7.02330d0, 6.54780d0, 5.77700d0, 5.07030d0, 4.38610d0, 3.75090d0,&
-     3.19360d0, 2.19690d0, 1.65840d0, 1.37760d0, 1.21380d0, 0.99570d0, 0.81230d0], 0.1160995247680411d1, 2.81090d0) /
+     [2.400000e+01_fp_kind,2.371010e+01_fp_kind,2.288500e+01_fp_kind,2.164180e+01_fp_kind,2.013100e+01_fp_kind,&
+     1.849850e+01_fp_kind,1.686160e+01_fp_kind,1.530310e+01_fp_kind,1.387400e+01_fp_kind,1.260020e+01_fp_kind,&
+     1.148990e+01_fp_kind,9.734700e+00_fp_kind,8.499900e+00_fp_kind,7.640300e+00_fp_kind,7.023300e+00_fp_kind,&
+     6.547800e+00_fp_kind,5.777000e+00_fp_kind,5.070300e+00_fp_kind,4.386100e+00_fp_kind,3.750900e+00_fp_kind,&
+     3.193600e+00_fp_kind,2.196900e+00_fp_kind,1.658400e+00_fp_kind,1.377600e+00_fp_kind,1.213800e+00_fp_kind,&
+     9.957000e-01_fp_kind,8.123000e-01_fp_kind], 1.1609952476804111e+00_fp_kind,2.810900e+00_fp_kind) /
 data ionicXrayFF( 1, 27) / t_ionicFF('Co',  27,  0, &
-    [27.0000d0, 26.3304d0, 24.7418d0, 22.8954d0, 21.0862d0, 19.3554d0, 17.7011d0, 16.1376d0, 14.6884d0,&
-     13.3738d0, 12.2052d0, 10.3067d0, 8.92950d0, 7.95490d0, 7.25920d0, 6.73930d0, 5.95210d0, 5.27200d0, 4.61510d0, 3.99050d0,&
-     3.42590d0, 2.36740d0, 1.76380d0, 1.44240d0, 1.25680d0, 1.03650d0, 0.85180d0], 0.1172730818947386d1, 6.83050d0) /
+     [2.700000e+01_fp_kind,2.633040e+01_fp_kind,2.474180e+01_fp_kind,2.289540e+01_fp_kind,2.108620e+01_fp_kind,&
+     1.935540e+01_fp_kind,1.770110e+01_fp_kind,1.613760e+01_fp_kind,1.468840e+01_fp_kind,1.337380e+01_fp_kind,&
+     1.220520e+01_fp_kind,1.030670e+01_fp_kind,8.929500e+00_fp_kind,7.954900e+00_fp_kind,7.259200e+00_fp_kind,&
+     6.739300e+00_fp_kind,5.952100e+00_fp_kind,5.272000e+00_fp_kind,4.615100e+00_fp_kind,3.990500e+00_fp_kind,&
+     3.425900e+00_fp_kind,2.367400e+00_fp_kind,1.763800e+00_fp_kind,1.442400e+00_fp_kind,1.256800e+00_fp_kind,&
+     1.036500e+00_fp_kind,8.518000e-01_fp_kind], 1.1727308189473860e+00_fp_kind,6.830500e+00_fp_kind) /
 data ionicXrayFF( 2, 27) / t_ionicFF('Co',  27,  2, &
-    [25.0000d0, 24.7152d0, 23.9018d0, 22.6685d0, 21.1575d0, 19.5087d0, 17.8382d0, 16.2299d0, 14.7378d0,&
-     13.3917d0, 12.2037d0, 10.2914d0, 8.91650d0, 7.94810d0, 7.25730d0, 6.73990d0, 5.95270d0, 5.27030d0, 4.61150d0, 3.98650d0,&
-     3.42230d0, 2.36580d0, 1.76340d0, 1.44180d0, 1.25850d0, 1.03340d0, 0.85330d0], 0.1174863367078835d1, 2.75950d0) /
+     [2.500000e+01_fp_kind,2.471520e+01_fp_kind,2.390180e+01_fp_kind,2.266850e+01_fp_kind,2.115750e+01_fp_kind,&
+     1.950870e+01_fp_kind,1.783820e+01_fp_kind,1.622990e+01_fp_kind,1.473780e+01_fp_kind,1.339170e+01_fp_kind,&
+     1.220370e+01_fp_kind,1.029140e+01_fp_kind,8.916500e+00_fp_kind,7.948100e+00_fp_kind,7.257300e+00_fp_kind,&
+     6.739900e+00_fp_kind,5.952700e+00_fp_kind,5.270300e+00_fp_kind,4.611500e+00_fp_kind,3.986500e+00_fp_kind,&
+     3.422300e+00_fp_kind,2.365800e+00_fp_kind,1.763400e+00_fp_kind,1.441800e+00_fp_kind,1.258500e+00_fp_kind,&
+     1.033400e+00_fp_kind,8.533000e-01_fp_kind], 1.1748633670788351e+00_fp_kind,2.759500e+00_fp_kind) /
 data ionicXrayFF( 1, 28) / t_ionicFF('Ni',  28,  0, &
-    [28.0000d0, 27.3557d0, 25.8062d0, 23.9710d0, 22.1461d0, 20.3850d0, 18.6911d0, 17.0791d0, 15.5728d0,&
-     14.1934d0, 12.9543d0, 10.9081d0, 9.39150d0, 8.30100d0, 7.52010d0, 6.94530d0, 6.11960d0, 5.45300d0, 4.82120d0, 4.21240d0,&
-     3.64860d0, 2.54400d0, 1.87890d0, 1.51360d0, 1.30480d0, 1.07260d0, 0.89070d0], 0.1182811802591736d1, 6.54660d0) /
+     [2.800000e+01_fp_kind,2.735570e+01_fp_kind,2.580620e+01_fp_kind,2.397100e+01_fp_kind,2.214610e+01_fp_kind,&
+     2.038500e+01_fp_kind,1.869110e+01_fp_kind,1.707910e+01_fp_kind,1.557280e+01_fp_kind,1.419340e+01_fp_kind,&
+     1.295430e+01_fp_kind,1.090810e+01_fp_kind,9.391500e+00_fp_kind,8.301000e+00_fp_kind,7.520100e+00_fp_kind,&
+     6.945300e+00_fp_kind,6.119600e+00_fp_kind,5.453000e+00_fp_kind,4.821200e+00_fp_kind,4.212400e+00_fp_kind,&
+     3.648600e+00_fp_kind,2.544000e+00_fp_kind,1.878900e+00_fp_kind,1.513600e+00_fp_kind,1.304800e+00_fp_kind,&
+     1.072600e+00_fp_kind,8.907000e-01_fp_kind], 1.1828118025917360e+00_fp_kind,6.546600e+00_fp_kind) /
 data ionicXrayFF( 2, 28) / t_ionicFF('Ni',  28,  2, &
-    [26.0000d0, 25.7205d0, 24.9200d0, 23.6992d0, 22.1919d0, 20.5324d0, 18.8345d0, 17.1829d0, 15.6340d0,&
-     14.2211d0, 12.9597d0, 10.8946d0, 9.37770d0, 8.29260d0, 7.51680d0, 6.94520d0, 6.12050d0, 5.45190d0, 4.81810d0, 4.20850d0,&
-     3.64470d0, 2.54210d0, 1.87830d0, 1.51300d0, 1.30640d0, 1.06970d0, 0.89210d0], 0.1184732126059195d1, 2.70570d0) /
+     [2.600000e+01_fp_kind,2.572050e+01_fp_kind,2.492000e+01_fp_kind,2.369920e+01_fp_kind,2.219190e+01_fp_kind,&
+     2.053240e+01_fp_kind,1.883450e+01_fp_kind,1.718290e+01_fp_kind,1.563400e+01_fp_kind,1.422110e+01_fp_kind,&
+     1.295970e+01_fp_kind,1.089460e+01_fp_kind,9.377700e+00_fp_kind,8.292600e+00_fp_kind,7.516800e+00_fp_kind,&
+     6.945200e+00_fp_kind,6.120500e+00_fp_kind,5.451900e+00_fp_kind,4.818100e+00_fp_kind,4.208500e+00_fp_kind,&
+     3.644700e+00_fp_kind,2.542100e+00_fp_kind,1.878300e+00_fp_kind,1.513000e+00_fp_kind,1.306400e+00_fp_kind,&
+     1.069700e+00_fp_kind,8.921000e-01_fp_kind], 1.1847321260591950e+00_fp_kind,2.705700e+00_fp_kind) /
 data ionicXrayFF( 1, 29) / t_ionicFF('Cu',  29,  0, &
-    [29.0000d0, 28.3793d0, 26.8682d0, 25.0479d0, 23.2132d0, 21.4278d0, 19.6997d0, 18.0447d0, 16.4863d0,&
-     15.0468d0, 13.7414d0, 11.5528d0, 9.89710d0, 8.68580d0, 7.81070d0, 7.17020d0, 6.28540d0, 5.61980d0, 5.00950d0, 4.41950d0,&
-     3.86210d0, 2.72550d0, 2.00330d0, 1.59220d0, 1.35680d0, 1.10790d0, 0.92760d0], 0.1189552727946300d1, 6.28510d0) /
+     [2.900000e+01_fp_kind,2.837930e+01_fp_kind,2.686820e+01_fp_kind,2.504790e+01_fp_kind,2.321320e+01_fp_kind,&
+     2.142780e+01_fp_kind,1.969970e+01_fp_kind,1.804470e+01_fp_kind,1.648630e+01_fp_kind,1.504680e+01_fp_kind,&
+     1.374140e+01_fp_kind,1.155280e+01_fp_kind,9.897100e+00_fp_kind,8.685800e+00_fp_kind,7.810700e+00_fp_kind,&
+     7.170200e+00_fp_kind,6.285400e+00_fp_kind,5.619800e+00_fp_kind,5.009500e+00_fp_kind,4.419500e+00_fp_kind,&
+     3.862100e+00_fp_kind,2.725500e+00_fp_kind,2.003300e+00_fp_kind,1.592200e+00_fp_kind,1.356800e+00_fp_kind,&
+     1.107900e+00_fp_kind,9.276000e-01_fp_kind], 1.1895527279463001e+00_fp_kind,6.285100e+00_fp_kind) /
 data ionicXrayFF( 2, 29) / t_ionicFF('Cu',  29,  2, &
-    [27.0000d0, 26.7260d0, 25.9390d0, 24.7325d0, 23.2323d0, 21.5668d0, 19.8471d0, 18.1582d0, 16.5586d0,&
-     15.0844d0, 13.7542d0, 11.5420d0, 9.88300d0, 8.67590d0, 7.80590d0, 7.16910d0, 6.28650d0, 5.61930d0, 5.00700d0, 4.41580d0,&
-     3.85820d0, 2.72310d0, 2.00250d0, 1.59160d0, 1.35830d0, 1.10520d0, 0.92900d0], 0.1191407502404608d1, 2.65070d0) /
+     [2.700000e+01_fp_kind,2.672600e+01_fp_kind,2.593900e+01_fp_kind,2.473250e+01_fp_kind,2.323230e+01_fp_kind,&
+     2.156680e+01_fp_kind,1.984710e+01_fp_kind,1.815820e+01_fp_kind,1.655860e+01_fp_kind,1.508440e+01_fp_kind,&
+     1.375420e+01_fp_kind,1.154200e+01_fp_kind,9.883000e+00_fp_kind,8.675900e+00_fp_kind,7.805900e+00_fp_kind,&
+     7.169100e+00_fp_kind,6.286500e+00_fp_kind,5.619300e+00_fp_kind,5.007000e+00_fp_kind,4.415800e+00_fp_kind,&
+     3.858200e+00_fp_kind,2.723100e+00_fp_kind,2.002500e+00_fp_kind,1.591600e+00_fp_kind,1.358300e+00_fp_kind,&
+     1.105200e+00_fp_kind,9.290000e-01_fp_kind], 1.1914075024046080e+00_fp_kind,2.650700e+00_fp_kind) /
 data ionicXrayFF( 1, 30) / t_ionicFF('Zn',  30,  0, &
-    [30.0000d0, 29.6043d0, 27.9278d0, 26.1254d0, 24.2858d0, 22.4812d0, 20.7240d0, 19.0308d0, 17.4253d0,&
-     15.9305d0, 14.5630d0, 12.2384d0, 10.4453d0, 9.11020d0, 8.13400d0, 7.41860d0, 6.45530d0, 5.77660d0, 5.18200d0, 4.61130d0,&
-     4.06490d0, 2.90910d0, 2.13590d0, 1.67850d0, 1.41360d0, 1.14300d0, 0.96270d0], 0.1193540721761323d1, 6.04340d0) /
+     [3.000000e+01_fp_kind,2.960430e+01_fp_kind,2.792780e+01_fp_kind,2.612540e+01_fp_kind,2.428580e+01_fp_kind,&
+     2.248120e+01_fp_kind,2.072400e+01_fp_kind,1.903080e+01_fp_kind,1.742530e+01_fp_kind,1.593050e+01_fp_kind,&
+     1.456300e+01_fp_kind,1.223840e+01_fp_kind,1.044530e+01_fp_kind,9.110200e+00_fp_kind,8.134000e+00_fp_kind,&
+     7.418600e+00_fp_kind,6.455300e+00_fp_kind,5.776600e+00_fp_kind,5.182000e+00_fp_kind,4.611300e+00_fp_kind,&
+     4.064900e+00_fp_kind,2.909100e+00_fp_kind,2.135900e+00_fp_kind,1.678500e+00_fp_kind,1.413600e+00_fp_kind,&
+     1.143000e+00_fp_kind,9.627000e-01_fp_kind], 1.1935407217613230e+00_fp_kind,6.043400e+00_fp_kind) /
 data ionicXrayFF( 2, 30) / t_ionicFF('Zn',  30,  2, &
-    [28.0000d0, 27.7315d0, 26.9584d0, 25.7675d0, 24.2770d0, 22.6094d0, 20.8731d0, 19.1526d0, 17.5080d0,&
-     15.9778d0, 14.5836d0, 12.2309d0, 10.4315d0, 9.09920d0, 8.12780d0, 7.41640d0, 6.45630d0, 5.77670d0, 5.18010d0, 4.60800d0,&
-     4.06100d0, 2.90640d0, 2.13470d0, 1.67780d0, 1.41500d0, 1.14060d0, 0.96410d0], 0.1195334051983913d1, 2.59570d0) /
+     [2.800000e+01_fp_kind,2.773150e+01_fp_kind,2.695840e+01_fp_kind,2.576750e+01_fp_kind,2.427700e+01_fp_kind,&
+     2.260940e+01_fp_kind,2.087310e+01_fp_kind,1.915260e+01_fp_kind,1.750800e+01_fp_kind,1.597780e+01_fp_kind,&
+     1.458360e+01_fp_kind,1.223090e+01_fp_kind,1.043150e+01_fp_kind,9.099200e+00_fp_kind,8.127800e+00_fp_kind,&
+     7.416400e+00_fp_kind,6.456300e+00_fp_kind,5.776700e+00_fp_kind,5.180100e+00_fp_kind,4.608000e+00_fp_kind,&
+     4.061000e+00_fp_kind,2.906400e+00_fp_kind,2.134700e+00_fp_kind,1.677800e+00_fp_kind,1.415000e+00_fp_kind,&
+     1.140600e+00_fp_kind,9.641000e-01_fp_kind], 1.1953340519839131e+00_fp_kind,2.595700e+00_fp_kind) /
 data ionicXrayFF( 1, 31) / t_ionicFF('Ga',  31,  0, &
-    [31.0000d0, 30.3029d0, 28.6670d0, 26.7780d0, 24.9346d0, 23.1771d0, 21.4860d0, 19.8519d0, 18.2836d0,&
-     16.7987d0, 15.4150d0, 12.9999d0, 11.0765d0, 9.60660d0, 8.51210d0, 7.70410d0, 6.63460d0, 5.92790d0, 5.34400d0, 4.79370d0,&
-     4.26240d0, 3.09860d0, 2.27860d0, 1.77410d0, 1.47550d0, 1.17930d0, 0.99570d0], 0.1194668764143806d1, 7.14130d0) /
+     [3.100000e+01_fp_kind,3.030290e+01_fp_kind,2.866700e+01_fp_kind,2.677800e+01_fp_kind,2.493460e+01_fp_kind,&
+     2.317710e+01_fp_kind,2.148600e+01_fp_kind,1.985190e+01_fp_kind,1.828360e+01_fp_kind,1.679870e+01_fp_kind,&
+     1.541500e+01_fp_kind,1.299990e+01_fp_kind,1.107650e+01_fp_kind,9.606600e+00_fp_kind,8.512100e+00_fp_kind,&
+     7.704100e+00_fp_kind,6.634600e+00_fp_kind,5.927900e+00_fp_kind,5.344000e+00_fp_kind,4.793700e+00_fp_kind,&
+     4.262400e+00_fp_kind,3.098600e+00_fp_kind,2.278600e+00_fp_kind,1.774100e+00_fp_kind,1.475500e+00_fp_kind,&
+     1.179300e+00_fp_kind,9.957000e-01_fp_kind], 1.1946687641438061e+00_fp_kind,7.141300e+00_fp_kind) /
 data ionicXrayFF( 2, 31) / t_ionicFF('Ga',  31,  0, &
-    [31.0000d0, 30.3029d0, 28.6670d0, 26.7780d0, 24.9346d0, 23.1771d0, 21.4860d0, 19.8519d0, 18.2836d0,&
-     16.7987d0, 15.4150d0, 12.9999d0, 11.0765d0, 9.60660d0, 8.51210d0, 7.70410d0, 6.63460d0, 5.92790d0, 5.34400d0, 4.79370d0,&
-     4.26240d0, 3.09860d0, 2.27860d0, 1.77410d0, 1.47550d0, 1.17930d0, 0.99570d0], 0.1194668764143806d1, 7.14130d0) /
+     [3.100000e+01_fp_kind,3.030290e+01_fp_kind,2.866700e+01_fp_kind,2.677800e+01_fp_kind,2.493460e+01_fp_kind,&
+     2.317710e+01_fp_kind,2.148600e+01_fp_kind,1.985190e+01_fp_kind,1.828360e+01_fp_kind,1.679870e+01_fp_kind,&
+     1.541500e+01_fp_kind,1.299990e+01_fp_kind,1.107650e+01_fp_kind,9.606600e+00_fp_kind,8.512100e+00_fp_kind,&
+     7.704100e+00_fp_kind,6.634600e+00_fp_kind,5.927900e+00_fp_kind,5.344000e+00_fp_kind,4.793700e+00_fp_kind,&
+     4.262400e+00_fp_kind,3.098600e+00_fp_kind,2.278600e+00_fp_kind,1.774100e+00_fp_kind,1.475500e+00_fp_kind,&
+     1.179300e+00_fp_kind,9.957000e-01_fp_kind], 1.1946687641438061e+00_fp_kind,7.141300e+00_fp_kind) /
 data ionicXrayFF( 1, 32) / t_ionicFF('Ge',  32,  0, &
-    [32.0000d0, 31.2735d0, 29.5273d0, 27.4940d0, 25.5599d0, 23.7894d0, 22.1389d0, 20.5660d0, 19.0537d0,&
-     17.6054d0, 16.2338d0, 13.7752d0, 11.7485d0, 10.1535d0, 8.93860d0, 8.02940d0, 6.83120d0, 6.07810d0, 5.49490d0, 4.96270d0,&
-     4.44860d0, 3.28830d0, 2.42890d0, 1.87790d0, 1.54420d0, 1.21650d0, 1.02750d0], 0.1194285253047056d1, 7.37410d0) /
+     [3.200000e+01_fp_kind,3.127350e+01_fp_kind,2.952730e+01_fp_kind,2.749400e+01_fp_kind,2.555990e+01_fp_kind,&
+     2.378940e+01_fp_kind,2.213890e+01_fp_kind,2.056600e+01_fp_kind,1.905370e+01_fp_kind,1.760540e+01_fp_kind,&
+     1.623380e+01_fp_kind,1.377520e+01_fp_kind,1.174850e+01_fp_kind,1.015350e+01_fp_kind,8.938600e+00_fp_kind,&
+     8.029400e+00_fp_kind,6.831200e+00_fp_kind,6.078100e+00_fp_kind,5.494900e+00_fp_kind,4.962700e+00_fp_kind,&
+     4.448600e+00_fp_kind,3.288300e+00_fp_kind,2.428900e+00_fp_kind,1.877900e+00_fp_kind,1.544200e+00_fp_kind,&
+     1.216500e+00_fp_kind,1.027500e+00_fp_kind], 1.1942852530470560e+00_fp_kind,7.374100e+00_fp_kind) /
 data ionicXrayFF( 2, 32) / t_ionicFF('Ge',  32,  0, &
-    [32.0000d0, 31.2735d0, 29.5273d0, 27.4940d0, 25.5599d0, 23.7894d0, 22.1389d0, 20.5660d0, 19.0537d0,&
-     17.6054d0, 16.2338d0, 13.7752d0, 11.7485d0, 10.1535d0, 8.93860d0, 8.02940d0, 6.83120d0, 6.07810d0, 5.49490d0, 4.96270d0,&
-     4.44860d0, 3.28830d0, 2.42890d0, 1.87790d0, 1.54420d0, 1.21650d0, 1.02750d0], 0.1194285253047056d1, 7.37410d0) /
+     [3.200000e+01_fp_kind,3.127350e+01_fp_kind,2.952730e+01_fp_kind,2.749400e+01_fp_kind,2.555990e+01_fp_kind,&
+     2.378940e+01_fp_kind,2.213890e+01_fp_kind,2.056600e+01_fp_kind,1.905370e+01_fp_kind,1.760540e+01_fp_kind,&
+     1.623380e+01_fp_kind,1.377520e+01_fp_kind,1.174850e+01_fp_kind,1.015350e+01_fp_kind,8.938600e+00_fp_kind,&
+     8.029400e+00_fp_kind,6.831200e+00_fp_kind,6.078100e+00_fp_kind,5.494900e+00_fp_kind,4.962700e+00_fp_kind,&
+     4.448600e+00_fp_kind,3.288300e+00_fp_kind,2.428900e+00_fp_kind,1.877900e+00_fp_kind,1.544200e+00_fp_kind,&
+     1.216500e+00_fp_kind,1.027500e+00_fp_kind], 1.1942852530470560e+00_fp_kind,7.374100e+00_fp_kind) /
 data ionicXrayFF( 1, 33) / t_ionicFF('As',  33,  0, &
-    [33.0000d0, 32.2677d0, 30.4571d0, 28.2887d0, 26.2223d0, 24.3806d0, 22.7252d0, 21.1907d0, 19.7329d0,&
-     18.3345d0, 16.9962d0, 14.5405d0, 12.4453d0, 10.7432d0, 9.41240d0, 8.39780d0, 7.05120d0, 6.23250d0, 5.63790d0, 5.11880d0,&
-     4.62260d0, 3.47600d0, 2.58520d0, 1.98980d0, 1.61990d0, 1.25500d0, 1.05870d0], 0.1193226324539083d1, 7.36860d0) /
+     [3.300000e+01_fp_kind,3.226770e+01_fp_kind,3.045710e+01_fp_kind,2.828870e+01_fp_kind,2.622230e+01_fp_kind,&
+     2.438060e+01_fp_kind,2.272520e+01_fp_kind,2.119070e+01_fp_kind,1.973290e+01_fp_kind,1.833450e+01_fp_kind,&
+     1.699620e+01_fp_kind,1.454050e+01_fp_kind,1.244530e+01_fp_kind,1.074320e+01_fp_kind,9.412400e+00_fp_kind,&
+     8.397800e+00_fp_kind,7.051200e+00_fp_kind,6.232500e+00_fp_kind,5.637900e+00_fp_kind,5.118800e+00_fp_kind,&
+     4.622600e+00_fp_kind,3.476000e+00_fp_kind,2.585200e+00_fp_kind,1.989800e+00_fp_kind,1.619900e+00_fp_kind,&
+     1.255000e+00_fp_kind,1.058700e+00_fp_kind], 1.1932263245390831e+00_fp_kind,7.368600e+00_fp_kind) /
 data ionicXrayFF( 2, 33) / t_ionicFF('As',  33,  0, &
-    [33.0000d0, 32.2677d0, 30.4571d0, 28.2887d0, 26.2223d0, 24.3806d0, 22.7252d0, 21.1907d0, 19.7329d0,&
-     18.3345d0, 16.9962d0, 14.5405d0, 12.4453d0, 10.7432d0, 9.41240d0, 8.39780d0, 7.05120d0, 6.23250d0, 5.63790d0, 5.11880d0,&
-     4.62260d0, 3.47600d0, 2.58520d0, 1.98980d0, 1.61990d0, 1.25500d0, 1.05870d0], 0.1193226324539083d1, 7.36860d0) /
+     [3.300000e+01_fp_kind,3.226770e+01_fp_kind,3.045710e+01_fp_kind,2.828870e+01_fp_kind,2.622230e+01_fp_kind,&
+     2.438060e+01_fp_kind,2.272520e+01_fp_kind,2.119070e+01_fp_kind,1.973290e+01_fp_kind,1.833450e+01_fp_kind,&
+     1.699620e+01_fp_kind,1.454050e+01_fp_kind,1.244530e+01_fp_kind,1.074320e+01_fp_kind,9.412400e+00_fp_kind,&
+     8.397800e+00_fp_kind,7.051200e+00_fp_kind,6.232500e+00_fp_kind,5.637900e+00_fp_kind,5.118800e+00_fp_kind,&
+     4.622600e+00_fp_kind,3.476000e+00_fp_kind,2.585200e+00_fp_kind,1.989800e+00_fp_kind,1.619900e+00_fp_kind,&
+     1.255000e+00_fp_kind,1.058700e+00_fp_kind], 1.1932263245390831e+00_fp_kind,7.368600e+00_fp_kind) /
 data ionicXrayFF( 1, 34) / t_ionicFF('Se',  34,  0, &
-    [34.0000d0, 33.2727d0, 31.4297d0, 29.1512d0, 26.9425d0, 24.9905d0, 23.2853d0, 21.7551d0, 20.3347d0,&
-     18.9851d0, 17.6907d0, 15.2755d0, 13.1490d0, 11.3646d0, 9.92910d0, 8.80970d0, 7.29990d0, 6.39640d0, 5.77660d0, 5.26390d0,&
-     4.78420d0, 3.65980d0, 2.74620d0, 2.10950d0, 1.70270d0, 1.29570d0, 1.09850d0], 0.1201951278817077d1, 7.26610d0) /
+     [3.400000e+01_fp_kind,3.327270e+01_fp_kind,3.142970e+01_fp_kind,2.915120e+01_fp_kind,2.694250e+01_fp_kind,&
+     2.499050e+01_fp_kind,2.328530e+01_fp_kind,2.175510e+01_fp_kind,2.033470e+01_fp_kind,1.898510e+01_fp_kind,&
+     1.769070e+01_fp_kind,1.527550e+01_fp_kind,1.314900e+01_fp_kind,1.136460e+01_fp_kind,9.929100e+00_fp_kind,&
+     8.809700e+00_fp_kind,7.299900e+00_fp_kind,6.396400e+00_fp_kind,5.776600e+00_fp_kind,5.263900e+00_fp_kind,&
+     4.784200e+00_fp_kind,3.659800e+00_fp_kind,2.746200e+00_fp_kind,2.109500e+00_fp_kind,1.702700e+00_fp_kind,&
+     1.295700e+00_fp_kind,1.098500e+00_fp_kind], 1.2019512788170770e+00_fp_kind,7.266100e+00_fp_kind) /
 data ionicXrayFF( 2, 34) / t_ionicFF('Se',  34,  0, &
-    [34.0000d0, 33.2727d0, 31.4297d0, 29.1512d0, 26.9425d0, 24.9905d0, 23.2853d0, 21.7551d0, 20.3347d0,&
-     18.9851d0, 17.6907d0, 15.2755d0, 13.1490d0, 11.3646d0, 9.92910d0, 8.80970d0, 7.29990d0, 6.39640d0, 5.77660d0, 5.26390d0,&
-     4.78420d0, 3.65980d0, 2.74620d0, 2.10950d0, 1.70270d0, 1.29570d0, 1.09850d0], 0.1201951278817077d1, 7.26610d0) /
+     [3.400000e+01_fp_kind,3.327270e+01_fp_kind,3.142970e+01_fp_kind,2.915120e+01_fp_kind,2.694250e+01_fp_kind,&
+     2.499050e+01_fp_kind,2.328530e+01_fp_kind,2.175510e+01_fp_kind,2.033470e+01_fp_kind,1.898510e+01_fp_kind,&
+     1.769070e+01_fp_kind,1.527550e+01_fp_kind,1.314900e+01_fp_kind,1.136460e+01_fp_kind,9.929100e+00_fp_kind,&
+     8.809700e+00_fp_kind,7.299900e+00_fp_kind,6.396400e+00_fp_kind,5.776600e+00_fp_kind,5.263900e+00_fp_kind,&
+     4.784200e+00_fp_kind,3.659800e+00_fp_kind,2.746200e+00_fp_kind,2.109500e+00_fp_kind,1.702700e+00_fp_kind,&
+     1.295700e+00_fp_kind,1.098500e+00_fp_kind], 1.2019512788170770e+00_fp_kind,7.266100e+00_fp_kind) /
 data ionicXrayFF( 1, 35) / t_ionicFF('Br',  35,  0, &
-    [35.0000d0, 34.2870d0, 32.4403d0, 30.0828d0, 27.7379d0, 25.6513d0, 23.8558d0, 22.2903d0, 20.8791d0,&
-     19.5647d0, 18.3139d0, 15.9640d0, 13.8419d0, 12.0047d0, 10.4819d0, 9.26390d0, 7.58200d0, 6.57550d0, 5.91510d0, 5.40000d0,&
-     4.93390d0, 3.83770d0, 2.91020d0, 2.23650d0, 1.79290d0, 1.33950d0, 1.12060d0], 0.1190741276409859d1, 7.08050d0) /
+     [3.500000e+01_fp_kind,3.428700e+01_fp_kind,3.244030e+01_fp_kind,3.008280e+01_fp_kind,2.773790e+01_fp_kind,&
+     2.565130e+01_fp_kind,2.385580e+01_fp_kind,2.229030e+01_fp_kind,2.087910e+01_fp_kind,1.956470e+01_fp_kind,&
+     1.831390e+01_fp_kind,1.596400e+01_fp_kind,1.384190e+01_fp_kind,1.200470e+01_fp_kind,1.048190e+01_fp_kind,&
+     9.263900e+00_fp_kind,7.582000e+00_fp_kind,6.575500e+00_fp_kind,5.915100e+00_fp_kind,5.400000e+00_fp_kind,&
+     4.933900e+00_fp_kind,3.837700e+00_fp_kind,2.910200e+00_fp_kind,2.236500e+00_fp_kind,1.792900e+00_fp_kind,&
+     1.339500e+00_fp_kind,1.120600e+00_fp_kind], 1.1907412764098591e+00_fp_kind,7.080500e+00_fp_kind) /
 data ionicXrayFF( 2, 35) / t_ionicFF('Br',  35, -1, &
-    [36.0000d0, 35.1146d0, 32.8997d0, 30.2274d0, 27.7224d0, 25.5933d0, 23.8069d0, 22.2614d0, 20.8662d0,&
-     19.5616d0, 18.3160d0, 15.9688d0, 13.8454d0, 12.0066d0, 10.4827d0, 9.26410d0, 7.58190d0, 6.57540d0, 5.91520d0, 5.40010d0,&
-     4.93410d0, 3.83800d0, 2.91060d0, 2.23710d0, 1.79250d0, 1.34110d0, 1.11960d0], 0.1189643569733533d1, 8.87360d0) /
+     [3.600000e+01_fp_kind,3.511460e+01_fp_kind,3.289970e+01_fp_kind,3.022740e+01_fp_kind,2.772240e+01_fp_kind,&
+     2.559330e+01_fp_kind,2.380690e+01_fp_kind,2.226140e+01_fp_kind,2.086620e+01_fp_kind,1.956160e+01_fp_kind,&
+     1.831600e+01_fp_kind,1.596880e+01_fp_kind,1.384540e+01_fp_kind,1.200660e+01_fp_kind,1.048270e+01_fp_kind,&
+     9.264100e+00_fp_kind,7.581900e+00_fp_kind,6.575400e+00_fp_kind,5.915200e+00_fp_kind,5.400100e+00_fp_kind,&
+     4.934100e+00_fp_kind,3.838000e+00_fp_kind,2.910600e+00_fp_kind,2.237100e+00_fp_kind,1.792500e+00_fp_kind,&
+     1.341100e+00_fp_kind,1.119600e+00_fp_kind], 1.1896435697335330e+00_fp_kind,8.873600e+00_fp_kind) /
 data ionicXrayFF( 1, 36) / t_ionicFF('Kr',  36,  0, &
-    [36.0000d0, 35.3038d0, 33.4680d0, 31.0571d0, 28.5932d0, 26.3670d0, 24.4566d0, 22.8233d0, 21.3913d0,&
-     20.0912d0, 18.8743d0, 16.5982d0, 14.5087d0, 12.6484d0, 11.0601d0, 9.75490d0, 7.89980d0, 6.77480d0, 6.05820d0, 5.53010d0,&
-     5.07290d0, 4.00830d0, 3.07570d0, 2.36990d0, 1.89010d0, 1.38700d0, 1.15210d0], 0.1190189365786743d1, 6.88110d0) /
+     [3.600000e+01_fp_kind,3.530380e+01_fp_kind,3.346800e+01_fp_kind,3.105710e+01_fp_kind,2.859320e+01_fp_kind,&
+     2.636700e+01_fp_kind,2.445660e+01_fp_kind,2.282330e+01_fp_kind,2.139130e+01_fp_kind,2.009120e+01_fp_kind,&
+     1.887430e+01_fp_kind,1.659820e+01_fp_kind,1.450870e+01_fp_kind,1.264840e+01_fp_kind,1.106010e+01_fp_kind,&
+     9.754900e+00_fp_kind,7.899800e+00_fp_kind,6.774800e+00_fp_kind,6.058200e+00_fp_kind,5.530100e+00_fp_kind,&
+     5.072900e+00_fp_kind,4.008300e+00_fp_kind,3.075700e+00_fp_kind,2.369900e+00_fp_kind,1.890100e+00_fp_kind,&
+     1.387000e+00_fp_kind,1.152100e+00_fp_kind], 1.1901893657867431e+00_fp_kind,6.881100e+00_fp_kind) /
 data ionicXrayFF( 2, 36) / t_ionicFF('Kr',  36,  0, &
-    [36.0000d0, 35.3038d0, 33.4680d0, 31.0571d0, 28.5932d0, 26.3670d0, 24.4566d0, 22.8233d0, 21.3913d0,&
-     20.0912d0, 18.8743d0, 16.5982d0, 14.5087d0, 12.6484d0, 11.0601d0, 9.75490d0, 7.89980d0, 6.77480d0, 6.05820d0, 5.53010d0,&
-     5.07290d0, 4.00830d0, 3.07570d0, 2.36990d0, 1.89010d0, 1.38700d0, 1.15210d0], 0.1190189365786743d1, 6.88110d0) /
+     [3.600000e+01_fp_kind,3.530380e+01_fp_kind,3.346800e+01_fp_kind,3.105710e+01_fp_kind,2.859320e+01_fp_kind,&
+     2.636700e+01_fp_kind,2.445660e+01_fp_kind,2.282330e+01_fp_kind,2.139130e+01_fp_kind,2.009120e+01_fp_kind,&
+     1.887430e+01_fp_kind,1.659820e+01_fp_kind,1.450870e+01_fp_kind,1.264840e+01_fp_kind,1.106010e+01_fp_kind,&
+     9.754900e+00_fp_kind,7.899800e+00_fp_kind,6.774800e+00_fp_kind,6.058200e+00_fp_kind,5.530100e+00_fp_kind,&
+     5.072900e+00_fp_kind,4.008300e+00_fp_kind,3.075700e+00_fp_kind,2.369900e+00_fp_kind,1.890100e+00_fp_kind,&
+     1.387000e+00_fp_kind,1.152100e+00_fp_kind], 1.1901893657867431e+00_fp_kind,6.881100e+00_fp_kind) /
 data ionicXrayFF( 1, 37) / t_ionicFF('Rb',  37,  0, &
-    [37.0000d0, 35.9484d0, 33.9087d0, 31.6830d0, 29.3713d0, 27.1511d0, 25.1616d0, 23.4359d0, 21.9379d0,&
-     20.6090d0, 19.3949d0, 17.1717d0, 15.1308d0, 13.2761d0, 11.6484d0, 10.2734d0, 8.25390d0, 6.99900d0, 6.21070d0, 5.65740d0,&
-     5.20250d0, 4.17060d0, 3.24070d0, 2.50930d0, 1.99190d0, 1.43870d0, 1.18460d0], 0.1190705674095504d1, 11.6690d0) /
+     [3.700000e+01_fp_kind,3.594840e+01_fp_kind,3.390870e+01_fp_kind,3.168300e+01_fp_kind,2.937130e+01_fp_kind,&
+     2.715110e+01_fp_kind,2.516160e+01_fp_kind,2.343590e+01_fp_kind,2.193790e+01_fp_kind,2.060900e+01_fp_kind,&
+     1.939490e+01_fp_kind,1.717170e+01_fp_kind,1.513080e+01_fp_kind,1.327610e+01_fp_kind,1.164840e+01_fp_kind,&
+     1.027340e+01_fp_kind,8.253900e+00_fp_kind,6.999000e+00_fp_kind,6.210700e+00_fp_kind,5.657400e+00_fp_kind,&
+     5.202500e+00_fp_kind,4.170600e+00_fp_kind,3.240700e+00_fp_kind,2.509300e+00_fp_kind,1.991900e+00_fp_kind,&
+     1.438700e+00_fp_kind,1.184600e+00_fp_kind], 1.1907056740955040e+00_fp_kind,1.166900e+01_fp_kind) /
 data ionicXrayFF( 2, 37) / t_ionicFF('Rb',  37,  1, &
-    [36.0000d0, 35.4350d0, 33.8921d0, 31.7428d0, 29.3959d0, 27.1507d0, 25.1533d0, 23.4277d0, 21.9325d0,&
-     20.6066d0, 19.3948d0, 17.1733d0, 15.1322d0, 13.2768d0, 11.6484d0, 10.2732d0, 8.25360d0, 6.99890d0, 6.21070d0, 5.65770d0,&
-     5.20260d0, 4.16990d0, 3.24000d0, 2.50780d0, 1.99380d0, 1.43780d0, 1.18520d0], 0.1191328724437945d1, 5.53440d0) /
+     [3.600000e+01_fp_kind,3.543500e+01_fp_kind,3.389210e+01_fp_kind,3.174280e+01_fp_kind,2.939590e+01_fp_kind,&
+     2.715070e+01_fp_kind,2.515330e+01_fp_kind,2.342770e+01_fp_kind,2.193250e+01_fp_kind,2.060660e+01_fp_kind,&
+     1.939480e+01_fp_kind,1.717330e+01_fp_kind,1.513220e+01_fp_kind,1.327680e+01_fp_kind,1.164840e+01_fp_kind,&
+     1.027320e+01_fp_kind,8.253600e+00_fp_kind,6.998900e+00_fp_kind,6.210700e+00_fp_kind,5.657700e+00_fp_kind,&
+     5.202600e+00_fp_kind,4.169900e+00_fp_kind,3.240000e+00_fp_kind,2.507800e+00_fp_kind,1.993800e+00_fp_kind,&
+     1.437800e+00_fp_kind,1.185200e+00_fp_kind], 1.1913287244379449e+00_fp_kind,5.534400e+00_fp_kind) /
 data ionicXrayFF( 1, 38) / t_ionicFF('Sr',  38,  0, &
-    [38.0000d0, 36.8020d0, 34.4593d0, 32.1735d0, 29.9906d0, 27.8666d0, 25.8782d0, 24.0939d0, 22.5258d0,&
-     21.1448d0, 19.9063d0, 17.7003d0, 15.7065d0, 13.8767d0, 12.2339d0, 10.8092d0, 8.64210d0, 7.25140d0, 6.37730d0, 5.78640d0,&
-     5.32550d0, 4.32260d0, 3.40310d0, 2.65210d0, 2.09970d0, 1.49710d0, 1.21750d0], 0.1191599265955283d1, 13.0052d0) /
+     [3.800000e+01_fp_kind,3.680200e+01_fp_kind,3.445930e+01_fp_kind,3.217350e+01_fp_kind,2.999060e+01_fp_kind,&
+     2.786660e+01_fp_kind,2.587820e+01_fp_kind,2.409390e+01_fp_kind,2.252580e+01_fp_kind,2.114480e+01_fp_kind,&
+     1.990630e+01_fp_kind,1.770030e+01_fp_kind,1.570650e+01_fp_kind,1.387670e+01_fp_kind,1.223390e+01_fp_kind,&
+     1.080920e+01_fp_kind,8.642100e+00_fp_kind,7.251400e+00_fp_kind,6.377300e+00_fp_kind,5.786400e+00_fp_kind,&
+     5.325500e+00_fp_kind,4.322600e+00_fp_kind,3.403100e+00_fp_kind,2.652100e+00_fp_kind,2.099700e+00_fp_kind,&
+     1.497100e+00_fp_kind,1.217500e+00_fp_kind], 1.1915992659552830e+00_fp_kind,1.300520e+01_fp_kind) /
 data ionicXrayFF( 2, 38) / t_ionicFF('Sr',  38,  2, &
-    [36.0000d0, 35.5244d0, 34.1987d0, 32.2827d0, 30.0916d0, 27.8951d0, 25.8641d0, 24.0680d0, 22.5039d0,&
-     21.1318d0, 19.9017d0, 17.7048d0, 15.7119d0, 13.8798d0, 12.2346d0, 10.8084d0, 8.64090d0, 7.25080d0, 6.37730d0, 5.78680d0,&
-     5.32580d0, 4.32180d0, 3.40200d0, 2.64950d0, 2.10340d0, 1.49390d0, 1.21910d0], 0.1193217131717816d1, 4.63530d0) /
+     [3.600000e+01_fp_kind,3.552440e+01_fp_kind,3.419870e+01_fp_kind,3.228270e+01_fp_kind,3.009160e+01_fp_kind,&
+     2.789510e+01_fp_kind,2.586410e+01_fp_kind,2.406800e+01_fp_kind,2.250390e+01_fp_kind,2.113180e+01_fp_kind,&
+     1.990170e+01_fp_kind,1.770480e+01_fp_kind,1.571190e+01_fp_kind,1.387980e+01_fp_kind,1.223460e+01_fp_kind,&
+     1.080840e+01_fp_kind,8.640900e+00_fp_kind,7.250800e+00_fp_kind,6.377300e+00_fp_kind,5.786800e+00_fp_kind,&
+     5.325800e+00_fp_kind,4.321800e+00_fp_kind,3.402000e+00_fp_kind,2.649500e+00_fp_kind,2.103400e+00_fp_kind,&
+     1.493900e+00_fp_kind,1.219100e+00_fp_kind], 1.1932171317178160e+00_fp_kind,4.635300e+00_fp_kind) /
 data ionicXrayFF( 1, 39) / t_ionicFF('Y ',  39,  0, &
-    [39.0000d0, 37.8157d0, 35.3631d0, 32.9037d0, 30.6344d0, 28.4911d0, 26.4923d0, 24.6836d0, 23.0821d0,&
-     21.6711d0, 20.4149d0, 18.2155d0, 16.2580d0, 14.4558d0, 12.8108d0, 11.3520d0, 9.05820d0, 7.53260d0, 6.56230d0, 5.92120d0,&
-     5.44460d0, 4.46310d0, 3.55960d0, 2.79500d0, 2.21390d0, 1.55930d0, 1.25190d0], 0.1193924992251269d1, 12.5953d0) /
+     [3.900000e+01_fp_kind,3.781570e+01_fp_kind,3.536310e+01_fp_kind,3.290370e+01_fp_kind,3.063440e+01_fp_kind,&
+     2.849110e+01_fp_kind,2.649230e+01_fp_kind,2.468360e+01_fp_kind,2.308210e+01_fp_kind,2.167110e+01_fp_kind,&
+     2.041490e+01_fp_kind,1.821550e+01_fp_kind,1.625800e+01_fp_kind,1.445580e+01_fp_kind,1.281080e+01_fp_kind,&
+     1.135200e+01_fp_kind,9.058200e+00_fp_kind,7.532600e+00_fp_kind,6.562300e+00_fp_kind,5.921200e+00_fp_kind,&
+     5.444600e+00_fp_kind,4.463100e+00_fp_kind,3.559600e+00_fp_kind,2.795000e+00_fp_kind,2.213900e+00_fp_kind,&
+     1.559300e+00_fp_kind,1.251900e+00_fp_kind], 1.1939249922512689e+00_fp_kind,1.259530e+01_fp_kind) /
 data ionicXrayFF( 2, 39) / t_ionicFF('Y ',  39,  3, &
-    [36.0000d0, 35.5902d0, 34.4325d0, 32.7166d0, 30.6877d0, 28.5776d0, 26.5575d0, 24.7221d0, 23.0999d0,&
-     21.6751d0, 20.4110d0, 18.2066d0, 16.2506d0, 14.4510d0, 12.8078d0, 11.3500d0, 9.05710d0, 7.53190d0, 6.56210d0, 5.92150d0,&
-     5.44520d0, 4.46390d0, 3.56000d0, 2.79370d0, 2.21850d0, 1.55510d0, 1.25450d0], 0.1196486998450148d1, 3.98020d0) /
+     [3.600000e+01_fp_kind,3.559020e+01_fp_kind,3.443250e+01_fp_kind,3.271660e+01_fp_kind,3.068770e+01_fp_kind,&
+     2.857760e+01_fp_kind,2.655750e+01_fp_kind,2.472210e+01_fp_kind,2.309990e+01_fp_kind,2.167510e+01_fp_kind,&
+     2.041100e+01_fp_kind,1.820660e+01_fp_kind,1.625060e+01_fp_kind,1.445100e+01_fp_kind,1.280780e+01_fp_kind,&
+     1.135000e+01_fp_kind,9.057100e+00_fp_kind,7.531900e+00_fp_kind,6.562100e+00_fp_kind,5.921500e+00_fp_kind,&
+     5.445200e+00_fp_kind,4.463900e+00_fp_kind,3.560000e+00_fp_kind,2.793700e+00_fp_kind,2.218500e+00_fp_kind,&
+     1.555100e+00_fp_kind,1.254500e+00_fp_kind], 1.1964869984501481e+00_fp_kind,3.980200e+00_fp_kind) /
 data ionicXrayFF( 1, 40) / t_ionicFF('Zr',  40,  0, &
-    [40.0000d0, 38.8458d0, 36.3512d0, 33.7519d0, 31.3591d0, 29.1425d0, 27.0987d0, 25.2531d0, 23.6176d0,&
-     22.1783d0, 20.9041d0, 18.7048d0, 16.7791d0, 15.0092d0, 13.3745d0, 11.8966d0, 9.49870d0, 7.84290d0, 6.76860d0, 6.06580d0,&
-     5.56350d0, 4.59380d0, 3.71020d0, 2.93820d0, 2.33280d0, 1.62560d0, 1.28880d0], 0.1198536857550273d1, 12.1094d0) /
+     [4.000000e+01_fp_kind,3.884580e+01_fp_kind,3.635120e+01_fp_kind,3.375190e+01_fp_kind,3.135910e+01_fp_kind,&
+     2.914250e+01_fp_kind,2.709870e+01_fp_kind,2.525310e+01_fp_kind,2.361760e+01_fp_kind,2.217830e+01_fp_kind,&
+     2.090410e+01_fp_kind,1.870480e+01_fp_kind,1.677910e+01_fp_kind,1.500920e+01_fp_kind,1.337450e+01_fp_kind,&
+     1.189660e+01_fp_kind,9.498700e+00_fp_kind,7.842900e+00_fp_kind,6.768600e+00_fp_kind,6.065800e+00_fp_kind,&
+     5.563500e+00_fp_kind,4.593800e+00_fp_kind,3.710200e+00_fp_kind,2.938200e+00_fp_kind,2.332800e+00_fp_kind,&
+     1.625600e+00_fp_kind,1.288800e+00_fp_kind], 1.1985368575502731e+00_fp_kind,1.210940e+01_fp_kind) /
 data ionicXrayFF( 2, 40) / t_ionicFF('Zr',  40,  4, &
-    [36.0000d0, 35.6412d0, 34.6175d0, 33.0723d0, 31.1988d0, 29.1929d0, 27.2149d0, 25.3701d0, 23.7081d0,&
-     22.2352d0, 20.9303d0, 18.6922d0, 16.7552d0, 14.9882d0, 13.3602d0, 11.8882d0, 9.49620d0, 7.84170d0, 6.76790d0, 6.06570d0,&
-     5.56430d0, 4.59640d0, 3.71290d0, 2.93890d0, 2.33830d0, 1.62140d0, 1.29190d0], 0.1201515961775442d1, 3.47720d0) /
+     [3.600000e+01_fp_kind,3.564120e+01_fp_kind,3.461750e+01_fp_kind,3.307230e+01_fp_kind,3.119880e+01_fp_kind,&
+     2.919290e+01_fp_kind,2.721490e+01_fp_kind,2.537010e+01_fp_kind,2.370810e+01_fp_kind,2.223520e+01_fp_kind,&
+     2.093030e+01_fp_kind,1.869220e+01_fp_kind,1.675520e+01_fp_kind,1.498820e+01_fp_kind,1.336020e+01_fp_kind,&
+     1.188820e+01_fp_kind,9.496200e+00_fp_kind,7.841700e+00_fp_kind,6.767900e+00_fp_kind,6.065700e+00_fp_kind,&
+     5.564300e+00_fp_kind,4.596400e+00_fp_kind,3.712900e+00_fp_kind,2.938900e+00_fp_kind,2.338300e+00_fp_kind,&
+     1.621400e+00_fp_kind,1.291900e+00_fp_kind], 1.2015159617754421e+00_fp_kind,3.477200e+00_fp_kind) /
 data ionicXrayFF( 1, 41) / t_ionicFF('Nb',  41,  0, &
-    [41.0000d0, 39.9638d0, 37.5864d0, 34.8912d0, 32.2861d0, 29.8731d0, 27.6941d0, 25.7682d0, 24.0893d0,&
-     22.6298d0, 21.3505d0, 19.1696d0, 17.2814d0, 15.5464d0, 13.9277d0, 12.8802d0, 9.95740d0, 8.17970d0, 6.99800d0, 6.22380d0,&
-     5.68580d0, 4.71470d0, 3.85270d0, 3.07890d0, 2.45490d0, 1.69520d0, 1.32880d0], 0.1205831938534757d1, 10.6991d0) /
+     [4.100000e+01_fp_kind,3.996380e+01_fp_kind,3.758640e+01_fp_kind,3.489120e+01_fp_kind,3.228610e+01_fp_kind,&
+     2.987310e+01_fp_kind,2.769410e+01_fp_kind,2.576820e+01_fp_kind,2.408930e+01_fp_kind,2.262980e+01_fp_kind,&
+     2.135050e+01_fp_kind,1.916960e+01_fp_kind,1.728140e+01_fp_kind,1.554640e+01_fp_kind,1.392770e+01_fp_kind,&
+     1.288020e+01_fp_kind,9.957400e+00_fp_kind,8.179700e+00_fp_kind,6.998000e+00_fp_kind,6.223800e+00_fp_kind,&
+     5.685800e+00_fp_kind,4.714700e+00_fp_kind,3.852700e+00_fp_kind,3.078900e+00_fp_kind,2.454900e+00_fp_kind,&
+     1.695200e+00_fp_kind,1.328800e+00_fp_kind], 1.2058319385347569e+00_fp_kind,1.069910e+01_fp_kind) /
 data ionicXrayFF( 2, 41) / t_ionicFF('Nb',  41,  5, &
-    [36.0000d0, 35.6819d0, 34.7678d0, 33.3687d0, 31.6391d0, 29.7438d0, 27.8277d0, 25.9977d0, 24.3159d0,&
-     22.8054d0, 21.4606d0, 19.1717d0, 17.2345d0, 15.4935d0, 13.8873d0, 12.4151d0, 9.95120d0, 8.17840d0, 6.99680d0, 6.22300d0,&
-     5.68640d0, 4.72010d0, 3.85970d0, 3.08400d0, 2.46200d0, 1.69280d0, 1.33180d0], 0.1208645716216012d1, 3.07720d0) /
+     [3.600000e+01_fp_kind,3.568190e+01_fp_kind,3.476780e+01_fp_kind,3.336870e+01_fp_kind,3.163910e+01_fp_kind,&
+     2.974380e+01_fp_kind,2.782770e+01_fp_kind,2.599770e+01_fp_kind,2.431590e+01_fp_kind,2.280540e+01_fp_kind,&
+     2.146060e+01_fp_kind,1.917170e+01_fp_kind,1.723450e+01_fp_kind,1.549350e+01_fp_kind,1.388730e+01_fp_kind,&
+     1.241510e+01_fp_kind,9.951200e+00_fp_kind,8.178400e+00_fp_kind,6.996800e+00_fp_kind,6.223000e+00_fp_kind,&
+     5.686400e+00_fp_kind,4.720100e+00_fp_kind,3.859700e+00_fp_kind,3.084000e+00_fp_kind,2.462000e+00_fp_kind,&
+     1.692800e+00_fp_kind,1.331800e+00_fp_kind], 1.2086457162160120e+00_fp_kind,3.077200e+00_fp_kind) /
 data ionicXrayFF( 1, 42) / t_ionicFF('Mo',  42,  0, &
-    [42.0000d0, 40.9967d0, 38.6363d0, 35.8788d0, 33.1680d0, 30.6462d0, 28.3712d0, 26.3651d0, 24.6217d0,&
-     23.1140d0, 21.8026d0, 19.6028d0, 17.7382d0, 16.0416d0, 14.4521d0, 12.9715d0, 10.4315d0, 8.54340d0, 7.25200d0, 6.39780d0,&
-     5.81460d0, 4.82920d0, 3.98960d0, 3.21940d0, 2.57960d0, 1.77030d0, 1.37130d0], 0.1215072104202207d1, 10.2830d0) /
+     [4.200000e+01_fp_kind,4.099670e+01_fp_kind,3.863630e+01_fp_kind,3.587880e+01_fp_kind,3.316800e+01_fp_kind,&
+     3.064620e+01_fp_kind,2.837120e+01_fp_kind,2.636510e+01_fp_kind,2.462170e+01_fp_kind,2.311400e+01_fp_kind,&
+     2.180260e+01_fp_kind,1.960280e+01_fp_kind,1.773820e+01_fp_kind,1.604160e+01_fp_kind,1.445210e+01_fp_kind,&
+     1.297150e+01_fp_kind,1.043150e+01_fp_kind,8.543400e+00_fp_kind,7.252000e+00_fp_kind,6.397800e+00_fp_kind,&
+     5.814600e+00_fp_kind,4.829200e+00_fp_kind,3.989600e+00_fp_kind,3.219400e+00_fp_kind,2.579600e+00_fp_kind,&
+     1.770300e+00_fp_kind,1.371300e+00_fp_kind], 1.2150721042022070e+00_fp_kind,1.028300e+01_fp_kind) /
 data ionicXrayFF( 2, 42) / t_ionicFF('Mo',  42,  6, &
-    [36.0000d0, 35.7152d0, 34.8924d0, 33.6192d0, 32.0207d0, 30.2357d0, 28.3933d0, 26.5960d0, 24.9125d0,&
-     23.3776d0, 21.9986d0, 19.6517d0, 17.6970d0, 15.9714d0, 14.3877d0, 12.9249d0, 10.4152d0, 8.53860d0, 7.24950d0, 6.39620d0,&
-     5.81480d0, 4.83610d0, 3.99960d0, 3.22770d0, 2.58880d0, 1.76920d0, 1.37450d0], 0.1218003470726515d1, 2.75080d0) /
+     [3.600000e+01_fp_kind,3.571520e+01_fp_kind,3.489240e+01_fp_kind,3.361920e+01_fp_kind,3.202070e+01_fp_kind,&
+     3.023570e+01_fp_kind,2.839330e+01_fp_kind,2.659600e+01_fp_kind,2.491250e+01_fp_kind,2.337760e+01_fp_kind,&
+     2.199860e+01_fp_kind,1.965170e+01_fp_kind,1.769700e+01_fp_kind,1.597140e+01_fp_kind,1.438770e+01_fp_kind,&
+     1.292490e+01_fp_kind,1.041520e+01_fp_kind,8.538600e+00_fp_kind,7.249500e+00_fp_kind,6.396200e+00_fp_kind,&
+     5.814800e+00_fp_kind,4.836100e+00_fp_kind,3.999600e+00_fp_kind,3.227700e+00_fp_kind,2.588800e+00_fp_kind,&
+     1.769200e+00_fp_kind,1.374500e+00_fp_kind], 1.2180034707265150e+00_fp_kind,2.750800e+00_fp_kind) /
 data ionicXrayFF( 1, 43) / t_ionicFF('Tc',  43,  0, &
-    [43.0000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0,&
-     0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0,&
-     0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0], 0.0000000000000000d0, 0.00000d0) /
+     [4.300000e+01_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind], 0.0000000000000000e+00_fp_kind,0.000000e+00_fp_kind) /
 data ionicXrayFF( 2, 43) / t_ionicFF('Tc',  43,  0, &
-    [43.0000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0,&
-     0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0,&
-     0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0], 0.0000000000000000d0, 0.00000d0) /
+     [4.300000e+01_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind], 0.0000000000000000e+00_fp_kind,0.000000e+00_fp_kind) /
 data ionicXrayFF( 1, 44) / t_ionicFF('Ru',  44,  0, &
-    [44.0000d0, 43.0582d0, 40.7608d0, 37.9441d0, 35.0716d0, 32.3444d0, 29.8603d0, 27.6625d0, 25.7551d0,&
-     24.1162d0, 22.7088d0, 20.4174d0, 18.5663d0, 16.9372d0, 15.4200d0, 13.9825d0, 11.3990d0, 9.33580d0, 7.83390d0, 6.80340d0,&
-     6.10410d0, 5.04250d0, 4.42500d0, 3.49100d0, 2.83240d0, 1.93410d0, 1.46590d0], 0.1240708043663794d1, 9.55210d0) /
+     [4.400000e+01_fp_kind,4.305820e+01_fp_kind,4.076080e+01_fp_kind,3.794410e+01_fp_kind,3.507160e+01_fp_kind,&
+     3.234440e+01_fp_kind,2.986030e+01_fp_kind,2.766250e+01_fp_kind,2.575510e+01_fp_kind,2.411620e+01_fp_kind,&
+     2.270880e+01_fp_kind,2.041740e+01_fp_kind,1.856630e+01_fp_kind,1.693720e+01_fp_kind,1.542000e+01_fp_kind,&
+     1.398250e+01_fp_kind,1.139900e+01_fp_kind,9.335800e+00_fp_kind,7.833900e+00_fp_kind,6.803400e+00_fp_kind,&
+     6.104100e+00_fp_kind,5.042500e+00_fp_kind,4.425000e+00_fp_kind,3.491000e+00_fp_kind,2.832400e+00_fp_kind,&
+     1.934100e+00_fp_kind,1.465900e+00_fp_kind], 1.2407080436637941e+00_fp_kind,9.552100e+00_fp_kind) /
 data ionicXrayFF( 2, 44) / t_ionicFF('Ru',  44,  0, &
-    [44.0000d0, 43.0582d0, 40.7608d0, 37.9441d0, 35.0716d0, 32.3444d0, 29.8603d0, 27.6625d0, 25.7551d0,&
-     24.1162d0, 22.7088d0, 20.4174d0, 18.5663d0, 16.9372d0, 15.4200d0, 13.9825d0, 11.3990d0, 9.33580d0, 7.83390d0, 6.80340d0,&
-     6.10410d0, 5.04250d0, 4.42500d0, 3.49100d0, 2.83240d0, 1.93410d0, 1.46590d0], 0.1240708043663794d1, 9.55210d0) /
+     [4.400000e+01_fp_kind,4.305820e+01_fp_kind,4.076080e+01_fp_kind,3.794410e+01_fp_kind,3.507160e+01_fp_kind,&
+     3.234440e+01_fp_kind,2.986030e+01_fp_kind,2.766250e+01_fp_kind,2.575510e+01_fp_kind,2.411620e+01_fp_kind,&
+     2.270880e+01_fp_kind,2.041740e+01_fp_kind,1.856630e+01_fp_kind,1.693720e+01_fp_kind,1.542000e+01_fp_kind,&
+     1.398250e+01_fp_kind,1.139900e+01_fp_kind,9.335800e+00_fp_kind,7.833900e+00_fp_kind,6.803400e+00_fp_kind,&
+     6.104100e+00_fp_kind,5.042500e+00_fp_kind,4.425000e+00_fp_kind,3.491000e+00_fp_kind,2.832400e+00_fp_kind,&
+     1.934100e+00_fp_kind,1.465900e+00_fp_kind], 1.2407080436637941e+00_fp_kind,9.552100e+00_fp_kind) /
 data ionicXrayFF( 1, 45) / t_ionicFF('Rh',  45,  0, &
-    [45.0000d0, 44.0870d0, 41.8292d0, 39.0068d0, 36.0779d0, 33.2614d0, 30.6741d0, 28.3726d0, 26.3703d0,&
-     24.6504d0, 23.1790d0, 20.8122d0, 18.9462d0, 17.3404d0, 15.8603d0, 14.4546d0, 11.8813d0, 9.75700d0, 8.16010d0, 7.03800d0,&
-     6.27010d0, 5.14510d0, 4.35670d0, 3.62050d0, 2.95880d0, 2.02210d0, 1.51830d0], 0.1257052967110297d1, 9.22440d0) /
+     [4.500000e+01_fp_kind,4.408700e+01_fp_kind,4.182920e+01_fp_kind,3.900680e+01_fp_kind,3.607790e+01_fp_kind,&
+     3.326140e+01_fp_kind,3.067410e+01_fp_kind,2.837260e+01_fp_kind,2.637030e+01_fp_kind,2.465040e+01_fp_kind,&
+     2.317900e+01_fp_kind,2.081220e+01_fp_kind,1.894620e+01_fp_kind,1.734040e+01_fp_kind,1.586030e+01_fp_kind,&
+     1.445460e+01_fp_kind,1.188130e+01_fp_kind,9.757000e+00_fp_kind,8.160100e+00_fp_kind,7.038000e+00_fp_kind,&
+     6.270100e+00_fp_kind,5.145100e+00_fp_kind,4.356700e+00_fp_kind,3.620500e+00_fp_kind,2.958800e+00_fp_kind,&
+     2.022100e+00_fp_kind,1.518300e+00_fp_kind], 1.2570529671102970e+00_fp_kind,9.224400e+00_fp_kind) /
 data ionicXrayFF( 2, 45) / t_ionicFF('Rh',  45,  0, &
-    [45.0000d0, 44.0870d0, 41.8292d0, 39.0068d0, 36.0779d0, 33.2614d0, 30.6741d0, 28.3726d0, 26.3703d0,&
-     24.6504d0, 23.1790d0, 20.8122d0, 18.9462d0, 17.3404d0, 15.8603d0, 14.4546d0, 11.8813d0, 9.75700d0, 8.16010d0, 7.03800d0,&
-     6.27010d0, 5.14510d0, 4.35670d0, 3.62050d0, 2.95880d0, 2.02210d0, 1.51830d0], 0.1257052967110297d1, 9.22440d0) /
+     [4.500000e+01_fp_kind,4.408700e+01_fp_kind,4.182920e+01_fp_kind,3.900680e+01_fp_kind,3.607790e+01_fp_kind,&
+     3.326140e+01_fp_kind,3.067410e+01_fp_kind,2.837260e+01_fp_kind,2.637030e+01_fp_kind,2.465040e+01_fp_kind,&
+     2.317900e+01_fp_kind,2.081220e+01_fp_kind,1.894620e+01_fp_kind,1.734040e+01_fp_kind,1.586030e+01_fp_kind,&
+     1.445460e+01_fp_kind,1.188130e+01_fp_kind,9.757000e+00_fp_kind,8.160100e+00_fp_kind,7.038000e+00_fp_kind,&
+     6.270100e+00_fp_kind,5.145100e+00_fp_kind,4.356700e+00_fp_kind,3.620500e+00_fp_kind,2.958800e+00_fp_kind,&
+     2.022100e+00_fp_kind,1.518300e+00_fp_kind], 1.2570529671102970e+00_fp_kind,9.224400e+00_fp_kind) /
 data ionicXrayFF( 1, 46) / t_ionicFF('Pd',  46,  0, &
-    [46.0000d0, 45.2322d0, 43.1745d0, 40.3623d0, 37.2935d0, 34.2936d0, 31.5351d0, 29.0909d0, 26.9749d0,&
-     25.1674d0, 23.6310d0, 21.1909d0, 19.3096d0, 17.7246d0, 16.2803d0, 14.9083d0, 12.3581d0, 10.1885d0, 8.50630d0, 7.29400d0,&
-     6.45310d0, 5.24800d0, 4.46430d0, 3.74340d0, 3.08390d0, 2.11250d0, 1.57440d0], 0.1275804941295100d1, 7.56450d0) /
+     [4.600000e+01_fp_kind,4.523220e+01_fp_kind,4.317450e+01_fp_kind,4.036230e+01_fp_kind,3.729350e+01_fp_kind,&
+     3.429360e+01_fp_kind,3.153510e+01_fp_kind,2.909090e+01_fp_kind,2.697490e+01_fp_kind,2.516740e+01_fp_kind,&
+     2.363100e+01_fp_kind,2.119090e+01_fp_kind,1.930960e+01_fp_kind,1.772460e+01_fp_kind,1.628030e+01_fp_kind,&
+     1.490830e+01_fp_kind,1.235810e+01_fp_kind,1.018850e+01_fp_kind,8.506300e+00_fp_kind,7.294000e+00_fp_kind,&
+     6.453100e+00_fp_kind,5.248000e+00_fp_kind,4.464300e+00_fp_kind,3.743400e+00_fp_kind,3.083900e+00_fp_kind,&
+     2.112500e+00_fp_kind,1.574400e+00_fp_kind], 1.2758049412951000e+00_fp_kind,7.564500e+00_fp_kind) /
 data ionicXrayFF( 2, 46) / t_ionicFF('Pd',  46,  0, &
-    [46.0000d0, 45.2322d0, 43.1745d0, 40.3623d0, 37.2935d0, 34.2936d0, 31.5351d0, 29.0909d0, 26.9749d0,&
-     25.1674d0, 23.6310d0, 21.1909d0, 19.3096d0, 17.7246d0, 16.2803d0, 14.9083d0, 12.3581d0, 10.1885d0, 8.50630d0, 7.29400d0,&
-     6.45310d0, 5.24800d0, 4.46430d0, 3.74340d0, 3.08390d0, 2.11250d0, 1.57440d0], 0.1275804941295100d1, 7.56450d0) /
+     [4.600000e+01_fp_kind,4.523220e+01_fp_kind,4.317450e+01_fp_kind,4.036230e+01_fp_kind,3.729350e+01_fp_kind,&
+     3.429360e+01_fp_kind,3.153510e+01_fp_kind,2.909090e+01_fp_kind,2.697490e+01_fp_kind,2.516740e+01_fp_kind,&
+     2.363100e+01_fp_kind,2.119090e+01_fp_kind,1.930960e+01_fp_kind,1.772460e+01_fp_kind,1.628030e+01_fp_kind,&
+     1.490830e+01_fp_kind,1.235810e+01_fp_kind,1.018850e+01_fp_kind,8.506300e+00_fp_kind,7.294000e+00_fp_kind,&
+     6.453100e+00_fp_kind,5.248000e+00_fp_kind,4.464300e+00_fp_kind,3.743400e+00_fp_kind,3.083900e+00_fp_kind,&
+     2.112500e+00_fp_kind,1.574400e+00_fp_kind], 1.2758049412951000e+00_fp_kind,7.564500e+00_fp_kind) /
 data ionicXrayFF( 1, 47) / t_ionicFF('Ag',  47,  0, &
-    [47.0000d0, 46.1395d0, 43.9655d0, 41.1604d0, 38.1586d0, 35.1971d0, 32.4213d0, 29.9147d0, 27.7116d0,&
-     25.8099d0, 24.1850d0, 21.6110d0, 19.6652d0, 18.0732d0, 16.6556d0, 15.3210d0, 12.8178d0, 10.6263d0, 8.87160d0, 7.57160d0,&
-     6.65370d0, 5.35330d0, 4.56820d0, 3.86430d0, 3.20750d0, 2.20880d0, 1.63350d0], 0.1296242822346883d1, 8.64140d0) /
+     [4.700000e+01_fp_kind,4.613950e+01_fp_kind,4.396550e+01_fp_kind,4.116040e+01_fp_kind,3.815860e+01_fp_kind,&
+     3.519710e+01_fp_kind,3.242130e+01_fp_kind,2.991470e+01_fp_kind,2.771160e+01_fp_kind,2.580990e+01_fp_kind,&
+     2.418500e+01_fp_kind,2.161100e+01_fp_kind,1.966520e+01_fp_kind,1.807320e+01_fp_kind,1.665560e+01_fp_kind,&
+     1.532100e+01_fp_kind,1.281780e+01_fp_kind,1.062630e+01_fp_kind,8.871600e+00_fp_kind,7.571600e+00_fp_kind,&
+     6.653700e+00_fp_kind,5.353300e+00_fp_kind,4.568200e+00_fp_kind,3.864300e+00_fp_kind,3.207500e+00_fp_kind,&
+     2.208800e+00_fp_kind,1.633500e+00_fp_kind], 1.2962428223468829e+00_fp_kind,8.641400e+00_fp_kind) /
 data ionicXrayFF( 2, 47) / t_ionicFF('Ag',  47,  2, &
-    [45.0000d0, 44.4625d0, 42.9447d0, 40.6929d0, 38.0185d0, 35.2115d0, 32.4900d0, 29.9888d0, 27.7716d0,&
-     25.8514d0, 24.2098d0, 21.6145d0, 19.6604d0, 18.0670d0, 16.6506d0, 15.3178d0, 12.8169d0, 10.6261d0, 8.87140d0, 7.57130d0,&
-     6.65350d0, 5.35330d0, 4.56830d0, 3.86400d0, 3.20910d0, 2.20700d0, 1.63510d0], 0.1297558244369540d1, 5.22110d0) /
+     [4.500000e+01_fp_kind,4.446250e+01_fp_kind,4.294470e+01_fp_kind,4.069290e+01_fp_kind,3.801850e+01_fp_kind,&
+     3.521150e+01_fp_kind,3.249000e+01_fp_kind,2.998880e+01_fp_kind,2.777160e+01_fp_kind,2.585140e+01_fp_kind,&
+     2.420980e+01_fp_kind,2.161450e+01_fp_kind,1.966040e+01_fp_kind,1.806700e+01_fp_kind,1.665060e+01_fp_kind,&
+     1.531780e+01_fp_kind,1.281690e+01_fp_kind,1.062610e+01_fp_kind,8.871400e+00_fp_kind,7.571300e+00_fp_kind,&
+     6.653500e+00_fp_kind,5.353300e+00_fp_kind,4.568300e+00_fp_kind,3.864000e+00_fp_kind,3.209100e+00_fp_kind,&
+     2.207000e+00_fp_kind,1.635100e+00_fp_kind], 1.2975582443695399e+00_fp_kind,5.221100e+00_fp_kind) /
 data ionicXrayFF( 1, 48) / t_ionicFF('Cd',  48,  0, &
-    [48.0000d0, 47.0851d0, 44.7986d0, 41.9260d0, 38.9340d0, 36.0122d0, 33.2562d0, 30.7306d0, 28.4735d0,&
-     26.4964d0, 24.7886d0, 22.0675d0, 20.0314d0, 18.4094d0, 17.0043d0, 15.7025d0, 13.2570d0, 11.0637d0, 9.25140d0, 7.86950d0,&
-     6.87330d0, 5.46290d0, 4.66730d0, 3.97970d0, 3.32940d0, 2.30840d0, 1.69610d0], 0.1318670781510839d1, 9.20240d0) /
+     [4.800000e+01_fp_kind,4.708510e+01_fp_kind,4.479860e+01_fp_kind,4.192600e+01_fp_kind,3.893400e+01_fp_kind,&
+     3.601220e+01_fp_kind,3.325620e+01_fp_kind,3.073060e+01_fp_kind,2.847350e+01_fp_kind,2.649640e+01_fp_kind,&
+     2.478860e+01_fp_kind,2.206750e+01_fp_kind,2.003140e+01_fp_kind,1.840940e+01_fp_kind,1.700430e+01_fp_kind,&
+     1.570250e+01_fp_kind,1.325700e+01_fp_kind,1.106370e+01_fp_kind,9.251400e+00_fp_kind,7.869500e+00_fp_kind,&
+     6.873300e+00_fp_kind,5.462900e+00_fp_kind,4.667300e+00_fp_kind,3.979700e+00_fp_kind,3.329400e+00_fp_kind,&
+     2.308400e+00_fp_kind,1.696100e+00_fp_kind], 1.3186707815108389e+00_fp_kind,9.202400e+00_fp_kind) /
 data ionicXrayFF( 2, 48) / t_ionicFF('Cd',  48,  2, &
-    [46.0000d0, 45.4712d0, 43.9718d0, 41.7315d0, 39.0455d0, 36.1968d0, 33.4061d0, 30.8169d0, 28.5035d0,&
-     26.4884d0, 24.7604d0, 22.0344d0, 20.0127d0, 18.4052d0, 17.0089d0, 15.7104d0, 13.2626d0, 11.0651d0, 9.25090d0, 7.86900d0,&
-     6.87320d0, 5.46310d0, 4.66640d0, 3.97770d0, 3.32980d0, 2.30490d0, 1.69800d0], 0.1320202151094982d1, 5.13240d0) /
+     [4.600000e+01_fp_kind,4.547120e+01_fp_kind,4.397180e+01_fp_kind,4.173150e+01_fp_kind,3.904550e+01_fp_kind,&
+     3.619680e+01_fp_kind,3.340610e+01_fp_kind,3.081690e+01_fp_kind,2.850350e+01_fp_kind,2.648840e+01_fp_kind,&
+     2.476040e+01_fp_kind,2.203440e+01_fp_kind,2.001270e+01_fp_kind,1.840520e+01_fp_kind,1.700890e+01_fp_kind,&
+     1.571040e+01_fp_kind,1.326260e+01_fp_kind,1.106510e+01_fp_kind,9.250900e+00_fp_kind,7.869000e+00_fp_kind,&
+     6.873200e+00_fp_kind,5.463100e+00_fp_kind,4.666400e+00_fp_kind,3.977700e+00_fp_kind,3.329800e+00_fp_kind,&
+     2.304900e+00_fp_kind,1.698000e+00_fp_kind], 1.3202021510949820e+00_fp_kind,5.132400e+00_fp_kind) /
 data ionicXrayFF( 1, 49) / t_ionicFF('In',  49,  0, &
-    [49.0000d0, 47.9647d0, 45.5096d0, 42.5911d0, 39.6417d0, 36.7835d0, 34.0695d0, 31.5467d0, 29.2542d0,&
-     27.2140d0, 25.4287d0, 22.5545d0, 20.4109d0, 18.7401d0, 17.3337d0, 16.0577d0, 13.6747d0, 11.4959d0, 9.64130d0, 8.18570d0,&
-     7.11200d0, 5.57920d0, 4.76280d0, 4.09000d0, 3.44820d0, 2.41070d0, 1.76230d0], 0.1343054382410664d1, 10.5928d0) /
+     [4.900000e+01_fp_kind,4.796470e+01_fp_kind,4.550960e+01_fp_kind,4.259110e+01_fp_kind,3.964170e+01_fp_kind,&
+     3.678350e+01_fp_kind,3.406950e+01_fp_kind,3.154670e+01_fp_kind,2.925420e+01_fp_kind,2.721400e+01_fp_kind,&
+     2.542870e+01_fp_kind,2.255450e+01_fp_kind,2.041090e+01_fp_kind,1.874010e+01_fp_kind,1.733370e+01_fp_kind,&
+     1.605770e+01_fp_kind,1.367470e+01_fp_kind,1.149590e+01_fp_kind,9.641300e+00_fp_kind,8.185700e+00_fp_kind,&
+     7.112000e+00_fp_kind,5.579200e+00_fp_kind,4.762800e+00_fp_kind,4.090000e+00_fp_kind,3.448200e+00_fp_kind,&
+     2.410700e+00_fp_kind,1.762300e+00_fp_kind], 1.3430543824106640e+00_fp_kind,1.059280e+01_fp_kind) /
 data ionicXrayFF( 2, 49) / t_ionicFF('In',  49,  0, &
-    [49.0000d0, 47.9647d0, 45.5096d0, 42.5911d0, 39.6417d0, 36.7835d0, 34.0695d0, 31.5467d0, 29.2542d0,&
-     27.2140d0, 25.4287d0, 22.5545d0, 20.4109d0, 18.7401d0, 17.3337d0, 16.0577d0, 13.6747d0, 11.4959d0, 9.64130d0, 8.18570d0,&
-     7.11200d0, 5.57920d0, 4.76280d0, 4.09000d0, 3.44820d0, 2.41070d0, 1.76230d0], 0.1343054382410664d1, 10.5928d0) /
+     [4.900000e+01_fp_kind,4.796470e+01_fp_kind,4.550960e+01_fp_kind,4.259110e+01_fp_kind,3.964170e+01_fp_kind,&
+     3.678350e+01_fp_kind,3.406950e+01_fp_kind,3.154670e+01_fp_kind,2.925420e+01_fp_kind,2.721400e+01_fp_kind,&
+     2.542870e+01_fp_kind,2.255450e+01_fp_kind,2.041090e+01_fp_kind,1.874010e+01_fp_kind,1.733370e+01_fp_kind,&
+     1.605770e+01_fp_kind,1.367470e+01_fp_kind,1.149590e+01_fp_kind,9.641300e+00_fp_kind,8.185700e+00_fp_kind,&
+     7.112000e+00_fp_kind,5.579200e+00_fp_kind,4.762800e+00_fp_kind,4.090000e+00_fp_kind,3.448200e+00_fp_kind,&
+     2.410700e+00_fp_kind,1.762300e+00_fp_kind], 1.3430543824106640e+00_fp_kind,1.059280e+01_fp_kind) /
 data ionicXrayFF( 1, 50) / t_ionicFF('Sn',  50,  0, &
-    [50.0000d0, 48.9156d0, 46.3221d0, 43.2760d0, 40.2907d0, 37.4684d0, 34.8082d0, 32.3186d0, 30.0236d0,&
-     27.9472d0, 26.1019d0, 23.0824d0, 20.8163d0, 19.0756d0, 17.6499d0, 16.3888d0, 14.0673d0, 11.9180d0, 10.0372d0, 8.51780d0,&
-     7.36930d0, 5.70370d0, 4.85580d0, 4.19480d0, 3.56430d0, 2.51510d0, 1.83210d0], 0.1369285353939041d1, 11.0376d0) /
+     [5.000000e+01_fp_kind,4.891560e+01_fp_kind,4.632210e+01_fp_kind,4.327600e+01_fp_kind,4.029070e+01_fp_kind,&
+     3.746840e+01_fp_kind,3.480820e+01_fp_kind,3.231860e+01_fp_kind,3.002360e+01_fp_kind,2.794720e+01_fp_kind,&
+     2.610190e+01_fp_kind,2.308240e+01_fp_kind,2.081630e+01_fp_kind,1.907560e+01_fp_kind,1.764990e+01_fp_kind,&
+     1.638880e+01_fp_kind,1.406730e+01_fp_kind,1.191800e+01_fp_kind,1.003720e+01_fp_kind,8.517800e+00_fp_kind,&
+     7.369300e+00_fp_kind,5.703700e+00_fp_kind,4.855800e+00_fp_kind,4.194800e+00_fp_kind,3.564300e+00_fp_kind,&
+     2.515100e+00_fp_kind,1.832100e+00_fp_kind], 1.3692853539390410e+00_fp_kind,1.103760e+01_fp_kind) /
 data ionicXrayFF( 2, 50) / t_ionicFF('Sn',  50,  0, &
-    [50.0000d0, 48.9156d0, 46.3221d0, 43.2760d0, 40.2907d0, 37.4684d0, 34.8082d0, 32.3186d0, 30.0236d0,&
-     27.9472d0, 26.1019d0, 23.0824d0, 20.8163d0, 19.0756d0, 17.6499d0, 16.3888d0, 14.0673d0, 11.9180d0, 10.0372d0, 8.51780d0,&
-     7.36930d0, 5.70370d0, 4.85580d0, 4.19480d0, 3.56430d0, 2.51510d0, 1.83210d0], 0.1369285353939041d1, 11.0376d0) /
+     [5.000000e+01_fp_kind,4.891560e+01_fp_kind,4.632210e+01_fp_kind,4.327600e+01_fp_kind,4.029070e+01_fp_kind,&
+     3.746840e+01_fp_kind,3.480820e+01_fp_kind,3.231860e+01_fp_kind,3.002360e+01_fp_kind,2.794720e+01_fp_kind,&
+     2.610190e+01_fp_kind,2.308240e+01_fp_kind,2.081630e+01_fp_kind,1.907560e+01_fp_kind,1.764990e+01_fp_kind,&
+     1.638880e+01_fp_kind,1.406730e+01_fp_kind,1.191800e+01_fp_kind,1.003720e+01_fp_kind,8.517800e+00_fp_kind,&
+     7.369300e+00_fp_kind,5.703700e+00_fp_kind,4.855800e+00_fp_kind,4.194800e+00_fp_kind,3.564300e+00_fp_kind,&
+     2.515100e+00_fp_kind,1.832100e+00_fp_kind], 1.3692853539390410e+00_fp_kind,1.103760e+01_fp_kind) /
 data ionicXrayFF( 1, 51) / t_ionicFF('Sb',  51,  0, &
-    [51.0000d0, 49.8946d0, 47.2023d0, 44.0113d0, 40.9327d0, 38.0995d0, 35.4777d0, 33.0324d0, 30.7599d0,&
-     28.6744d0, 26.7913d0, 23.6475d0, 21.2535d0, 19.4249d0, 17.9610d0, 16.7013d0, 14.4345d0, 12.3259d0, 10.4346d0, 8.86280d0,&
-     7.64430d0, 5.83830d0, 4.94760d0, 4.29450d0, 3.67720d0, 2.62070d0, 1.90560d0], 0.1397340633554954d1, 11.1772d0) /
+     [5.100000e+01_fp_kind,4.989460e+01_fp_kind,4.720230e+01_fp_kind,4.401130e+01_fp_kind,4.093270e+01_fp_kind,&
+     3.809950e+01_fp_kind,3.547770e+01_fp_kind,3.303240e+01_fp_kind,3.075990e+01_fp_kind,2.867440e+01_fp_kind,&
+     2.679130e+01_fp_kind,2.364750e+01_fp_kind,2.125350e+01_fp_kind,1.942490e+01_fp_kind,1.796100e+01_fp_kind,&
+     1.670130e+01_fp_kind,1.443450e+01_fp_kind,1.232590e+01_fp_kind,1.043460e+01_fp_kind,8.862800e+00_fp_kind,&
+     7.644300e+00_fp_kind,5.838300e+00_fp_kind,4.947600e+00_fp_kind,4.294500e+00_fp_kind,3.677200e+00_fp_kind,&
+     2.620700e+00_fp_kind,1.905600e+00_fp_kind], 1.3973406335549541e+00_fp_kind,1.117720e+01_fp_kind) /
 data ionicXrayFF( 2, 51) / t_ionicFF('Sb',  51,  0, &
-    [51.0000d0, 49.8946d0, 47.2023d0, 44.0113d0, 40.9327d0, 38.0995d0, 35.4777d0, 33.0324d0, 30.7599d0,&
-     28.6744d0, 26.7913d0, 23.6475d0, 21.2535d0, 19.4249d0, 17.9610d0, 16.7013d0, 14.4345d0, 12.3259d0, 10.4346d0, 8.86280d0,&
-     7.64430d0, 5.83830d0, 4.94760d0, 4.29450d0, 3.67720d0, 2.62070d0, 1.90560d0], 0.1397340633554954d1, 11.1772d0) /
+     [5.100000e+01_fp_kind,4.989460e+01_fp_kind,4.720230e+01_fp_kind,4.401130e+01_fp_kind,4.093270e+01_fp_kind,&
+     3.809950e+01_fp_kind,3.547770e+01_fp_kind,3.303240e+01_fp_kind,3.075990e+01_fp_kind,2.867440e+01_fp_kind,&
+     2.679130e+01_fp_kind,2.364750e+01_fp_kind,2.125350e+01_fp_kind,1.942490e+01_fp_kind,1.796100e+01_fp_kind,&
+     1.670130e+01_fp_kind,1.443450e+01_fp_kind,1.232590e+01_fp_kind,1.043460e+01_fp_kind,8.862800e+00_fp_kind,&
+     7.644300e+00_fp_kind,5.838300e+00_fp_kind,4.947600e+00_fp_kind,4.294500e+00_fp_kind,3.677200e+00_fp_kind,&
+     2.620700e+00_fp_kind,1.905600e+00_fp_kind], 1.3973406335549541e+00_fp_kind,1.117720e+01_fp_kind) /
 data ionicXrayFF( 1, 52) / t_ionicFF('Te',  52,  0, &
-    [52.0000d0, 50.8883d0, 48.1289d0, 44.8001d0, 41.5956d0, 38.7068d0, 36.0945d0, 33.6881d0, 31.4509d0,&
-     29.3780d0, 27.4798d0, 24.2418d0, 21.7243d0, 19.7953d0, 18.2754d0, 17.0016d0, 14.7768d0, 12.7166d0, 10.8294d0, 9.21760d0,&
-     7.93540d0, 5.98450d0, 5.03980d0, 4.38960d0, 3.78620d0, 2.72710d0, 1.98270d0], 0.1427050240616751d1, 11.1747d0) /
+     [5.200000e+01_fp_kind,5.088830e+01_fp_kind,4.812890e+01_fp_kind,4.480010e+01_fp_kind,4.159560e+01_fp_kind,&
+     3.870680e+01_fp_kind,3.609450e+01_fp_kind,3.368810e+01_fp_kind,3.145090e+01_fp_kind,2.937800e+01_fp_kind,&
+     2.747980e+01_fp_kind,2.424180e+01_fp_kind,2.172430e+01_fp_kind,1.979530e+01_fp_kind,1.827540e+01_fp_kind,&
+     1.700160e+01_fp_kind,1.477680e+01_fp_kind,1.271660e+01_fp_kind,1.082940e+01_fp_kind,9.217600e+00_fp_kind,&
+     7.935400e+00_fp_kind,5.984500e+00_fp_kind,5.039800e+00_fp_kind,4.389600e+00_fp_kind,3.786200e+00_fp_kind,&
+     2.727100e+00_fp_kind,1.982700e+00_fp_kind], 1.4270502406167509e+00_fp_kind,1.117470e+01_fp_kind) /
 data ionicXrayFF( 2, 52) / t_ionicFF('Te',  52,  0, &
-    [52.0000d0, 50.8883d0, 48.1289d0, 44.8001d0, 41.5956d0, 38.7068d0, 36.0945d0, 33.6881d0, 31.4509d0,&
-     29.3780d0, 27.4798d0, 24.2418d0, 21.7243d0, 19.7953d0, 18.2754d0, 17.0016d0, 14.7768d0, 12.7166d0, 10.8294d0, 9.21760d0,&
-     7.93540d0, 5.98450d0, 5.03980d0, 4.38960d0, 3.78620d0, 2.72710d0, 1.98270d0], 0.1427050240616751d1, 11.1747d0) /
+     [5.200000e+01_fp_kind,5.088830e+01_fp_kind,4.812890e+01_fp_kind,4.480010e+01_fp_kind,4.159560e+01_fp_kind,&
+     3.870680e+01_fp_kind,3.609450e+01_fp_kind,3.368810e+01_fp_kind,3.145090e+01_fp_kind,2.937800e+01_fp_kind,&
+     2.747980e+01_fp_kind,2.424180e+01_fp_kind,2.172430e+01_fp_kind,1.979530e+01_fp_kind,1.827540e+01_fp_kind,&
+     1.700160e+01_fp_kind,1.477680e+01_fp_kind,1.271660e+01_fp_kind,1.082940e+01_fp_kind,9.217600e+00_fp_kind,&
+     7.935400e+00_fp_kind,5.984500e+00_fp_kind,5.039800e+00_fp_kind,4.389600e+00_fp_kind,3.786200e+00_fp_kind,&
+     2.727100e+00_fp_kind,1.982700e+00_fp_kind], 1.4270502406167509e+00_fp_kind,1.117470e+01_fp_kind) /
 data ionicXrayFF( 1, 53) / t_ionicFF('I ',  53,  0, &
-    [53.0000d0, 51.9010d0, 49.1172d0, 45.6730d0, 42.3198d0, 39.3266d0, 36.6795d0, 34.2893d0, 32.0868d0,&
-     30.0415d0, 28.1497d0, 24.8559d0, 22.2298d0, 20.1944d0, 18.6021d0, 17.2973d0, 15.0958d0, 13.0871d0, 11.2176d0, 9.57900d0,&
-     8.24120d0, 6.14380d0, 5.13390d0, 4.48050d0, 3.89110d0, 2.83370d0, 2.06350d0], 0.1458404091368656d1, 10.9811d0) /
+     [5.300000e+01_fp_kind,5.190100e+01_fp_kind,4.911720e+01_fp_kind,4.567300e+01_fp_kind,4.231980e+01_fp_kind,&
+     3.932660e+01_fp_kind,3.667950e+01_fp_kind,3.428930e+01_fp_kind,3.208680e+01_fp_kind,3.004150e+01_fp_kind,&
+     2.814970e+01_fp_kind,2.485590e+01_fp_kind,2.222980e+01_fp_kind,2.019440e+01_fp_kind,1.860210e+01_fp_kind,&
+     1.729730e+01_fp_kind,1.509580e+01_fp_kind,1.308710e+01_fp_kind,1.121760e+01_fp_kind,9.579000e+00_fp_kind,&
+     8.241200e+00_fp_kind,6.143800e+00_fp_kind,5.133900e+00_fp_kind,4.480500e+00_fp_kind,3.891100e+00_fp_kind,&
+     2.833700e+00_fp_kind,2.063500e+00_fp_kind], 1.4584040913686560e+00_fp_kind,1.098110e+01_fp_kind) /
 data ionicXrayFF( 2, 53) / t_ionicFF('I ',  53, -1, &
-    [54.0000d0, 52.6917d0, 49.4904d0, 45.7384d0, 42.2683d0, 39.2689d0, 36.6461d0, 34.2766d0, 32.0858d0,&
-     30.0459d0, 28.1560d0, 24.8611d0, 22.2326d0, 20.1954d0, 18.6020d0, 17.2967d0, 15.0952d0, 13.0870d0, 11.2178d0, 9.57940d0,&
-     8.24150d0, 6.14400d0, 5.13400d0, 4.48110d0, 3.89010d0, 2.82570d0, 2.06260d0], 0.1457742248328337d1, 13.1951d0) /
+     [5.400000e+01_fp_kind,5.269170e+01_fp_kind,4.949040e+01_fp_kind,4.573840e+01_fp_kind,4.226830e+01_fp_kind,&
+     3.926890e+01_fp_kind,3.664610e+01_fp_kind,3.427660e+01_fp_kind,3.208580e+01_fp_kind,3.004590e+01_fp_kind,&
+     2.815600e+01_fp_kind,2.486110e+01_fp_kind,2.223260e+01_fp_kind,2.019540e+01_fp_kind,1.860200e+01_fp_kind,&
+     1.729670e+01_fp_kind,1.509520e+01_fp_kind,1.308700e+01_fp_kind,1.121780e+01_fp_kind,9.579400e+00_fp_kind,&
+     8.241500e+00_fp_kind,6.144000e+00_fp_kind,5.134000e+00_fp_kind,4.481100e+00_fp_kind,3.890100e+00_fp_kind,&
+     2.825700e+00_fp_kind,2.062600e+00_fp_kind], 1.4577422483283371e+00_fp_kind,1.319510e+01_fp_kind) /
 data ionicXrayFF( 1, 54) / t_ionicFF('Xe',  54,  0, &
-    [54.0000d0, 52.9174d0, 50.1274d0, 46.5916d0, 43.0623d0, 39.9713d0, 37.2559d0, 36.8553d0, 32.6763d0,&
-     30.6621d0, 28.7902d0, 25.4753d0, 22.7624d0, 20.6227d0, 18.9471d0, 17.5958d0, 15.3954d0, 13.4365d0, 11.5954d0, 9.94310d0,&
-     8.55890d0, 6.31690d0, 5.23130d0, 4.56820d0, 3.99160d0, 2.94020d0, 2.14750d0], 0.1490959934429391d1, 10.7652d0) /
+     [5.400000e+01_fp_kind,5.291740e+01_fp_kind,5.012740e+01_fp_kind,4.659160e+01_fp_kind,4.306230e+01_fp_kind,&
+     3.997130e+01_fp_kind,3.725590e+01_fp_kind,3.685530e+01_fp_kind,3.267630e+01_fp_kind,3.066210e+01_fp_kind,&
+     2.879020e+01_fp_kind,2.547530e+01_fp_kind,2.276240e+01_fp_kind,2.062270e+01_fp_kind,1.894710e+01_fp_kind,&
+     1.759580e+01_fp_kind,1.539540e+01_fp_kind,1.343650e+01_fp_kind,1.159540e+01_fp_kind,9.943100e+00_fp_kind,&
+     8.558900e+00_fp_kind,6.316900e+00_fp_kind,5.231300e+00_fp_kind,4.568200e+00_fp_kind,3.991600e+00_fp_kind,&
+     2.940200e+00_fp_kind,2.147500e+00_fp_kind], 1.4909599344293909e+00_fp_kind,1.076520e+01_fp_kind) /
 data ionicXrayFF( 2, 54) / t_ionicFF('Xe',  54,  0, &
-    [54.0000d0, 52.9174d0, 50.1274d0, 46.5916d0, 43.0623d0, 39.9713d0, 37.2559d0, 36.8553d0, 32.6763d0,&
-     30.6621d0, 28.7902d0, 25.4753d0, 22.7624d0, 20.6227d0, 18.9471d0, 17.5958d0, 15.3954d0, 13.4365d0, 11.5954d0, 9.94310d0,&
-     8.55890d0, 6.31690d0, 5.23130d0, 4.56820d0, 3.99160d0, 2.94020d0, 2.14750d0], 0.1490959934429391d1, 10.7652d0) /
+     [5.400000e+01_fp_kind,5.291740e+01_fp_kind,5.012740e+01_fp_kind,4.659160e+01_fp_kind,4.306230e+01_fp_kind,&
+     3.997130e+01_fp_kind,3.725590e+01_fp_kind,3.685530e+01_fp_kind,3.267630e+01_fp_kind,3.066210e+01_fp_kind,&
+     2.879020e+01_fp_kind,2.547530e+01_fp_kind,2.276240e+01_fp_kind,2.062270e+01_fp_kind,1.894710e+01_fp_kind,&
+     1.759580e+01_fp_kind,1.539540e+01_fp_kind,1.343650e+01_fp_kind,1.159540e+01_fp_kind,9.943100e+00_fp_kind,&
+     8.558900e+00_fp_kind,6.316900e+00_fp_kind,5.231300e+00_fp_kind,4.568200e+00_fp_kind,3.991600e+00_fp_kind,&
+     2.940200e+00_fp_kind,2.147500e+00_fp_kind], 1.4909599344293909e+00_fp_kind,1.076520e+01_fp_kind) /
 data ionicXrayFF( 1, 55) / t_ionicFF('Cs',  55,  0, &
-    [55.0000d0, 53.5275d0, 50.6045d0, 47.2939d0, 43.8925d0, 40.7172d0, 37.9086d0, 35.4450d0, 33.2468d0,&
-     31.2421d0, 29.3879d0, 26.0776d0, 23.3074d0, 21.0764d0, 19.3144d0, 17.9046d0, 15.6811d0, 13.7647d0, 11.9595d0, 10.3053d0,&
-     8.88500d0, 6.50510d0, 5.33430d0, 4.65460d0, 4.08610d0, 3.04510d0, 2.23460d0], 0.1524589977523149d1, 16.3483d0) /
+     [5.500000e+01_fp_kind,5.352750e+01_fp_kind,5.060450e+01_fp_kind,4.729390e+01_fp_kind,4.389250e+01_fp_kind,&
+     4.071720e+01_fp_kind,3.790860e+01_fp_kind,3.544500e+01_fp_kind,3.324680e+01_fp_kind,3.124210e+01_fp_kind,&
+     2.938790e+01_fp_kind,2.607760e+01_fp_kind,2.330740e+01_fp_kind,2.107640e+01_fp_kind,1.931440e+01_fp_kind,&
+     1.790460e+01_fp_kind,1.568110e+01_fp_kind,1.376470e+01_fp_kind,1.195950e+01_fp_kind,1.030530e+01_fp_kind,&
+     8.885000e+00_fp_kind,6.505100e+00_fp_kind,5.334300e+00_fp_kind,4.654600e+00_fp_kind,4.086100e+00_fp_kind,&
+     3.045100e+00_fp_kind,2.234600e+00_fp_kind], 1.5245899775231491e+00_fp_kind,1.634830e+01_fp_kind) /
 data ionicXrayFF( 2, 55) / t_ionicFF('Cs',  55,  1, &
-    [54.0000d0, 53.0845d0, 50.6367d0, 47.3485d0, 43.9014d0, 40.7076d0, 37.8982d0, 35.4392d0, 33.2455d0,&
-     31.2436d0, 29.3904d0, 26.0795d0, 23.3077d0, 21.0758d0, 19.3136d0, 17.9042d0, 15.6812d0, 13.7650d0, 11.9597d0, 10.3057d0,&
-     8.88510d0, 6.50420d0, 5.33360d0, 4.65310d0, 4.08800d0, 3.04460d0, 2.23500d0], 0.1524874443286272d1, 9.01540d0) /
+     [5.400000e+01_fp_kind,5.308450e+01_fp_kind,5.063670e+01_fp_kind,4.734850e+01_fp_kind,4.390140e+01_fp_kind,&
+     4.070760e+01_fp_kind,3.789820e+01_fp_kind,3.543920e+01_fp_kind,3.324550e+01_fp_kind,3.124360e+01_fp_kind,&
+     2.939040e+01_fp_kind,2.607950e+01_fp_kind,2.330770e+01_fp_kind,2.107580e+01_fp_kind,1.931360e+01_fp_kind,&
+     1.790420e+01_fp_kind,1.568120e+01_fp_kind,1.376500e+01_fp_kind,1.195970e+01_fp_kind,1.030570e+01_fp_kind,&
+     8.885100e+00_fp_kind,6.504200e+00_fp_kind,5.333600e+00_fp_kind,4.653100e+00_fp_kind,4.088000e+00_fp_kind,&
+     3.044600e+00_fp_kind,2.235000e+00_fp_kind], 1.5248744432862720e+00_fp_kind,9.015400e+00_fp_kind) /
 data ionicXrayFF( 1, 56) / t_ionicFF('Ba',  56,  0, &
-    [56.0000d0, 54.3449d0, 51.1240d0, 47.8417d0, 44.5901d0, 41.4604d0, 38.6026d0, 36.0686d0, 33.8234d0,&
-     31.8034d0, 29.9543d0, 26.6579d0, 23.8560d0, 21.5511d0, 19.7051d0, 18.2286d0, 15.9580d0, 14.0730d0, 12.3078d0, 10.6632d0,&
-     9.21720d0, 6.70680d0, 5.44340d0, 4.73980d0, 4.17550d0, 3.15140d0, 2.32320d0], 0.1558125670680809d1, 18.1123d0) /
+     [5.600000e+01_fp_kind,5.434490e+01_fp_kind,5.112400e+01_fp_kind,4.784170e+01_fp_kind,4.459010e+01_fp_kind,&
+     4.146040e+01_fp_kind,3.860260e+01_fp_kind,3.606860e+01_fp_kind,3.382340e+01_fp_kind,3.180340e+01_fp_kind,&
+     2.995430e+01_fp_kind,2.665790e+01_fp_kind,2.385600e+01_fp_kind,2.155110e+01_fp_kind,1.970510e+01_fp_kind,&
+     1.822860e+01_fp_kind,1.595800e+01_fp_kind,1.407300e+01_fp_kind,1.230780e+01_fp_kind,1.066320e+01_fp_kind,&
+     9.217200e+00_fp_kind,6.706800e+00_fp_kind,5.443400e+00_fp_kind,4.739800e+00_fp_kind,4.175500e+00_fp_kind,&
+     3.151400e+00_fp_kind,2.323200e+00_fp_kind], 1.5581256706808091e+00_fp_kind,1.811230e+01_fp_kind) /
 data ionicXrayFF( 2, 56) / t_ionicFF('Ba',  56,  2, &
-    [54.0000d0, 53.2034d0, 51.0255d0, 47.9851d0, 44.6544d0, 41.4507d0, 38.5716d0, 36.0447d0, 33.8134d0,&
-     31.8045d0, 29.9611d0, 26.6648d0, 23.8579d0, 21.5494d0, 19.7024d0, 18.2264d0, 15.9579d0, 14.0738d0, 12.3084d0, 10.6635d0,&
-     9.21720d0, 6.70580d0, 5.44240d0, 4.73680d0, 4.17960d0, 3.14860d0, 2.32440d0], 0.1558965339930992d1, 7.80000d0) /
+     [5.400000e+01_fp_kind,5.320340e+01_fp_kind,5.102550e+01_fp_kind,4.798510e+01_fp_kind,4.465440e+01_fp_kind,&
+     4.145070e+01_fp_kind,3.857160e+01_fp_kind,3.604470e+01_fp_kind,3.381340e+01_fp_kind,3.180450e+01_fp_kind,&
+     2.996110e+01_fp_kind,2.666480e+01_fp_kind,2.385790e+01_fp_kind,2.154940e+01_fp_kind,1.970240e+01_fp_kind,&
+     1.822640e+01_fp_kind,1.595790e+01_fp_kind,1.407380e+01_fp_kind,1.230840e+01_fp_kind,1.066350e+01_fp_kind,&
+     9.217200e+00_fp_kind,6.705800e+00_fp_kind,5.442400e+00_fp_kind,4.736800e+00_fp_kind,4.179600e+00_fp_kind,&
+     3.148600e+00_fp_kind,2.324400e+00_fp_kind], 1.5589653399309920e+00_fp_kind,7.800000e+00_fp_kind) /
 data ionicXrayFF( 1, 57) / t_ionicFF('La',  57,  0, &
-    [57.0000d0, 55.3491d0, 51.9749d0, 48.5159d0, 45.2097d0, 42.0811d0, 39.2184d0, 36.6666d0, 34.4042d0,&
-     32.3764d0, 30.5284d0, 27.2357d0, 24.4055d0, 22.0355d0, 20.1103d0, 18.5647d0, 16.2309d0, 14.3655d0, 12.6407d0, 11.0141d0,&
-     9.55240d0, 6.92240d0, 5.55980d0, 4.82300d0, 4.26210d0, 3.25580d0, 2.41260d0], 0.1591092449906014d1, 17.7054d0) /
+     [5.700000e+01_fp_kind,5.534910e+01_fp_kind,5.197490e+01_fp_kind,4.851590e+01_fp_kind,4.520970e+01_fp_kind,&
+     4.208110e+01_fp_kind,3.921840e+01_fp_kind,3.666660e+01_fp_kind,3.440420e+01_fp_kind,3.237640e+01_fp_kind,&
+     3.052840e+01_fp_kind,2.723570e+01_fp_kind,2.440550e+01_fp_kind,2.203550e+01_fp_kind,2.011030e+01_fp_kind,&
+     1.856470e+01_fp_kind,1.623090e+01_fp_kind,1.436550e+01_fp_kind,1.264070e+01_fp_kind,1.101410e+01_fp_kind,&
+     9.552400e+00_fp_kind,6.922400e+00_fp_kind,5.559800e+00_fp_kind,4.823000e+00_fp_kind,4.262100e+00_fp_kind,&
+     3.255800e+00_fp_kind,2.412600e+00_fp_kind], 1.5910924499060140e+00_fp_kind,1.770540e+01_fp_kind) /
 data ionicXrayFF( 2, 57) / t_ionicFF('La',  57,  3, &
-    [54.0000d0, 5.29430d0, 51.3352d0, 48.5246d0, 45.3397d0, 42.1738d0, 39.2581d0, 36.6704d0, 34.3902d0,&
-     32.3573d0, 30.5112d0, 27.2282d0, 24.4049d0, 22.0373d0, 20.1120d0, 18.5657d0, 16.2307d0, 14.3650d0, 12.6402d0, 11.0137d0,&
-     9.55200d0, 6.92150d0, 5.55880d0, 4.82020d0, 4.26710d0, 3.25150d0, 2.41540d0], 0.1593020742114078d1, 6.88410d0) /
+     [5.400000e+01_fp_kind,5.294300e+00_fp_kind,5.133520e+01_fp_kind,4.852460e+01_fp_kind,4.533970e+01_fp_kind,&
+     4.217380e+01_fp_kind,3.925810e+01_fp_kind,3.667040e+01_fp_kind,3.439020e+01_fp_kind,3.235730e+01_fp_kind,&
+     3.051120e+01_fp_kind,2.722820e+01_fp_kind,2.440490e+01_fp_kind,2.203730e+01_fp_kind,2.011200e+01_fp_kind,&
+     1.856570e+01_fp_kind,1.623070e+01_fp_kind,1.436500e+01_fp_kind,1.264020e+01_fp_kind,1.101370e+01_fp_kind,&
+     9.552000e+00_fp_kind,6.921500e+00_fp_kind,5.558800e+00_fp_kind,4.820200e+00_fp_kind,4.267100e+00_fp_kind,&
+     3.251500e+00_fp_kind,2.415400e+00_fp_kind], 1.5930207421140781e+00_fp_kind,6.884100e+00_fp_kind) /
 data ionicXrayFF( 1, 58) / t_ionicFF('Ce',  58,  0, &
-    [58.0000d0, 56.3817d0, 53.0372d0, 49.5682d0, 46.2277d0, 43.0436d0, 40.1091d0, 37.4796d0, 35.1444d0,&
-     33.0550d0, 31.1580d0, 27.7939d0, 24.9044d0, 22.4726d0, 20.4849d0, 18.8854d0, 16.4947d0, 14.6367d0, 12.9438d0, 11.3375d0,&
-     9.86990d0, 7.14410d0, 5.68510d0, 4.90850d0, 4.34660d0, 3.35580d0, 2.50320d0], 0.1623790921278335d1, 17.2940d0) /
+     [5.800000e+01_fp_kind,5.638170e+01_fp_kind,5.303720e+01_fp_kind,4.956820e+01_fp_kind,4.622770e+01_fp_kind,&
+     4.304360e+01_fp_kind,4.010910e+01_fp_kind,3.747960e+01_fp_kind,3.514440e+01_fp_kind,3.305500e+01_fp_kind,&
+     3.115800e+01_fp_kind,2.779390e+01_fp_kind,2.490440e+01_fp_kind,2.247260e+01_fp_kind,2.048490e+01_fp_kind,&
+     1.888540e+01_fp_kind,1.649470e+01_fp_kind,1.463670e+01_fp_kind,1.294380e+01_fp_kind,1.133750e+01_fp_kind,&
+     9.869900e+00_fp_kind,7.144100e+00_fp_kind,5.685100e+00_fp_kind,4.908500e+00_fp_kind,4.346600e+00_fp_kind,&
+     3.355800e+00_fp_kind,2.503200e+00_fp_kind], 1.6237909212783350e+00_fp_kind,1.729400e+01_fp_kind) /
 data ionicXrayFF( 2, 58) / t_ionicFF('Ce',  58,  4, &
-    [54.0000d0, 53.3668d0, 51.5894d0, 48.9868d0, 45.9582d0, 42.8623d0, 39.9415d0, 37.3090d0, 34.9788d0,&
-     32.9109d0, 31.0496d0, 27.7705d0, 24.9425d0, 22.5330d0, 20.5396d0, 18.9228d0, 16.5044d0, 14.6417d0, 12.9548d0, 11.3537d0,&
-     9.88650d0, 7.15050d0, 5.68400d0, 4.90420d0, 4.35110d0, 3.35270d0, 2.50760d0], 0.1626774116815994d1, 6.15980d0) /
+     [5.400000e+01_fp_kind,5.336680e+01_fp_kind,5.158940e+01_fp_kind,4.898680e+01_fp_kind,4.595820e+01_fp_kind,&
+     4.286230e+01_fp_kind,3.994150e+01_fp_kind,3.730900e+01_fp_kind,3.497880e+01_fp_kind,3.291090e+01_fp_kind,&
+     3.104960e+01_fp_kind,2.777050e+01_fp_kind,2.494250e+01_fp_kind,2.253300e+01_fp_kind,2.053960e+01_fp_kind,&
+     1.892280e+01_fp_kind,1.650440e+01_fp_kind,1.464170e+01_fp_kind,1.295480e+01_fp_kind,1.135370e+01_fp_kind,&
+     9.886500e+00_fp_kind,7.150500e+00_fp_kind,5.684000e+00_fp_kind,4.904200e+00_fp_kind,4.351100e+00_fp_kind,&
+     3.352700e+00_fp_kind,2.507600e+00_fp_kind], 1.6267741168159939e+00_fp_kind,6.159800e+00_fp_kind) /
 data ionicXrayFF( 1, 59) / t_ionicFF('Pr',  59,  0, &
-    [59.0000d0, 57.4382d0, 54.2770d0, 50.9485d0, 47.5983d0, 44.3098d0, 41.2424d0, 38.4833d0, 36.0314d0,&
-     33.8403d0, 31.8562d0, 28.3570d0, 25.3728d0, 22.8712d0, 20.8289d0, 19.1869d0, 16.7499d0, 14.8926d0, 13.2236d0, 11.6370d0,&
-     10.1696d0, 7.36840d0, 5.81830d0, 4.99710d0, 4.42990d0, 3.45190d0, 2.59480d0], 0.1656102628835640d1, 16.8631d0) /
+     [5.900000e+01_fp_kind,5.743820e+01_fp_kind,5.427700e+01_fp_kind,5.094850e+01_fp_kind,4.759830e+01_fp_kind,&
+     4.430980e+01_fp_kind,4.124240e+01_fp_kind,3.848330e+01_fp_kind,3.603140e+01_fp_kind,3.384030e+01_fp_kind,&
+     3.185620e+01_fp_kind,2.835700e+01_fp_kind,2.537280e+01_fp_kind,2.287120e+01_fp_kind,2.082890e+01_fp_kind,&
+     1.918690e+01_fp_kind,1.674990e+01_fp_kind,1.489260e+01_fp_kind,1.322360e+01_fp_kind,1.163700e+01_fp_kind,&
+     1.016960e+01_fp_kind,7.368400e+00_fp_kind,5.818300e+00_fp_kind,4.997100e+00_fp_kind,4.429900e+00_fp_kind,&
+     3.451900e+00_fp_kind,2.594800e+00_fp_kind], 1.6561026288356400e+00_fp_kind,1.686310e+01_fp_kind) /
 data ionicXrayFF( 2, 59) / t_ionicFF('Pr',  59,  3, &
-    [56.0000d0, 55.3130d0, 53.3936d0, 50.6058d0, 47.3936d0, 44.1401d0, 41.0903d0, 38.3483d0, 35.9179d0,&
-     33.7541d0, 31.8012d0, 28.3606d0, 25.4113d0, 22.9180d0, 20.8674d0, 19.2116d0, 16.7549d0, 14.8949d0, 13.2308d0, 11.6484d0,&
-     10.1818d0, 7.37350d0, 5.81770d0, 4.99330d0, 4.43360d0, 3.44930d0, 2.59770d0], 0.1658038767922584d1, 6.69060d0) /
+     [5.600000e+01_fp_kind,5.531300e+01_fp_kind,5.339360e+01_fp_kind,5.060580e+01_fp_kind,4.739360e+01_fp_kind,&
+     4.414010e+01_fp_kind,4.109030e+01_fp_kind,3.834830e+01_fp_kind,3.591790e+01_fp_kind,3.375410e+01_fp_kind,&
+     3.180120e+01_fp_kind,2.836060e+01_fp_kind,2.541130e+01_fp_kind,2.291800e+01_fp_kind,2.086740e+01_fp_kind,&
+     1.921160e+01_fp_kind,1.675490e+01_fp_kind,1.489490e+01_fp_kind,1.323080e+01_fp_kind,1.164840e+01_fp_kind,&
+     1.018180e+01_fp_kind,7.373500e+00_fp_kind,5.817700e+00_fp_kind,4.993300e+00_fp_kind,4.433600e+00_fp_kind,&
+     3.449300e+00_fp_kind,2.597700e+00_fp_kind], 1.6580387679225841e+00_fp_kind,6.690600e+00_fp_kind) /
 data ionicXrayFF( 1, 60) / t_ionicFF('Nd',  60,  0, &
-    [60.0000d0, 58.4678d0, 55.3361d0, 52.0094d0, 48.6423d0, 45.3150d0, 42.1882d0, 39.3584d0, 36.8354d0,&
-     34.5797d0, 32.5404d0, 28.9547d0, 25.8992d0, 23.3289d0, 21.2196d0, 19.5183d0, 17.0083d0, 15.1422d0, 13.4990d0, 11.9381d0,&
-     10.4769d0, 7.60610d0, 5.96000d0, 5.08740d0, 4.51050d0, 3.54730d0, 2.68700d0], 0.1687784621290106d1, 16.4897d0) /
+     [6.000000e+01_fp_kind,5.846780e+01_fp_kind,5.533610e+01_fp_kind,5.200940e+01_fp_kind,4.864230e+01_fp_kind,&
+     4.531500e+01_fp_kind,4.218820e+01_fp_kind,3.935840e+01_fp_kind,3.683540e+01_fp_kind,3.457970e+01_fp_kind,&
+     3.254040e+01_fp_kind,2.895470e+01_fp_kind,2.589920e+01_fp_kind,2.332890e+01_fp_kind,2.121960e+01_fp_kind,&
+     1.951830e+01_fp_kind,1.700830e+01_fp_kind,1.514220e+01_fp_kind,1.349900e+01_fp_kind,1.193810e+01_fp_kind,&
+     1.047690e+01_fp_kind,7.606100e+00_fp_kind,5.960000e+00_fp_kind,5.087400e+00_fp_kind,4.510500e+00_fp_kind,&
+     3.547300e+00_fp_kind,2.687000e+00_fp_kind], 1.6877846212901060e+00_fp_kind,1.648970e+01_fp_kind) /
 data ionicXrayFF( 2, 60) / t_ionicFF('Nd',  60,  3, &
-    [57.0000d0, 56.3229d0, 54.4257d0, 51.6549d0, 48.4381d0, 45.1515d0, 42.0444d0, 39.2312d0, 36.7274d0,&
-     34.4959d0, 32.4846d0, 28.9536d0, 25.9334d0, 23.3737d0, 21.2583d0, 19.5444d0, 17.0142d0, 15.1438d0, 13.5046d0, 11.9481d0,&
-     10.4884d0, 7.61170d0, 5.95990d0, 5.08380d0, 4.51400d0, 3.54460d0, 2.68990d0], 0.1689691694832149d1, 6.58940d0) /
+     [5.700000e+01_fp_kind,5.632290e+01_fp_kind,5.442570e+01_fp_kind,5.165490e+01_fp_kind,4.843810e+01_fp_kind,&
+     4.515150e+01_fp_kind,4.204440e+01_fp_kind,3.923120e+01_fp_kind,3.672740e+01_fp_kind,3.449590e+01_fp_kind,&
+     3.248460e+01_fp_kind,2.895360e+01_fp_kind,2.593340e+01_fp_kind,2.337370e+01_fp_kind,2.125830e+01_fp_kind,&
+     1.954440e+01_fp_kind,1.701420e+01_fp_kind,1.514380e+01_fp_kind,1.350460e+01_fp_kind,1.194810e+01_fp_kind,&
+     1.048840e+01_fp_kind,7.611700e+00_fp_kind,5.959900e+00_fp_kind,5.083800e+00_fp_kind,4.514000e+00_fp_kind,&
+     3.544600e+00_fp_kind,2.689900e+00_fp_kind], 1.6896916948321490e+00_fp_kind,6.589400e+00_fp_kind) /
 data ionicXrayFF( 1, 61) / t_ionicFF('Pm',  61,  0, &
-    [61.0000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0,&
-     0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0,&
-     0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0], 0.0000000000000000d0, 0.00000d0) /
+     [6.100000e+01_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind], 0.0000000000000000e+00_fp_kind,0.000000e+00_fp_kind) /
 data ionicXrayFF( 2, 61) / t_ionicFF('Pm',  61,  0, &
-    [61.0000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0,&
-     0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0,&
-     0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0, 0.00000d0], 0.0000000000000000d0, 0.00000d0) /
+     [6.100000e+01_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,0.000000e+00_fp_kind,&
+     0.000000e+00_fp_kind,0.000000e+00_fp_kind], 0.0000000000000000e+00_fp_kind,0.000000e+00_fp_kind) /
 data ionicXrayFF( 1, 62) / t_ionicFF('Sm',  62,  0, &
-    [62.0000d0, 60.5238d0, 57.4542d0, 54.1415d0, 50.7554d0, 47.3681d0, 44.1392d0, 41.1801d0, 38.5199d0,&
-     36.1341d0, 33.9788d0, 30.2045d0, 26.9950d0, 24.2812d0, 22.0336d0, 20.2076d0, 17.5285d0, 15.6181d0, 14.0114d0, 12.5038d0,&
-     11.0693d0, 8.09960d0, 6.26920d0, 5.27970d0, 4.66900d0, 3.73030d0, 2.87160d0], 0.1748357811136444d1, 15.7949d0) /
+     [6.200000e+01_fp_kind,6.052380e+01_fp_kind,5.745420e+01_fp_kind,5.414150e+01_fp_kind,5.075540e+01_fp_kind,&
+     4.736810e+01_fp_kind,4.413920e+01_fp_kind,4.118010e+01_fp_kind,3.851990e+01_fp_kind,3.613410e+01_fp_kind,&
+     3.397880e+01_fp_kind,3.020450e+01_fp_kind,2.699500e+01_fp_kind,2.428120e+01_fp_kind,2.203360e+01_fp_kind,&
+     2.020760e+01_fp_kind,1.752850e+01_fp_kind,1.561810e+01_fp_kind,1.401140e+01_fp_kind,1.250380e+01_fp_kind,&
+     1.106930e+01_fp_kind,8.099600e+00_fp_kind,6.269200e+00_fp_kind,5.279700e+00_fp_kind,4.669000e+00_fp_kind,&
+     3.730300e+00_fp_kind,2.871600e+00_fp_kind], 1.7483578111364440e+00_fp_kind,1.579490e+01_fp_kind) /
 data ionicXrayFF( 2, 62) / t_ionicFF('Sm',  62,  3, &
-    [59.0000d0, 58.3428d0, 56.4916d0, 53.7612d0, 50.5476d0, 47.2117d0, 44.0070d0, 41.0650d0, 38.4215d0,&
-     36.0553d0, 33.9230d0, 30.1967d0, 27.0220d0, 24.3224d0, 22.0727d0, 20.2364d0, 17.5367d0, 15.6189d0, 14.0145d0, 12.5113d0,&
-     11.0791d0, 8.10600d0, 6.27000d0, 5.27650d0, 4.67230d0, 3.72730d0, 2.87480d0], 0.1750400844310036d1, 6.38810d0) /
+     [5.900000e+01_fp_kind,5.834280e+01_fp_kind,5.649160e+01_fp_kind,5.376120e+01_fp_kind,5.054760e+01_fp_kind,&
+     4.721170e+01_fp_kind,4.400700e+01_fp_kind,4.106500e+01_fp_kind,3.842150e+01_fp_kind,3.605530e+01_fp_kind,&
+     3.392300e+01_fp_kind,3.019670e+01_fp_kind,2.702200e+01_fp_kind,2.432240e+01_fp_kind,2.207270e+01_fp_kind,&
+     2.023640e+01_fp_kind,1.753670e+01_fp_kind,1.561890e+01_fp_kind,1.401450e+01_fp_kind,1.251130e+01_fp_kind,&
+     1.107910e+01_fp_kind,8.106000e+00_fp_kind,6.270000e+00_fp_kind,5.276500e+00_fp_kind,4.672300e+00_fp_kind,&
+     3.727300e+00_fp_kind,2.874800e+00_fp_kind], 1.7504008443100361e+00_fp_kind,6.388100e+00_fp_kind) /
 data ionicXrayFF( 1, 63) / t_ionicFF('Eu',  63,  0, &
-    [63.0000d0, 61.5502d0, 58.5160d0, 55.2064d0, 51.8152d0, 48.4051d0, 45.1332d0, 42.1164d0, 39.3922d0,&
-     36.9432d0, 34.7299d0, 30.8579d0, 27.5679d0, 24.7800d0, 22.4612d0, 20.5695d0, 17.7945d0, 15.8483d0, 14.2510d0, 12.7689d0,&
-     11.3527d0, 8.35280d0, 6.43640d0, 5.38290d0, 4.74830d0, 3.81770d0, 2.96400d0], 0.1777333599840105d1, 15.4700d0) /
+     [6.300000e+01_fp_kind,6.155020e+01_fp_kind,5.851600e+01_fp_kind,5.520640e+01_fp_kind,5.181520e+01_fp_kind,&
+     4.840510e+01_fp_kind,4.513320e+01_fp_kind,4.211640e+01_fp_kind,3.939220e+01_fp_kind,3.694320e+01_fp_kind,&
+     3.472990e+01_fp_kind,3.085790e+01_fp_kind,2.756790e+01_fp_kind,2.478000e+01_fp_kind,2.246120e+01_fp_kind,&
+     2.056950e+01_fp_kind,1.779450e+01_fp_kind,1.584830e+01_fp_kind,1.425100e+01_fp_kind,1.276890e+01_fp_kind,&
+     1.135270e+01_fp_kind,8.352800e+00_fp_kind,6.436400e+00_fp_kind,5.382900e+00_fp_kind,4.748300e+00_fp_kind,&
+     3.817700e+00_fp_kind,2.964000e+00_fp_kind], 1.7773335998401050e+00_fp_kind,1.547000e+01_fp_kind) /
 data ionicXrayFF( 2, 63) / t_ionicFF('Eu',  63,  3, &
-    [60.0000d0, 49.3525d0, 57.5246d0, 54.8164d0, 51.6092d0, 48.2557d0, 45.0099d0, 42.0102d0, 39.3010d0,&
-     36.8690d0, 34.6757d0, 30.8468d0, 27.5899d0, 24.8170d0, 22.4978d0, 20.5975d0, 17.8031d0, 15.8489d0, 14.2530d0, 12.7750d0,&
-     11.3615d0, 8.35930d0, 6.43760d0, 5.38000d0, 4.75150d0, 3.81460d0, 2.96680d0], 0.1779095567119533d1, 6.28970d0) /
+     [6.000000e+01_fp_kind,4.935250e+01_fp_kind,5.752460e+01_fp_kind,5.481640e+01_fp_kind,5.160920e+01_fp_kind,&
+     4.825570e+01_fp_kind,4.500990e+01_fp_kind,4.201020e+01_fp_kind,3.930100e+01_fp_kind,3.686900e+01_fp_kind,&
+     3.467570e+01_fp_kind,3.084680e+01_fp_kind,2.758990e+01_fp_kind,2.481700e+01_fp_kind,2.249780e+01_fp_kind,&
+     2.059750e+01_fp_kind,1.780310e+01_fp_kind,1.584890e+01_fp_kind,1.425300e+01_fp_kind,1.277500e+01_fp_kind,&
+     1.136150e+01_fp_kind,8.359300e+00_fp_kind,6.437600e+00_fp_kind,5.380000e+00_fp_kind,4.751500e+00_fp_kind,&
+     3.814600e+00_fp_kind,2.966800e+00_fp_kind], 1.7790955671195330e+00_fp_kind,6.289700e+00_fp_kind) /
 data ionicXrayFF( 1, 64) / t_ionicFF('Gd',  64,  0, &
-    [64.0000d0, 62.5491d0, 59.4001d0, 55.9669d0, 52.5515d0, 49.1785d0, 45.9388d0, 42.9253d0, 40.1805d0,&
-     37.6998d0, 35.4531d0, 31.5229d0, 28.1796d0, 25.3303d0, 22.9397d0, 20.9733d0, 18.0770d0, 16.0772d0, 14.4831d0, 13.0284d0,&
-     11.6358d0, 8.61660d0, 6.61450d0, 5.49140d0, 4.82740d0, 3.90380d0, 3.05540d0], 0.1804826022321912d1, 15.2591d0) /
+     [6.400000e+01_fp_kind,6.254910e+01_fp_kind,5.940010e+01_fp_kind,5.596690e+01_fp_kind,5.255150e+01_fp_kind,&
+     4.917850e+01_fp_kind,4.593880e+01_fp_kind,4.292530e+01_fp_kind,4.018050e+01_fp_kind,3.769980e+01_fp_kind,&
+     3.545310e+01_fp_kind,3.152290e+01_fp_kind,2.817960e+01_fp_kind,2.533030e+01_fp_kind,2.293970e+01_fp_kind,&
+     2.097330e+01_fp_kind,1.807700e+01_fp_kind,1.607720e+01_fp_kind,1.448310e+01_fp_kind,1.302840e+01_fp_kind,&
+     1.163580e+01_fp_kind,8.616600e+00_fp_kind,6.614500e+00_fp_kind,5.491400e+00_fp_kind,4.827400e+00_fp_kind,&
+     3.903800e+00_fp_kind,3.055400e+00_fp_kind], 1.8048260223219119e+00_fp_kind,1.525910e+01_fp_kind) /
 data ionicXrayFF( 2, 64) / t_ionicFF('Gd',  64,  3, &
-    [61.0000d0, 60.3620d0, 58.5568d0, 55.8711d0, 52.6723d0, 49.3049d0, 46.0226d0, 42.9694d0, 40.1981d0,&
-     37.7026d0, 35.4491d0, 31.5171d0, 28.1762d0, 25.3285d0, 22.9384d0, 20.9720d0, 18.0759d0, 16.0763d0, 14.4823d0, 13.0274d0,&
-     11.6346d0, 8.61510d0, 6.61320d0, 5.48890d0, 4.83170d0, 3.89930d0, 3.05830d0], 0.1806625020306299d1, 6.19540d0) /
+     [6.100000e+01_fp_kind,6.036200e+01_fp_kind,5.855680e+01_fp_kind,5.587110e+01_fp_kind,5.267230e+01_fp_kind,&
+     4.930490e+01_fp_kind,4.602260e+01_fp_kind,4.296940e+01_fp_kind,4.019810e+01_fp_kind,3.770260e+01_fp_kind,&
+     3.544910e+01_fp_kind,3.151710e+01_fp_kind,2.817620e+01_fp_kind,2.532850e+01_fp_kind,2.293840e+01_fp_kind,&
+     2.097200e+01_fp_kind,1.807590e+01_fp_kind,1.607630e+01_fp_kind,1.448230e+01_fp_kind,1.302740e+01_fp_kind,&
+     1.163460e+01_fp_kind,8.615100e+00_fp_kind,6.613200e+00_fp_kind,5.488900e+00_fp_kind,4.831700e+00_fp_kind,&
+     3.899300e+00_fp_kind,3.058300e+00_fp_kind], 1.8066250203062990e+00_fp_kind,6.195400e+00_fp_kind) /
 data ionicXrayFF( 1, 65) / t_ionicFF('Tb',  65,  0, &
-    [65.0000d0, 63.6014d0, 60.6278d0, 57.3534d0, 53.9653d0, 50.5231d0, 47.1783d0, 44.0563d0, 41.2097d0,&
-     38.6353d0, 36.3026d0, 32.2230d0, 28.7599d0, 25.8164d0, 23.3509d0, 21.3237d0, 18.3414d0, 16.3004d0, 14.7029d0, 13.2648d0,&
-     11.8905d0, 8.86460d0, 6.79390d0, 5.60610d0, 4.91040d0, 3.98480d0, 3.14590d0], 0.1830960275875000d1, 14.8526d0) /
+     [6.500000e+01_fp_kind,6.360140e+01_fp_kind,6.062780e+01_fp_kind,5.735340e+01_fp_kind,5.396530e+01_fp_kind,&
+     5.052310e+01_fp_kind,4.717830e+01_fp_kind,4.405630e+01_fp_kind,4.120970e+01_fp_kind,3.863530e+01_fp_kind,&
+     3.630260e+01_fp_kind,3.222300e+01_fp_kind,2.875990e+01_fp_kind,2.581640e+01_fp_kind,2.335090e+01_fp_kind,&
+     2.132370e+01_fp_kind,1.834140e+01_fp_kind,1.630040e+01_fp_kind,1.470290e+01_fp_kind,1.326480e+01_fp_kind,&
+     1.189050e+01_fp_kind,8.864600e+00_fp_kind,6.793900e+00_fp_kind,5.606100e+00_fp_kind,4.910400e+00_fp_kind,&
+     3.984800e+00_fp_kind,3.145900e+00_fp_kind], 1.8309602758750001e+00_fp_kind,1.485260e+01_fp_kind) /
 data ionicXrayFF( 2, 65) / t_ionicFF('Tb',  65,  3, &
-    [62.0000d0, 61.3715d0, 59.5896d0, 56.9281d0, 53.7406d0, 50.3633d0, 47.0487d0, 43.9458d0, 41.1146d0,&
-     38.5561d0, 36.2416d0, 32.2030d0, 28.7741d0, 25.8492d0, 23.3872d0, 21.3542d0, 18.3532d0, 16.3020d0, 14.7037d0, 13.2690d0,&
-     11.8979d0, 8.87170d0, 6.79600d0, 5.60370d0, 4.91350d0, 3.98150d0, 3.14880d0], 0.1832734045580359d1, 6.09940d0) /
+     [6.200000e+01_fp_kind,6.137150e+01_fp_kind,5.958960e+01_fp_kind,5.692810e+01_fp_kind,5.374060e+01_fp_kind,&
+     5.036330e+01_fp_kind,4.704870e+01_fp_kind,4.394580e+01_fp_kind,4.111460e+01_fp_kind,3.855610e+01_fp_kind,&
+     3.624160e+01_fp_kind,3.220300e+01_fp_kind,2.877410e+01_fp_kind,2.584920e+01_fp_kind,2.338720e+01_fp_kind,&
+     2.135420e+01_fp_kind,1.835320e+01_fp_kind,1.630200e+01_fp_kind,1.470370e+01_fp_kind,1.326900e+01_fp_kind,&
+     1.189790e+01_fp_kind,8.871700e+00_fp_kind,6.796000e+00_fp_kind,5.603700e+00_fp_kind,4.913500e+00_fp_kind,&
+     3.981500e+00_fp_kind,3.148800e+00_fp_kind], 1.8327340455803589e+00_fp_kind,6.099400e+00_fp_kind) /
 data ionicXrayFF( 1, 66) / t_ionicFF('Dy',  66,  0, &
-    [66.0000d0, 64.6261d0, 61.6854d0, 58.4275d0, 55.0446d0, 51.5922d0, 48.2179d0, 54.0497d0, 42.1469d0,&
-     39.5127d0, 37.1216d0, 32.9370d0, 29.3845d0, 26.3605d0, 23.8193d0, 21.7216d0, 18.6265d0, 16.5261d0, 14.9181d0, 13.4970d0,&
-     12.1447d0, 9.12100d0, 6.98310d0, 5.72660d0, 4.99440d0, 4.06480d0, 3.23530d0], 0.1855673650953484d1, 14.5577d0) /
+     [6.600000e+01_fp_kind,6.462610e+01_fp_kind,6.168540e+01_fp_kind,5.842750e+01_fp_kind,5.504460e+01_fp_kind,&
+     5.159220e+01_fp_kind,4.821790e+01_fp_kind,5.404970e+01_fp_kind,4.214690e+01_fp_kind,3.951270e+01_fp_kind,&
+     3.712160e+01_fp_kind,3.293700e+01_fp_kind,2.938450e+01_fp_kind,2.636050e+01_fp_kind,2.381930e+01_fp_kind,&
+     2.172160e+01_fp_kind,1.862650e+01_fp_kind,1.652610e+01_fp_kind,1.491810e+01_fp_kind,1.349700e+01_fp_kind,&
+     1.214470e+01_fp_kind,9.121000e+00_fp_kind,6.983100e+00_fp_kind,5.726600e+00_fp_kind,4.994400e+00_fp_kind,&
+     4.064800e+00_fp_kind,3.235300e+00_fp_kind], 1.8556736509534839e+00_fp_kind,1.455770e+01_fp_kind) /
 data ionicXrayFF( 2, 66) / t_ionicFF('Dy',  66,  3, &
-    [63.0000d0, 62.3810d0, 60.6227d0, 57.9867d0, 54.8135d0, 51.4305d0, 48.0884d0, 44.9404d0, 42.0532d0,&
-     39.4344d0, 37.0605d0, 32.9147d0, 29.3958d0, 26.3913d0, 23.8550d0, 21.7527d0, 18.6398d0, 16.5281d0, 14.9184d0, 13.5003d0,&
-     12.1512d0, 9.12810d0, 6.98570d0, 5.72470d0, 4.99750d0, 4.06130d0, 3.23810d0], 0.1857362508145869d1, 6.00410d0) /
+     [6.300000e+01_fp_kind,6.238100e+01_fp_kind,6.062270e+01_fp_kind,5.798670e+01_fp_kind,5.481350e+01_fp_kind,&
+     5.143050e+01_fp_kind,4.808840e+01_fp_kind,4.494040e+01_fp_kind,4.205320e+01_fp_kind,3.943440e+01_fp_kind,&
+     3.706050e+01_fp_kind,3.291470e+01_fp_kind,2.939580e+01_fp_kind,2.639130e+01_fp_kind,2.385500e+01_fp_kind,&
+     2.175270e+01_fp_kind,1.863980e+01_fp_kind,1.652810e+01_fp_kind,1.491840e+01_fp_kind,1.350030e+01_fp_kind,&
+     1.215120e+01_fp_kind,9.128100e+00_fp_kind,6.985700e+00_fp_kind,5.724700e+00_fp_kind,4.997500e+00_fp_kind,&
+     4.061300e+00_fp_kind,3.238100e+00_fp_kind], 1.8573625081458689e+00_fp_kind,6.004100e+00_fp_kind) /
 data ionicXrayFF( 1, 67) / t_ionicFF('Ho',  67,  0, &
-    [67.0000d0, 65.6500d0, 62.7419d0, 59.5015d0, 56.1257d0, 52.6659d0, 49.2658d0, 46.0552d0, 43.0993d0,&
-     40.4076d0, 37.9591d0, 33.6694d0, 30.0262d0, 26.9206d0, 24.3027d0, 22.1333d0, 18.9207d0, 16.7534d0, 15.1279d0, 13.7199d0,&
-     12.3892d0, 9.37620d0, 7.17840d0, 5.85340d0, 5.08110d0, 4.14250d0, 3.32340d0], 0.1878906851182379d1, 14.2730d0) /
+     [6.700000e+01_fp_kind,6.565000e+01_fp_kind,6.274190e+01_fp_kind,5.950150e+01_fp_kind,5.612570e+01_fp_kind,&
+     5.266590e+01_fp_kind,4.926580e+01_fp_kind,4.605520e+01_fp_kind,4.309930e+01_fp_kind,4.040760e+01_fp_kind,&
+     3.795910e+01_fp_kind,3.366940e+01_fp_kind,3.002620e+01_fp_kind,2.692060e+01_fp_kind,2.430270e+01_fp_kind,&
+     2.213330e+01_fp_kind,1.892070e+01_fp_kind,1.675340e+01_fp_kind,1.512790e+01_fp_kind,1.371990e+01_fp_kind,&
+     1.238920e+01_fp_kind,9.376200e+00_fp_kind,7.178400e+00_fp_kind,5.853400e+00_fp_kind,5.081100e+00_fp_kind,&
+     4.142500e+00_fp_kind,3.323400e+00_fp_kind], 1.8789068511823790e+00_fp_kind,1.427300e+01_fp_kind) /
 data ionicXrayFF( 2, 67) / t_ionicFF('Ho',  67,  3, &
-    [64.0000d0, 63.3904d0, 61.6554d0, 59.0453d0, 55.8879d0, 52.5019d0, 49.1361d0, 45.9468d0, 43.0067d0,&
-     40.3298d0, 37.8977d0, 33.6448d0, 30.0346d0, 26.9492d0, 24.3376d0, 22.1647d0, 18.9352d0, 16.7561d0, 15.1280d0, 13.7223d0,&
-     12.3948d0, 9.38320d0, 7.18140d0, 5.85170d0, 5.08420d0, 4.13900d0, 3.32620d0], 0.1880572543181025d1, 5.91110d0) /
+     [6.400000e+01_fp_kind,6.339040e+01_fp_kind,6.165540e+01_fp_kind,5.904530e+01_fp_kind,5.588790e+01_fp_kind,&
+     5.250190e+01_fp_kind,4.913610e+01_fp_kind,4.594680e+01_fp_kind,4.300670e+01_fp_kind,4.032980e+01_fp_kind,&
+     3.789770e+01_fp_kind,3.364480e+01_fp_kind,3.003460e+01_fp_kind,2.694920e+01_fp_kind,2.433760e+01_fp_kind,&
+     2.216470e+01_fp_kind,1.893520e+01_fp_kind,1.675610e+01_fp_kind,1.512800e+01_fp_kind,1.372230e+01_fp_kind,&
+     1.239480e+01_fp_kind,9.383200e+00_fp_kind,7.181400e+00_fp_kind,5.851700e+00_fp_kind,5.084200e+00_fp_kind,&
+     4.139000e+00_fp_kind,3.326200e+00_fp_kind], 1.8805725431810250e+00_fp_kind,5.911100e+00_fp_kind) /
 data ionicXrayFF( 1, 68) / t_ionicFF('Er',  68,  0, &
-    [68.0000d0, 66.6733d0, 63.7975d0, 60.5752d0, 57.2080d0, 53.7436d0, 50.3211d0, 47.0718d0, 44.0658d0,&
-     41.3186d0, 38.8140d0, 34.4197d0, 30.6849d0, 27.4967d0, 24.8023d0, 22.5589d0, 19.2247d0, 16.9839d0, 15.3339d0, 13.9343d0,&
-     12.6242d0, 9.62910d0, 7.37910d0, 5.98660d0, 5.17110d0, 4.21840d0, 3.41000d0], 0.1900603808639104d1, 13.9978d0) /
+     [6.800000e+01_fp_kind,6.667330e+01_fp_kind,6.379750e+01_fp_kind,6.057520e+01_fp_kind,5.720800e+01_fp_kind,&
+     5.374360e+01_fp_kind,5.032110e+01_fp_kind,4.707180e+01_fp_kind,4.406580e+01_fp_kind,4.131860e+01_fp_kind,&
+     3.881400e+01_fp_kind,3.441970e+01_fp_kind,3.068490e+01_fp_kind,2.749670e+01_fp_kind,2.480230e+01_fp_kind,&
+     2.255890e+01_fp_kind,1.922470e+01_fp_kind,1.698390e+01_fp_kind,1.533390e+01_fp_kind,1.393430e+01_fp_kind,&
+     1.262420e+01_fp_kind,9.629100e+00_fp_kind,7.379100e+00_fp_kind,5.986600e+00_fp_kind,5.171100e+00_fp_kind,&
+     4.218400e+00_fp_kind,3.410000e+00_fp_kind], 1.9006038086391039e+00_fp_kind,1.399780e+01_fp_kind) /
 data ionicXrayFF( 2, 68) / t_ionicFF('Er',  68,  3, &
-    [65.0000d0, 64.3994d0, 62.6875d0, 60.1034d0, 56.9631d0, 53.5769d0, 50.1908d0, 46.9637d0, 43.9739d0,&
-     41.2413d0, 38.7522d0, 34.3930d0, 30.6906d0, 27.5231d0, 24.8352d0, 22.5906d0, 19.2405d0, 16.9873d0, 15.3338d0, 13.9361d0,&
-     12.6289d0, 9.63600d0, 7.38240d0, 5.98510d0, 5.17420d0, 4.21480d0, 3.41270d0], 0.1902188201085970d1, 5.82040d0) /
+     [6.500000e+01_fp_kind,6.439940e+01_fp_kind,6.268750e+01_fp_kind,6.010340e+01_fp_kind,5.696310e+01_fp_kind,&
+     5.357690e+01_fp_kind,5.019080e+01_fp_kind,4.696370e+01_fp_kind,4.397390e+01_fp_kind,4.124130e+01_fp_kind,&
+     3.875220e+01_fp_kind,3.439300e+01_fp_kind,3.069060e+01_fp_kind,2.752310e+01_fp_kind,2.483520e+01_fp_kind,&
+     2.259060e+01_fp_kind,1.924050e+01_fp_kind,1.698730e+01_fp_kind,1.533380e+01_fp_kind,1.393610e+01_fp_kind,&
+     1.262890e+01_fp_kind,9.636000e+00_fp_kind,7.382400e+00_fp_kind,5.985100e+00_fp_kind,5.174200e+00_fp_kind,&
+     4.214800e+00_fp_kind,3.412700e+00_fp_kind], 1.9021882010859701e+00_fp_kind,5.820400e+00_fp_kind) /
 data ionicXrayFF( 1, 69) / t_ionicFF('Tm',  69,  0, &
-    [69.0000d0, 67.6959d0, 64.8521d0, 61.6485d0, 58.2912d0, 54.8245d0, 51.3829d0, 48.0981d0, 45.0451d0,&
-     42.2448d0, 39.6855d0, 35.1873d0, 31.3604d0, 28.0888d0, 25.3151d0, 22.9990d0, 19.5395d0, 17.2186d0, 15.5374d0, 14.1414d0,&
-     12.8500d0, 9.87890d0, 7.58450d0, 6.12600d0, 5.26470d0, 4.29260d0, 3.49490d0], 0.1920711517118512d1, 13.7312d0) /
+     [6.900000e+01_fp_kind,6.769590e+01_fp_kind,6.485210e+01_fp_kind,6.164850e+01_fp_kind,5.829120e+01_fp_kind,&
+     5.482450e+01_fp_kind,5.138290e+01_fp_kind,4.809810e+01_fp_kind,4.504510e+01_fp_kind,4.224480e+01_fp_kind,&
+     3.968550e+01_fp_kind,3.518730e+01_fp_kind,3.136040e+01_fp_kind,2.808880e+01_fp_kind,2.531510e+01_fp_kind,&
+     2.299900e+01_fp_kind,1.953950e+01_fp_kind,1.721860e+01_fp_kind,1.553740e+01_fp_kind,1.414140e+01_fp_kind,&
+     1.285000e+01_fp_kind,9.878900e+00_fp_kind,7.584500e+00_fp_kind,6.126000e+00_fp_kind,5.264700e+00_fp_kind,&
+     4.292600e+00_fp_kind,3.494900e+00_fp_kind], 1.9207115171185121e+00_fp_kind,1.373120e+01_fp_kind) /
 data ionicXrayFF( 2, 69) / t_ionicFF('Tm',  69,  3, &
-    [66.0000d0, 67.6959d0, 64.8521d0, 61.6485d0, 58.2912d0, 54.8245d0, 51.2515d0, 47.9901d0, 44.9536d0,&
-     42.1676d0, 39.6232d0, 35.1586d0, 31.3634d0, 28.1130d0, 25.3479d0, 23.0307d0, 19.5565d0, 17.2229d0, 15.5372d0, 14.1425d0,&
-     12.8539d0, 9.88560d0, 7.58800d0, 6.12480d0, 5.26780d0, 4.28890d0, 3.49490d0], 0.1920711517118512d1, 5.73200d0) /
+     [6.600000e+01_fp_kind,6.769590e+01_fp_kind,6.485210e+01_fp_kind,6.164850e+01_fp_kind,5.829120e+01_fp_kind,&
+     5.482450e+01_fp_kind,5.125150e+01_fp_kind,4.799010e+01_fp_kind,4.495360e+01_fp_kind,4.216760e+01_fp_kind,&
+     3.962320e+01_fp_kind,3.515860e+01_fp_kind,3.136340e+01_fp_kind,2.811300e+01_fp_kind,2.534790e+01_fp_kind,&
+     2.303070e+01_fp_kind,1.955650e+01_fp_kind,1.722290e+01_fp_kind,1.553720e+01_fp_kind,1.414250e+01_fp_kind,&
+     1.285390e+01_fp_kind,9.885600e+00_fp_kind,7.588000e+00_fp_kind,6.124800e+00_fp_kind,5.267800e+00_fp_kind,&
+     4.288900e+00_fp_kind,3.494900e+00_fp_kind], 1.9207115171185121e+00_fp_kind,5.732000e+00_fp_kind) /
 data ionicXrayFF( 1, 70) / t_ionicFF('Yb',  70,  0, &
-    [70.0000d0, 68.7180d0, 65.9059d0, 62.7213d0, 59.3750d0, 55.9081d0, 52.4503d0, 49.1335d0, 46.0364d0,&
-     43.1852d0, 40.5727d0, 35.9718d0, 32.0525d0, 28.6969d0, 25.8444d0, 23.4538d0, 19.8656d0, 17.4588d0, 15.7396d0, 14.3421d0,&
-     13.0671d0, 10.1248d0, 7.79360d0, 6.27150d0, 5.36230d0, 4.36550d0, 3.57810d0], 0.1939294118355548d1, 13.4728d0) /
+     [7.000000e+01_fp_kind,6.871800e+01_fp_kind,6.590590e+01_fp_kind,6.272130e+01_fp_kind,5.937500e+01_fp_kind,&
+     5.590810e+01_fp_kind,5.245030e+01_fp_kind,4.913350e+01_fp_kind,4.603640e+01_fp_kind,4.318520e+01_fp_kind,&
+     4.057270e+01_fp_kind,3.597180e+01_fp_kind,3.205250e+01_fp_kind,2.869690e+01_fp_kind,2.584440e+01_fp_kind,&
+     2.345380e+01_fp_kind,1.986560e+01_fp_kind,1.745880e+01_fp_kind,1.573960e+01_fp_kind,1.434210e+01_fp_kind,&
+     1.306710e+01_fp_kind,1.012480e+01_fp_kind,7.793600e+00_fp_kind,6.271500e+00_fp_kind,5.362300e+00_fp_kind,&
+     4.365500e+00_fp_kind,3.578100e+00_fp_kind], 1.9392941183555481e+00_fp_kind,1.347280e+01_fp_kind) /
 data ionicXrayFF( 2, 70) / t_ionicFF('Yb',  70,  3, &
-    [67.0000d0, 66.4170d0, 64.7499d0, 62.2183d0, 59.1154d0, 55.7352d0, 52.3177d0, 49.0250d0, 45.9448d0,&
-     43.1079d0, 40.5098d0, 35.9411d0, 32.0527d0, 28.7188d0, 25.8759d0, 23.4853d0, 19.8837d0, 17.4639d0, 15.7396d0, 14.3426d0,&
-     13.0703d0, 10.1313d0, 7.79740d0, 6.27070d0, 5.36550d0, 4.36180d0, 3.58080d0], 0.1940836384659860d1, 5.64580d0) /
+     [6.700000e+01_fp_kind,6.641700e+01_fp_kind,6.474990e+01_fp_kind,6.221830e+01_fp_kind,5.911540e+01_fp_kind,&
+     5.573520e+01_fp_kind,5.231770e+01_fp_kind,4.902500e+01_fp_kind,4.594480e+01_fp_kind,4.310790e+01_fp_kind,&
+     4.050980e+01_fp_kind,3.594110e+01_fp_kind,3.205270e+01_fp_kind,2.871880e+01_fp_kind,2.587590e+01_fp_kind,&
+     2.348530e+01_fp_kind,1.988370e+01_fp_kind,1.746390e+01_fp_kind,1.573960e+01_fp_kind,1.434260e+01_fp_kind,&
+     1.307030e+01_fp_kind,1.013130e+01_fp_kind,7.797400e+00_fp_kind,6.270700e+00_fp_kind,5.365500e+00_fp_kind,&
+     4.361800e+00_fp_kind,3.580800e+00_fp_kind], 1.9408363846598600e+00_fp_kind,5.645800e+00_fp_kind) /
 data ionicXrayFF( 1, 71) / t_ionicFF('Lu',  71,  0, &
-    [71.0000d0, 69.7019d0, 66.7748d0, 63.4617d0, 60.0931d0, 56.6809d0, 53.2868d0, 50.0073d0, 46.9165d0,&
-     44.0492d0, 41.4085d0, 36.7420d0, 32.7595d0, 29.3407d0, 26.4198d0, 23.9558d0, 20.2247d0, 17.1310d0, 15.9429d0, 14.5382d0,&
-     13.2794d0, 10.3737d0, 8.01130d0, 6.42500d0, 5.46400d0, 4.43820d0, 3.65920d0], 0.1956187036685044d1, 13.4834d0) /
+     [7.100000e+01_fp_kind,6.970190e+01_fp_kind,6.677480e+01_fp_kind,6.346170e+01_fp_kind,6.009310e+01_fp_kind,&
+     5.668090e+01_fp_kind,5.328680e+01_fp_kind,5.000730e+01_fp_kind,4.691650e+01_fp_kind,4.404920e+01_fp_kind,&
+     4.140850e+01_fp_kind,3.674200e+01_fp_kind,3.275950e+01_fp_kind,2.934070e+01_fp_kind,2.641980e+01_fp_kind,&
+     2.395580e+01_fp_kind,2.022470e+01_fp_kind,1.713100e+01_fp_kind,1.594290e+01_fp_kind,1.453820e+01_fp_kind,&
+     1.327940e+01_fp_kind,1.037370e+01_fp_kind,8.011300e+00_fp_kind,6.425000e+00_fp_kind,5.464000e+00_fp_kind,&
+     4.438200e+00_fp_kind,3.659200e+00_fp_kind], 1.9561870366850440e+00_fp_kind,1.348340e+01_fp_kind) /
 data ionicXrayFF( 2, 71) / t_ionicFF('Lu',  71,  3, &
-    [68.0000d0, 67.4255d0, 65.7802d0, 63.2748d0, 60.1919d0, 56.8177d0, 53.3885d0, 50.0676d0, 46.9467d0,&
-     44.0611d0, 41.4111d0, 36.7398d0, 32.7584d0, 29.3403d0, 26.4192d0, 23.9545d0, 20.2227d0, 17.7116d0, 15.9420d0, 14.5376d0,&
-     13.2787d0, 10.3723d0, 8.00970d0, 6.42250d0, 5.46760d0, 4.43360d0, 3.66210d0], 0.1957821672490532d1, 5.56180d0) /
+     [6.800000e+01_fp_kind,6.742550e+01_fp_kind,6.578020e+01_fp_kind,6.327480e+01_fp_kind,6.019190e+01_fp_kind,&
+     5.681770e+01_fp_kind,5.338850e+01_fp_kind,5.006760e+01_fp_kind,4.694670e+01_fp_kind,4.406110e+01_fp_kind,&
+     4.141110e+01_fp_kind,3.673980e+01_fp_kind,3.275840e+01_fp_kind,2.934030e+01_fp_kind,2.641920e+01_fp_kind,&
+     2.395450e+01_fp_kind,2.022270e+01_fp_kind,1.771160e+01_fp_kind,1.594200e+01_fp_kind,1.453760e+01_fp_kind,&
+     1.327870e+01_fp_kind,1.037230e+01_fp_kind,8.009700e+00_fp_kind,6.422500e+00_fp_kind,5.467600e+00_fp_kind,&
+     4.433600e+00_fp_kind,3.662100e+00_fp_kind], 1.9578216724905320e+00_fp_kind,5.561800e+00_fp_kind) /
 data ionicXrayFF( 1, 72) / t_ionicFF('Hf',  72,  0, &
-    [72.0000d0, 70.7142d0, 67.7292d0, 64.2897d0, 60.8392d0, 57.4176d0, 54.0417d0, 50.8033d0, 47.7299d0,&
-     44.8640d0, 42.2125d0, 37.5056d0, 33.4733d0, 29.9986d0, 27.0137d0, 24.4787d0, 20.6033d0, 17.9796d0, 16.1494d0, 14.7305d0,&
-     13.4844d0, 10.6191d0, 8.23320d0, 6.58540d0, 5.57120d0, 4.50920d0, 3.73840d0], 0.1971568202327511d1, 13.2202d0) /
+     [7.200000e+01_fp_kind,7.071420e+01_fp_kind,6.772920e+01_fp_kind,6.428970e+01_fp_kind,6.083920e+01_fp_kind,&
+     5.741760e+01_fp_kind,5.404170e+01_fp_kind,5.080330e+01_fp_kind,4.772990e+01_fp_kind,4.486400e+01_fp_kind,&
+     4.221250e+01_fp_kind,3.750560e+01_fp_kind,3.347330e+01_fp_kind,2.999860e+01_fp_kind,2.701370e+01_fp_kind,&
+     2.447870e+01_fp_kind,2.060330e+01_fp_kind,1.797960e+01_fp_kind,1.614940e+01_fp_kind,1.473050e+01_fp_kind,&
+     1.348440e+01_fp_kind,1.061910e+01_fp_kind,8.233200e+00_fp_kind,6.585400e+00_fp_kind,5.571200e+00_fp_kind,&
+     4.509200e+00_fp_kind,3.738400e+00_fp_kind], 1.9715682023275110e+00_fp_kind,1.322020e+01_fp_kind) /
 data ionicXrayFF( 2, 72) / t_ionicFF('Hf',  72,  0, &
-    [72.0000d0, 70.7142d0, 67.7292d0, 64.2897d0, 60.8392d0, 57.4176d0, 54.0417d0, 50.8033d0, 47.7299d0,&
-     44.8640d0, 42.2125d0, 37.5056d0, 33.4733d0, 29.9986d0, 27.0137d0, 24.4787d0, 20.6033d0, 17.9796d0, 16.1494d0, 14.7305d0,&
-     13.4844d0, 10.6191d0, 8.23320d0, 6.58540d0, 5.57120d0, 4.50920d0, 3.73840d0], 0.1971568202327511d1, 13.2202d0) /
+     [7.200000e+01_fp_kind,7.071420e+01_fp_kind,6.772920e+01_fp_kind,6.428970e+01_fp_kind,6.083920e+01_fp_kind,&
+     5.741760e+01_fp_kind,5.404170e+01_fp_kind,5.080330e+01_fp_kind,4.772990e+01_fp_kind,4.486400e+01_fp_kind,&
+     4.221250e+01_fp_kind,3.750560e+01_fp_kind,3.347330e+01_fp_kind,2.999860e+01_fp_kind,2.701370e+01_fp_kind,&
+     2.447870e+01_fp_kind,2.060330e+01_fp_kind,1.797960e+01_fp_kind,1.614940e+01_fp_kind,1.473050e+01_fp_kind,&
+     1.348440e+01_fp_kind,1.061910e+01_fp_kind,8.233200e+00_fp_kind,6.585400e+00_fp_kind,5.571200e+00_fp_kind,&
+     4.509200e+00_fp_kind,3.738400e+00_fp_kind], 1.9715682023275110e+00_fp_kind,1.322020e+01_fp_kind) /
 data ionicXrayFF( 1, 73) / t_ionicFF('Ta',  73,  0, &
-    [73.0000d0, 71.7325d0, 68.7190d0, 65.1726d0, 61.6216d0, 58.1530d0, 54.7836d0, 51.5500d0, 48.4920d0,&
-     45.6339d0, 42.9816d0, 38.2540d0, 34.1862d0, 30.6650d0, 27.6225d0, 25.0204d0, 21.0019d0, 18.2599d0, 16.3609d0, 14.9202d0,&
-     13.6825d0, 10.8598d0, 8.45850d0, 6.75260d0, 5.68410d0, 4.57950d0, 3.81580d0], 0.1985551614385940d1, 12.9316d0) /
+     [7.300000e+01_fp_kind,7.173250e+01_fp_kind,6.871900e+01_fp_kind,6.517260e+01_fp_kind,6.162160e+01_fp_kind,&
+     5.815300e+01_fp_kind,5.478360e+01_fp_kind,5.155000e+01_fp_kind,4.849200e+01_fp_kind,4.563390e+01_fp_kind,&
+     4.298160e+01_fp_kind,3.825400e+01_fp_kind,3.418620e+01_fp_kind,3.066500e+01_fp_kind,2.762250e+01_fp_kind,&
+     2.502040e+01_fp_kind,2.100190e+01_fp_kind,1.825990e+01_fp_kind,1.636090e+01_fp_kind,1.492020e+01_fp_kind,&
+     1.368250e+01_fp_kind,1.085980e+01_fp_kind,8.458500e+00_fp_kind,6.752600e+00_fp_kind,5.684100e+00_fp_kind,&
+     4.579500e+00_fp_kind,3.815800e+00_fp_kind], 1.9855516143859400e+00_fp_kind,1.293160e+01_fp_kind) /
 data ionicXrayFF( 2, 73) / t_ionicFF('Ta',  73,  0, &
-    [73.0000d0, 71.7325d0, 68.7190d0, 65.1726d0, 61.6216d0, 58.1530d0, 54.7836d0, 51.5500d0, 48.4920d0,&
-     45.6339d0, 42.9816d0, 38.2540d0, 34.1862d0, 30.6650d0, 27.6225d0, 25.0204d0, 21.0019d0, 18.2599d0, 16.3609d0, 14.9202d0,&
-     13.6825d0, 10.8598d0, 8.45850d0, 6.75260d0, 5.68410d0, 4.57950d0, 3.81580d0], 0.1985551614385940d1, 12.9316d0) /
+     [7.300000e+01_fp_kind,7.173250e+01_fp_kind,6.871900e+01_fp_kind,6.517260e+01_fp_kind,6.162160e+01_fp_kind,&
+     5.815300e+01_fp_kind,5.478360e+01_fp_kind,5.155000e+01_fp_kind,4.849200e+01_fp_kind,4.563390e+01_fp_kind,&
+     4.298160e+01_fp_kind,3.825400e+01_fp_kind,3.418620e+01_fp_kind,3.066500e+01_fp_kind,2.762250e+01_fp_kind,&
+     2.502040e+01_fp_kind,2.100190e+01_fp_kind,1.825990e+01_fp_kind,1.636090e+01_fp_kind,1.492020e+01_fp_kind,&
+     1.368250e+01_fp_kind,1.085980e+01_fp_kind,8.458500e+00_fp_kind,6.752600e+00_fp_kind,5.684100e+00_fp_kind,&
+     4.579500e+00_fp_kind,3.815800e+00_fp_kind], 1.9855516143859400e+00_fp_kind,1.293160e+01_fp_kind) /
 data ionicXrayFF( 1, 74) / t_ionicFF('W ',  74,  0, &
-    [74.0000d0, 72.7531d0, 69.7292d0, 66.0960d0, 62.4409d0, 58.9024d0, 55.5036d0, 52.2664d0, 49.2150d0,&
-     46.3642d0, 43.7157d0, 38.9817d0, 34.8920d0, 31.3348d0, 28.2426d0, 25.5787d0, 21.4203d0, 18.5553d0, 16.5789d0, 15.1086d0,&
-     13.8743d0, 11.0950d0, 8.68610d0, 6.92640d0, 5.80270d0, 4.64950d0, 3.89130d0], 0.1998137178410090d1, 12.6434d0) /
+     [7.400000e+01_fp_kind,7.275310e+01_fp_kind,6.972920e+01_fp_kind,6.609600e+01_fp_kind,6.244090e+01_fp_kind,&
+     5.890240e+01_fp_kind,5.550360e+01_fp_kind,5.226640e+01_fp_kind,4.921500e+01_fp_kind,4.636420e+01_fp_kind,&
+     4.371570e+01_fp_kind,3.898170e+01_fp_kind,3.489200e+01_fp_kind,3.133480e+01_fp_kind,2.824260e+01_fp_kind,&
+     2.557870e+01_fp_kind,2.142030e+01_fp_kind,1.855530e+01_fp_kind,1.657890e+01_fp_kind,1.510860e+01_fp_kind,&
+     1.387430e+01_fp_kind,1.109500e+01_fp_kind,8.686100e+00_fp_kind,6.926400e+00_fp_kind,5.802700e+00_fp_kind,&
+     4.649500e+00_fp_kind,3.891300e+00_fp_kind], 1.9981371784100901e+00_fp_kind,1.264340e+01_fp_kind) /
 data ionicXrayFF( 2, 74) / t_ionicFF('W ',  74,  0, &
-    [74.0000d0, 72.7531d0, 69.7292d0, 66.0960d0, 62.4409d0, 58.9024d0, 55.5036d0, 52.2664d0, 49.2150d0,&
-     46.3642d0, 43.7157d0, 38.9817d0, 34.8920d0, 31.3348d0, 28.2426d0, 25.5787d0, 21.4203d0, 18.5553d0, 16.5789d0, 15.1086d0,&
-     13.8743d0, 11.0950d0, 8.68610d0, 6.92640d0, 5.80270d0, 4.64950d0, 3.89130d0], 0.1998137178410090d1, 12.6434d0) /
+     [7.400000e+01_fp_kind,7.275310e+01_fp_kind,6.972920e+01_fp_kind,6.609600e+01_fp_kind,6.244090e+01_fp_kind,&
+     5.890240e+01_fp_kind,5.550360e+01_fp_kind,5.226640e+01_fp_kind,4.921500e+01_fp_kind,4.636420e+01_fp_kind,&
+     4.371570e+01_fp_kind,3.898170e+01_fp_kind,3.489200e+01_fp_kind,3.133480e+01_fp_kind,2.824260e+01_fp_kind,&
+     2.557870e+01_fp_kind,2.142030e+01_fp_kind,1.855530e+01_fp_kind,1.657890e+01_fp_kind,1.510860e+01_fp_kind,&
+     1.387430e+01_fp_kind,1.109500e+01_fp_kind,8.686100e+00_fp_kind,6.926400e+00_fp_kind,5.802700e+00_fp_kind,&
+     4.649500e+00_fp_kind,3.891300e+00_fp_kind], 1.9981371784100901e+00_fp_kind,1.264340e+01_fp_kind) /
 data ionicXrayFF( 1, 75) / t_ionicFF('Re',  75,  0, &
-    [75.0000d0, 73.7747d0, 70.7529d0, 67.0504d0, 63.2949d0, 59.6735d0, 56.2253d0, 52.9666d0, 49.9103d0,&
-     47.0619d0, 44.4172d0, 39.6856d0, 35.5856d0, 32.0033d0, 28.8701d0, 26.1509d0, 21.8581d0, 18.8669d0, 16.8054d0, 15.2972d0,&
-     14.0608d0, 11.3241d0, 8.91520d0, 7.10640d0, 5.92730d0, 4.71980d0, 3.96490d0], 0.2009378462196857d1, 12.3627d0) /
+     [7.500000e+01_fp_kind,7.377470e+01_fp_kind,7.075290e+01_fp_kind,6.705040e+01_fp_kind,6.329490e+01_fp_kind,&
+     5.967350e+01_fp_kind,5.622530e+01_fp_kind,5.296660e+01_fp_kind,4.991030e+01_fp_kind,4.706190e+01_fp_kind,&
+     4.441720e+01_fp_kind,3.968560e+01_fp_kind,3.558560e+01_fp_kind,3.200330e+01_fp_kind,2.887010e+01_fp_kind,&
+     2.615090e+01_fp_kind,2.185810e+01_fp_kind,1.886690e+01_fp_kind,1.680540e+01_fp_kind,1.529720e+01_fp_kind,&
+     1.406080e+01_fp_kind,1.132410e+01_fp_kind,8.915200e+00_fp_kind,7.106400e+00_fp_kind,5.927300e+00_fp_kind,&
+     4.719800e+00_fp_kind,3.964900e+00_fp_kind], 2.0093784621968571e+00_fp_kind,1.236270e+01_fp_kind) /
 data ionicXrayFF( 2, 75) / t_ionicFF('Re',  75,  0, &
-    [75.0000d0, 73.7747d0, 70.7529d0, 67.0504d0, 63.2949d0, 59.6735d0, 56.2253d0, 52.9666d0, 49.9103d0,&
-     47.0619d0, 44.4172d0, 39.6856d0, 35.5856d0, 32.0033d0, 28.8701d0, 26.1509d0, 21.8581d0, 18.8669d0, 16.8054d0, 15.2972d0,&
-     14.0608d0, 11.3241d0, 8.91520d0, 7.10640d0, 5.92730d0, 4.71980d0, 3.96490d0], 0.2009378462196857d1, 12.3627d0) /
+     [7.500000e+01_fp_kind,7.377470e+01_fp_kind,7.075290e+01_fp_kind,6.705040e+01_fp_kind,6.329490e+01_fp_kind,&
+     5.967350e+01_fp_kind,5.622530e+01_fp_kind,5.296660e+01_fp_kind,4.991030e+01_fp_kind,4.706190e+01_fp_kind,&
+     4.441720e+01_fp_kind,3.968560e+01_fp_kind,3.558560e+01_fp_kind,3.200330e+01_fp_kind,2.887010e+01_fp_kind,&
+     2.615090e+01_fp_kind,2.185810e+01_fp_kind,1.886690e+01_fp_kind,1.680540e+01_fp_kind,1.529720e+01_fp_kind,&
+     1.406080e+01_fp_kind,1.132410e+01_fp_kind,8.915200e+00_fp_kind,7.106400e+00_fp_kind,5.927300e+00_fp_kind,&
+     4.719800e+00_fp_kind,3.964900e+00_fp_kind], 2.0093784621968571e+00_fp_kind,1.236270e+01_fp_kind) /
 data ionicXrayFF( 1, 76) / t_ionicFF('Os',  76,  0, &
-    [76.0000d0, 74.7965d0, 71.7854d0, 68.0292d0, 64.1803d0, 60.4695d0, 56.9574d0, 53.6614d0, 50.5877d0,&
-     47.7340d0, 45.0901d0, 40.3643d0, 36.2633d0, 32.6662d0, 29.5013d0, 26.7342d0, 22.3147d0, 19.1957d0, 17.0419d0, 15.4878d0,&
-     14.2430d0, 11.5466d0, 9.14490d0, 7.29220d0, 6.05810d0, 4.79090d0, 4.03680d0], 0.2019432154212147d1, 12.0917d0) /
+     [7.600000e+01_fp_kind,7.479650e+01_fp_kind,7.178540e+01_fp_kind,6.802920e+01_fp_kind,6.418030e+01_fp_kind,&
+     6.046950e+01_fp_kind,5.695740e+01_fp_kind,5.366140e+01_fp_kind,5.058770e+01_fp_kind,4.773400e+01_fp_kind,&
+     4.509010e+01_fp_kind,4.036430e+01_fp_kind,3.626330e+01_fp_kind,3.266620e+01_fp_kind,2.950130e+01_fp_kind,&
+     2.673420e+01_fp_kind,2.231470e+01_fp_kind,1.919570e+01_fp_kind,1.704190e+01_fp_kind,1.548780e+01_fp_kind,&
+     1.424300e+01_fp_kind,1.154660e+01_fp_kind,9.144900e+00_fp_kind,7.292200e+00_fp_kind,6.058100e+00_fp_kind,&
+     4.790900e+00_fp_kind,4.036800e+00_fp_kind], 2.0194321542121472e+00_fp_kind,1.209170e+01_fp_kind) /
 data ionicXrayFF( 2, 76) / t_ionicFF('Os',  76,  0, &
-    [76.0000d0, 74.7965d0, 71.7854d0, 68.0292d0, 64.1803d0, 60.4695d0, 56.9574d0, 53.6614d0, 50.5877d0,&
-     47.7340d0, 45.0901d0, 40.3643d0, 36.2633d0, 32.6662d0, 29.5013d0, 26.7342d0, 22.3147d0, 19.1957d0, 17.0419d0, 15.4878d0,&
-     14.2430d0, 11.5466d0, 9.14490d0, 7.29220d0, 6.05810d0, 4.79090d0, 4.03680d0], 0.2019432154212147d1, 12.0917d0) /
+     [7.600000e+01_fp_kind,7.479650e+01_fp_kind,7.178540e+01_fp_kind,6.802920e+01_fp_kind,6.418030e+01_fp_kind,&
+     6.046950e+01_fp_kind,5.695740e+01_fp_kind,5.366140e+01_fp_kind,5.058770e+01_fp_kind,4.773400e+01_fp_kind,&
+     4.509010e+01_fp_kind,4.036430e+01_fp_kind,3.626330e+01_fp_kind,3.266620e+01_fp_kind,2.950130e+01_fp_kind,&
+     2.673420e+01_fp_kind,2.231470e+01_fp_kind,1.919570e+01_fp_kind,1.704190e+01_fp_kind,1.548780e+01_fp_kind,&
+     1.424300e+01_fp_kind,1.154660e+01_fp_kind,9.144900e+00_fp_kind,7.292200e+00_fp_kind,6.058100e+00_fp_kind,&
+     4.790900e+00_fp_kind,4.036800e+00_fp_kind], 2.0194321542121472e+00_fp_kind,1.209170e+01_fp_kind) /
 data ionicXrayFF( 1, 77) / t_ionicFF('Ir',  77,  0, &
-    [77.0000d0, 75.8233d0, 72.8404d0, 69.0530d0, 65.1231d0, 61.3189d0, 57.7269d0, 54.3735d0, 51.2636d0,&
-     48.3905d0, 45.7386d0, 41.0143d0, 36.9193d0, 33.3183d0, 30.1328d0, 27.3271d0, 22.7908d0, 19.5434d0, 17.2904d0, 15.6816d0,&
-     14.4218d0, 11.7621d0, 9.37440d0, 7.48370d0, 6.19540d0, 4.86350d0, 4.10690d0], 0.2028290743568320d1, 11.7793d0) /
+     [7.700000e+01_fp_kind,7.582330e+01_fp_kind,7.284040e+01_fp_kind,6.905300e+01_fp_kind,6.512310e+01_fp_kind,&
+     6.131890e+01_fp_kind,5.772690e+01_fp_kind,5.437350e+01_fp_kind,5.126360e+01_fp_kind,4.839050e+01_fp_kind,&
+     4.573860e+01_fp_kind,4.101430e+01_fp_kind,3.691930e+01_fp_kind,3.331830e+01_fp_kind,3.013280e+01_fp_kind,&
+     2.732710e+01_fp_kind,2.279080e+01_fp_kind,1.954340e+01_fp_kind,1.729040e+01_fp_kind,1.568160e+01_fp_kind,&
+     1.442180e+01_fp_kind,1.176210e+01_fp_kind,9.374400e+00_fp_kind,7.483700e+00_fp_kind,6.195400e+00_fp_kind,&
+     4.863500e+00_fp_kind,4.106900e+00_fp_kind], 2.0282907435683200e+00_fp_kind,1.177930e+01_fp_kind) /
 data ionicXrayFF( 2, 77) / t_ionicFF('Ir',  77,  0, &
-    [77.0000d0, 75.8233d0, 72.8404d0, 69.0530d0, 65.1231d0, 61.3189d0, 57.7269d0, 54.3735d0, 51.2636d0,&
-     48.3905d0, 45.7386d0, 41.0143d0, 36.9193d0, 33.3183d0, 30.1328d0, 27.3271d0, 22.7908d0, 19.5434d0, 17.2904d0, 15.6816d0,&
-     14.4218d0, 11.7621d0, 9.37440d0, 7.48370d0, 6.19540d0, 4.86350d0, 4.10690d0], 0.2028290743568320d1, 11.7793d0) /
+     [7.700000e+01_fp_kind,7.582330e+01_fp_kind,7.284040e+01_fp_kind,6.905300e+01_fp_kind,6.512310e+01_fp_kind,&
+     6.131890e+01_fp_kind,5.772690e+01_fp_kind,5.437350e+01_fp_kind,5.126360e+01_fp_kind,4.839050e+01_fp_kind,&
+     4.573860e+01_fp_kind,4.101430e+01_fp_kind,3.691930e+01_fp_kind,3.331830e+01_fp_kind,3.013280e+01_fp_kind,&
+     2.732710e+01_fp_kind,2.279080e+01_fp_kind,1.954340e+01_fp_kind,1.729040e+01_fp_kind,1.568160e+01_fp_kind,&
+     1.442180e+01_fp_kind,1.176210e+01_fp_kind,9.374400e+00_fp_kind,7.483700e+00_fp_kind,6.195400e+00_fp_kind,&
+     4.863500e+00_fp_kind,4.106900e+00_fp_kind], 2.0282907435683200e+00_fp_kind,1.177930e+01_fp_kind) /
 data ionicXrayFF( 1, 78) / t_ionicFF('Pt',  78,  0, &
-    [78.0000d0, 76.9110d0, 74.0749d0, 70.3248d0, 66.2956d0, 62.3251d0, 58.5686d0, 55.0881d0, 51.8969d0,&
-     47.9818d0, 46.3170d0, 41.6125d0, 37.5510d0, 33.9679d0, 30.7749d0, 27.9369d0, 23.2863d0, 19.9072d0, 17.5492d0, 15.8797d0,&
-     14.5990d0, 11.9714d0, 9.60330d0, 7.68010d0, 6.33970d0, 4.93740d0, 4.17570d0], 0.2036256354614949d1, 10.8225d0) /
+     [7.800000e+01_fp_kind,7.691100e+01_fp_kind,7.407490e+01_fp_kind,7.032480e+01_fp_kind,6.629560e+01_fp_kind,&
+     6.232510e+01_fp_kind,5.856860e+01_fp_kind,5.508810e+01_fp_kind,5.189690e+01_fp_kind,4.798180e+01_fp_kind,&
+     4.631700e+01_fp_kind,4.161250e+01_fp_kind,3.755100e+01_fp_kind,3.396790e+01_fp_kind,3.077490e+01_fp_kind,&
+     2.793690e+01_fp_kind,2.328630e+01_fp_kind,1.990720e+01_fp_kind,1.754920e+01_fp_kind,1.587970e+01_fp_kind,&
+     1.459900e+01_fp_kind,1.197140e+01_fp_kind,9.603300e+00_fp_kind,7.680100e+00_fp_kind,6.339700e+00_fp_kind,&
+     4.937400e+00_fp_kind,4.175700e+00_fp_kind], 2.0362563546149488e+00_fp_kind,1.082250e+01_fp_kind) /
 data ionicXrayFF( 2, 78) / t_ionicFF('Pt',  78,  0, &
-    [78.0000d0, 76.9110d0, 74.0749d0, 70.3248d0, 66.2956d0, 62.3251d0, 58.5686d0, 55.0881d0, 51.8969d0,&
-     47.9818d0, 46.3170d0, 41.6125d0, 37.5510d0, 33.9679d0, 30.7749d0, 27.9369d0, 23.2863d0, 19.9072d0, 17.5492d0, 15.8797d0,&
-     14.5990d0, 11.9714d0, 9.60330d0, 7.68010d0, 6.33970d0, 4.93740d0, 4.17570d0], 0.2036256354614949d1, 10.8225d0) /
+     [7.800000e+01_fp_kind,7.691100e+01_fp_kind,7.407490e+01_fp_kind,7.032480e+01_fp_kind,6.629560e+01_fp_kind,&
+     6.232510e+01_fp_kind,5.856860e+01_fp_kind,5.508810e+01_fp_kind,5.189690e+01_fp_kind,4.798180e+01_fp_kind,&
+     4.631700e+01_fp_kind,4.161250e+01_fp_kind,3.755100e+01_fp_kind,3.396790e+01_fp_kind,3.077490e+01_fp_kind,&
+     2.793690e+01_fp_kind,2.328630e+01_fp_kind,1.990720e+01_fp_kind,1.754920e+01_fp_kind,1.587970e+01_fp_kind,&
+     1.459900e+01_fp_kind,1.197140e+01_fp_kind,9.603300e+00_fp_kind,7.680100e+00_fp_kind,6.339700e+00_fp_kind,&
+     4.937400e+00_fp_kind,4.175700e+00_fp_kind], 2.0362563546149488e+00_fp_kind,1.082250e+01_fp_kind) /
 data ionicXrayFF( 1, 79) / t_ionicFF('Au',  79,  0, &
-    [79.0000d0, 77.9358d0, 75.1371d0, 71.3837d0, 67.3010d0, 63.2474d0, 59.4018d0, 55.8418d0, 52.5879d0,&
-     49.6286d0, 46.9362d0, 42.2137d0, 38.1604d0, 34.5882d0, 31.3942d0, 28.5265d0, 23.7947d0, 20.2923d0, 17.8252d0, 16.0855d0,&
-     14.7755d0, 12.1722d0, 9.82970d0, 7.88060d0, 6.48970d0, 5.01440d0, 4.24310d0], 0.2043311052223935d1, 10.5466d0) /
+     [7.900000e+01_fp_kind,7.793580e+01_fp_kind,7.513710e+01_fp_kind,7.138370e+01_fp_kind,6.730100e+01_fp_kind,&
+     6.324740e+01_fp_kind,5.940180e+01_fp_kind,5.584180e+01_fp_kind,5.258790e+01_fp_kind,4.962860e+01_fp_kind,&
+     4.693620e+01_fp_kind,4.221370e+01_fp_kind,3.816040e+01_fp_kind,3.458820e+01_fp_kind,3.139420e+01_fp_kind,&
+     2.852650e+01_fp_kind,2.379470e+01_fp_kind,2.029230e+01_fp_kind,1.782520e+01_fp_kind,1.608550e+01_fp_kind,&
+     1.477550e+01_fp_kind,1.217220e+01_fp_kind,9.829700e+00_fp_kind,7.880600e+00_fp_kind,6.489700e+00_fp_kind,&
+     5.014400e+00_fp_kind,4.243100e+00_fp_kind], 2.0433110522239351e+00_fp_kind,1.054660e+01_fp_kind) /
 data ionicXrayFF( 2, 79) / t_ionicFF('Au',  79,  0, &
-    [79.0000d0, 77.9358d0, 75.1371d0, 71.3837d0, 67.3010d0, 63.2474d0, 59.4018d0, 55.8418d0, 52.5879d0,&
-     49.6286d0, 46.9362d0, 42.2137d0, 38.1604d0, 34.5882d0, 31.3942d0, 28.5265d0, 23.7947d0, 20.2923d0, 17.8252d0, 16.0855d0,&
-     14.7755d0, 12.1722d0, 9.82970d0, 7.88060d0, 6.48970d0, 5.01440d0, 4.24310d0], 0.2043311052223935d1, 10.5466d0) /
+     [7.900000e+01_fp_kind,7.793580e+01_fp_kind,7.513710e+01_fp_kind,7.138370e+01_fp_kind,6.730100e+01_fp_kind,&
+     6.324740e+01_fp_kind,5.940180e+01_fp_kind,5.584180e+01_fp_kind,5.258790e+01_fp_kind,4.962860e+01_fp_kind,&
+     4.693620e+01_fp_kind,4.221370e+01_fp_kind,3.816040e+01_fp_kind,3.458820e+01_fp_kind,3.139420e+01_fp_kind,&
+     2.852650e+01_fp_kind,2.379470e+01_fp_kind,2.029230e+01_fp_kind,1.782520e+01_fp_kind,1.608550e+01_fp_kind,&
+     1.477550e+01_fp_kind,1.217220e+01_fp_kind,9.829700e+00_fp_kind,7.880600e+00_fp_kind,6.489700e+00_fp_kind,&
+     5.014400e+00_fp_kind,4.243100e+00_fp_kind], 2.0433110522239351e+00_fp_kind,1.054660e+01_fp_kind) /
 data ionicXrayFF( 1, 80) / t_ionicFF('Hg',  80,  0, &
-    [80.0000d0, 78.8983d0, 76.0195d0, 72.2020d0, 68.0934d0, 64.0350d0, 60.1836d0, 56.6067d0, 53.3252d0,&
-     50.3332d0, 47.6082d0, 42.8360d0, 38.7600d0, 35.1833d0, 31.9875d0, 29.1187d0, 24.3093d0, 20.6967d0, 18.1200d0, 16.3022d0,&
-     14.9537d0, 12.3645d0, 10.0524d0, 8.08430d0, 6.64510d0, 5.09480d0, 4.30910d0], 0.2049488115480194d1, 10.9356d0) /
+     [8.000000e+01_fp_kind,7.889830e+01_fp_kind,7.601950e+01_fp_kind,7.220200e+01_fp_kind,6.809340e+01_fp_kind,&
+     6.403500e+01_fp_kind,6.018360e+01_fp_kind,5.660670e+01_fp_kind,5.332520e+01_fp_kind,5.033320e+01_fp_kind,&
+     4.760820e+01_fp_kind,4.283600e+01_fp_kind,3.876000e+01_fp_kind,3.518330e+01_fp_kind,3.198750e+01_fp_kind,&
+     2.911870e+01_fp_kind,2.430930e+01_fp_kind,2.069670e+01_fp_kind,1.812000e+01_fp_kind,1.630220e+01_fp_kind,&
+     1.495370e+01_fp_kind,1.236450e+01_fp_kind,1.005240e+01_fp_kind,8.084300e+00_fp_kind,6.645100e+00_fp_kind,&
+     5.094800e+00_fp_kind,4.309100e+00_fp_kind], 2.0494881154801941e+00_fp_kind,1.093560e+01_fp_kind) /
 data ionicXrayFF( 2, 80) / t_ionicFF('Hg',  80,  0, &
-    [80.0000d0, 78.8983d0, 76.0195d0, 72.2020d0, 68.0934d0, 64.0350d0, 60.1836d0, 56.6067d0, 53.3252d0,&
-     50.3332d0, 47.6082d0, 42.8360d0, 38.7600d0, 35.1833d0, 31.9875d0, 29.1187d0, 24.3093d0, 20.6967d0, 18.1200d0, 16.3022d0,&
-     14.9537d0, 12.3645d0, 10.0524d0, 8.08430d0, 6.64510d0, 5.09480d0, 4.30910d0], 0.2049488115480194d1, 10.9356d0) /
+     [8.000000e+01_fp_kind,7.889830e+01_fp_kind,7.601950e+01_fp_kind,7.220200e+01_fp_kind,6.809340e+01_fp_kind,&
+     6.403500e+01_fp_kind,6.018360e+01_fp_kind,5.660670e+01_fp_kind,5.332520e+01_fp_kind,5.033320e+01_fp_kind,&
+     4.760820e+01_fp_kind,4.283600e+01_fp_kind,3.876000e+01_fp_kind,3.518330e+01_fp_kind,3.198750e+01_fp_kind,&
+     2.911870e+01_fp_kind,2.430930e+01_fp_kind,2.069670e+01_fp_kind,1.812000e+01_fp_kind,1.630220e+01_fp_kind,&
+     1.495370e+01_fp_kind,1.236450e+01_fp_kind,1.005240e+01_fp_kind,8.084300e+00_fp_kind,6.645100e+00_fp_kind,&
+     5.094800e+00_fp_kind,4.309100e+00_fp_kind], 2.0494881154801941e+00_fp_kind,1.093560e+01_fp_kind) /
 data ionicXrayFF( 1, 81) / t_ionicFF('Tl',  81,  0, &
-    [81.0000d0, 79.7425d0, 76.6852d0, 72.8694d0, 68.8348d0, 64.8316d0, 60.9957d0, 57.4016d0, 54.0837d0,&
-     51.0477d0, 48.2801d0, 43.4453d0, 39.3422d0, 35.7624d0, 32.5700d0, 29.6968d0, 24.8325d0, 21.1166d0, 18.4298d0, 16.5286d0,&
-     15.1348d0, 12.5502d0, 10.2714d0, 8.29110d0, 6.80550d0, 5.17870d0, 4.37440d0], 0.2055166941596539d1, 12.8045d0) /
+     [8.100000e+01_fp_kind,7.974250e+01_fp_kind,7.668520e+01_fp_kind,7.286940e+01_fp_kind,6.883480e+01_fp_kind,&
+     6.483160e+01_fp_kind,6.099570e+01_fp_kind,5.740160e+01_fp_kind,5.408370e+01_fp_kind,5.104770e+01_fp_kind,&
+     4.828010e+01_fp_kind,4.344530e+01_fp_kind,3.934220e+01_fp_kind,3.576240e+01_fp_kind,3.257000e+01_fp_kind,&
+     2.969680e+01_fp_kind,2.483250e+01_fp_kind,2.111660e+01_fp_kind,1.842980e+01_fp_kind,1.652860e+01_fp_kind,&
+     1.513480e+01_fp_kind,1.255020e+01_fp_kind,1.027140e+01_fp_kind,8.291100e+00_fp_kind,6.805500e+00_fp_kind,&
+     5.178700e+00_fp_kind,4.374400e+00_fp_kind], 2.0551669415965388e+00_fp_kind,1.280450e+01_fp_kind) /
 data ionicXrayFF( 2, 81) / t_ionicFF('Tl',  81,  0, &
-    [81.0000d0, 79.7425d0, 76.6852d0, 72.8694d0, 68.8348d0, 64.8316d0, 60.9957d0, 57.4016d0, 54.0837d0,&
-     51.0477d0, 48.2801d0, 43.4453d0, 39.3422d0, 35.7624d0, 32.5700d0, 29.6968d0, 24.8325d0, 21.1166d0, 18.4298d0, 16.5286d0,&
-     15.1348d0, 12.5502d0, 10.2714d0, 8.29110d0, 6.80550d0, 5.17870d0, 4.37440d0], 0.2055166941596539d1, 12.8045d0) /
+     [8.100000e+01_fp_kind,7.974250e+01_fp_kind,7.668520e+01_fp_kind,7.286940e+01_fp_kind,6.883480e+01_fp_kind,&
+     6.483160e+01_fp_kind,6.099570e+01_fp_kind,5.740160e+01_fp_kind,5.408370e+01_fp_kind,5.104770e+01_fp_kind,&
+     4.828010e+01_fp_kind,4.344530e+01_fp_kind,3.934220e+01_fp_kind,3.576240e+01_fp_kind,3.257000e+01_fp_kind,&
+     2.969680e+01_fp_kind,2.483250e+01_fp_kind,2.111660e+01_fp_kind,1.842980e+01_fp_kind,1.652860e+01_fp_kind,&
+     1.513480e+01_fp_kind,1.255020e+01_fp_kind,1.027140e+01_fp_kind,8.291100e+00_fp_kind,6.805500e+00_fp_kind,&
+     5.178700e+00_fp_kind,4.374400e+00_fp_kind], 2.0551669415965388e+00_fp_kind,1.280450e+01_fp_kind) /
 data ionicXrayFF( 1, 82) / t_ionicFF('Pb',  82,  0, &
-    [82.0000d0, 80.6686d0, 77.4471d0, 73.5283d0, 69.4995d0, 65.5494d0, 61.7579d0, 58.1788d0, 54.8473d0,&
-     51.7790d0, 48.9713d0, 44.0633d0, 39.9187d0, 36.3270d0, 33.1363d0, 30.2630d0, 25.3591d0, 21.5510d0, 18.7563d0, 16.7670d0,&
-     15.3208d0, 12.7288d0, 10.4858d0, 8.49920d0, 6.97170d0, 5.26650d0, 4.43880d0], 0.2060267247025578d1, 13.5344d0) /
+     [8.200000e+01_fp_kind,8.066860e+01_fp_kind,7.744710e+01_fp_kind,7.352830e+01_fp_kind,6.949950e+01_fp_kind,&
+     6.554940e+01_fp_kind,6.175790e+01_fp_kind,5.817880e+01_fp_kind,5.484730e+01_fp_kind,5.177900e+01_fp_kind,&
+     4.897130e+01_fp_kind,4.406330e+01_fp_kind,3.991870e+01_fp_kind,3.632700e+01_fp_kind,3.313630e+01_fp_kind,&
+     3.026300e+01_fp_kind,2.535910e+01_fp_kind,2.155100e+01_fp_kind,1.875630e+01_fp_kind,1.676700e+01_fp_kind,&
+     1.532080e+01_fp_kind,1.272880e+01_fp_kind,1.048580e+01_fp_kind,8.499200e+00_fp_kind,6.971700e+00_fp_kind,&
+     5.266500e+00_fp_kind,4.438800e+00_fp_kind], 2.0602672470255778e+00_fp_kind,1.353440e+01_fp_kind) /
 data ionicXrayFF( 2, 82) / t_ionicFF('Pb',  82,  0, &
-    [82.0000d0, 80.6686d0, 77.4471d0, 73.5283d0, 69.4995d0, 65.5494d0, 61.7579d0, 58.1788d0, 54.8473d0,&
-     51.7790d0, 48.9713d0, 44.0633d0, 39.9187d0, 36.3270d0, 33.1363d0, 30.2630d0, 25.3591d0, 21.5510d0, 18.7563d0, 16.7670d0,&
-     15.3208d0, 12.7288d0, 10.4858d0, 8.49920d0, 6.97170d0, 5.26650d0, 4.43880d0], 0.2060267247025578d1, 13.5344d0) /
+     [8.200000e+01_fp_kind,8.066860e+01_fp_kind,7.744710e+01_fp_kind,7.352830e+01_fp_kind,6.949950e+01_fp_kind,&
+     6.554940e+01_fp_kind,6.175790e+01_fp_kind,5.817880e+01_fp_kind,5.484730e+01_fp_kind,5.177900e+01_fp_kind,&
+     4.897130e+01_fp_kind,4.406330e+01_fp_kind,3.991870e+01_fp_kind,3.632700e+01_fp_kind,3.313630e+01_fp_kind,&
+     3.026300e+01_fp_kind,2.535910e+01_fp_kind,2.155100e+01_fp_kind,1.875630e+01_fp_kind,1.676700e+01_fp_kind,&
+     1.532080e+01_fp_kind,1.272880e+01_fp_kind,1.048580e+01_fp_kind,8.499200e+00_fp_kind,6.971700e+00_fp_kind,&
+     5.266500e+00_fp_kind,4.438800e+00_fp_kind], 2.0602672470255778e+00_fp_kind,1.353440e+01_fp_kind) /
 data ionicXrayFF( 1, 83) / t_ionicFF('Bi',  83,  0, &
-    [83.0000d0, 81.6272d0, 78.2747d0, 74.2174d0, 70.1352d0, 66.2082d0, 62.4649d0, 58.9212d0, 55.5987d0,&
-     52.5150d0, 49.6761d0, 44.6938d0, 40.4955d0, 36.8810d0, 33.6879d0, 30.8162d0, 25.8858d0, 21.9977d0, 19.0992d0, 17.0187d0,&
-     15.5133d0, 12.9012d0, 10.6949d0, 8.70800d0, 7.14340d0, 5.35800d0, 4.50300d0], 0.2065148986585477d1, 13.8911d0) /
+     [8.300000e+01_fp_kind,8.162720e+01_fp_kind,7.827470e+01_fp_kind,7.421740e+01_fp_kind,7.013520e+01_fp_kind,&
+     6.620820e+01_fp_kind,6.246490e+01_fp_kind,5.892120e+01_fp_kind,5.559870e+01_fp_kind,5.251500e+01_fp_kind,&
+     4.967610e+01_fp_kind,4.469380e+01_fp_kind,4.049550e+01_fp_kind,3.688100e+01_fp_kind,3.368790e+01_fp_kind,&
+     3.081620e+01_fp_kind,2.588580e+01_fp_kind,2.199770e+01_fp_kind,1.909920e+01_fp_kind,1.701870e+01_fp_kind,&
+     1.551330e+01_fp_kind,1.290120e+01_fp_kind,1.069490e+01_fp_kind,8.708000e+00_fp_kind,7.143400e+00_fp_kind,&
+     5.358000e+00_fp_kind,4.503000e+00_fp_kind], 2.0651489865854771e+00_fp_kind,1.389110e+01_fp_kind) /
 data ionicXrayFF( 2, 83) / t_ionicFF('Bi',  83,  0, &
-    [83.0000d0, 81.6272d0, 78.2747d0, 74.2174d0, 70.1352d0, 66.2082d0, 62.4649d0, 58.9212d0, 55.5987d0,&
-     52.5150d0, 49.6761d0, 44.6938d0, 40.4955d0, 36.8810d0, 33.6879d0, 30.8162d0, 25.8858d0, 21.9977d0, 19.0992d0, 17.0187d0,&
-     15.5133d0, 12.9012d0, 10.6949d0, 8.70800d0, 7.14340d0, 5.35800d0, 4.50300d0], 0.2065148986585477d1, 13.8911d0) /
+     [8.300000e+01_fp_kind,8.162720e+01_fp_kind,7.827470e+01_fp_kind,7.421740e+01_fp_kind,7.013520e+01_fp_kind,&
+     6.620820e+01_fp_kind,6.246490e+01_fp_kind,5.892120e+01_fp_kind,5.559870e+01_fp_kind,5.251500e+01_fp_kind,&
+     4.967610e+01_fp_kind,4.469380e+01_fp_kind,4.049550e+01_fp_kind,3.688100e+01_fp_kind,3.368790e+01_fp_kind,&
+     3.081620e+01_fp_kind,2.588580e+01_fp_kind,2.199770e+01_fp_kind,1.909920e+01_fp_kind,1.701870e+01_fp_kind,&
+     1.551330e+01_fp_kind,1.290120e+01_fp_kind,1.069490e+01_fp_kind,8.708000e+00_fp_kind,7.143400e+00_fp_kind,&
+     5.358000e+00_fp_kind,4.503000e+00_fp_kind], 2.0651489865854771e+00_fp_kind,1.389110e+01_fp_kind) /
 data ionicXrayFF( 1, 84) / t_ionicFF('Po',  84,  0, &
-    [84.0000d0, 82.6037d0, 79.1498d0, 74.9467d0, 70.7698d0, 66.8295d0, 63.1218d0, 59.6215d0, 56.3256d0,&
-     53.2442d0, 50.3868d0, 45.3376d0, 41.0773d0, 37.4291d0, 34.2266d0, 31.3560d0, 26.4096d0, 22.4543d0, 19.4578d0, 17.2843d0,&
-     15.7138d0, 13.0684d0, 10.8982d0, 8.91680d0, 7.32000d0, 5.45330d0, 4.56750d0], 0.2070059484467947d1, 14.0629d0) /
+     [8.400000e+01_fp_kind,8.260370e+01_fp_kind,7.914980e+01_fp_kind,7.494670e+01_fp_kind,7.076980e+01_fp_kind,&
+     6.682950e+01_fp_kind,6.312180e+01_fp_kind,5.962150e+01_fp_kind,5.632560e+01_fp_kind,5.324420e+01_fp_kind,&
+     5.038680e+01_fp_kind,4.533760e+01_fp_kind,4.107730e+01_fp_kind,3.742910e+01_fp_kind,3.422660e+01_fp_kind,&
+     3.135600e+01_fp_kind,2.640960e+01_fp_kind,2.245430e+01_fp_kind,1.945780e+01_fp_kind,1.728430e+01_fp_kind,&
+     1.571380e+01_fp_kind,1.306840e+01_fp_kind,1.089820e+01_fp_kind,8.916800e+00_fp_kind,7.320000e+00_fp_kind,&
+     5.453300e+00_fp_kind,4.567500e+00_fp_kind], 2.0700594844679472e+00_fp_kind,1.406290e+01_fp_kind) /
 data ionicXrayFF( 2, 84) / t_ionicFF('Po',  84,  0, &
-    [84.0000d0, 82.6037d0, 79.1498d0, 74.9467d0, 70.7698d0, 66.8295d0, 63.1218d0, 59.6215d0, 56.3256d0,&
-     53.2442d0, 50.3868d0, 45.3376d0, 41.0773d0, 37.4291d0, 34.2266d0, 31.3560d0, 26.4096d0, 22.4543d0, 19.4578d0, 17.2843d0,&
-     15.7138d0, 13.0684d0, 10.8982d0, 8.91680d0, 7.32000d0, 5.45330d0, 4.56750d0], 0.2070059484467947d1, 14.0629d0) /
+     [8.400000e+01_fp_kind,8.260370e+01_fp_kind,7.914980e+01_fp_kind,7.494670e+01_fp_kind,7.076980e+01_fp_kind,&
+     6.682950e+01_fp_kind,6.312180e+01_fp_kind,5.962150e+01_fp_kind,5.632560e+01_fp_kind,5.324420e+01_fp_kind,&
+     5.038680e+01_fp_kind,4.533760e+01_fp_kind,4.107730e+01_fp_kind,3.742910e+01_fp_kind,3.422660e+01_fp_kind,&
+     3.135600e+01_fp_kind,2.640960e+01_fp_kind,2.245430e+01_fp_kind,1.945780e+01_fp_kind,1.728430e+01_fp_kind,&
+     1.571380e+01_fp_kind,1.306840e+01_fp_kind,1.089820e+01_fp_kind,8.916800e+00_fp_kind,7.320000e+00_fp_kind,&
+     5.453300e+00_fp_kind,4.567500e+00_fp_kind], 2.0700594844679472e+00_fp_kind,1.406290e+01_fp_kind) /
 data ionicXrayFF( 1, 85) / t_ionicFF('At',  85,  0, &
-    [85.0000d0, 83.6254d0, 80.1508d0, 75.8217d0, 71.4937d0, 67.4621d0, 63.7365d0, 60.2620d0, 57.0015d0,&
-     53.9436d0, 51.0899d0, 46.0000d0, 41.6772d0, 37.9820d0, 34.7576d0, 31.8818d0, 26.9258d0, 22.9179d0, 19.8322d0, 17.5660d0,&
-     15.9250d0, 13.2308d0, 11.0952d0, 9.12510d0, 7.50150d0, 5.55250d0, 4.63280d0], 0.2075234672851614d1, 13.7529d0) /
+     [8.500000e+01_fp_kind,8.362540e+01_fp_kind,8.015080e+01_fp_kind,7.582170e+01_fp_kind,7.149370e+01_fp_kind,&
+     6.746210e+01_fp_kind,6.373650e+01_fp_kind,6.026200e+01_fp_kind,5.700150e+01_fp_kind,5.394360e+01_fp_kind,&
+     5.108990e+01_fp_kind,4.600000e+01_fp_kind,4.167720e+01_fp_kind,3.798200e+01_fp_kind,3.475760e+01_fp_kind,&
+     3.188180e+01_fp_kind,2.692580e+01_fp_kind,2.291790e+01_fp_kind,1.983220e+01_fp_kind,1.756600e+01_fp_kind,&
+     1.592500e+01_fp_kind,1.323080e+01_fp_kind,1.109520e+01_fp_kind,9.125100e+00_fp_kind,7.501500e+00_fp_kind,&
+     5.552500e+00_fp_kind,4.632800e+00_fp_kind], 2.0752346728516140e+00_fp_kind,1.375290e+01_fp_kind) /
 data ionicXrayFF( 2, 85) / t_ionicFF('At',  85,  0, &
-    [85.0000d0, 83.6254d0, 80.1508d0, 75.8217d0, 71.4937d0, 67.4621d0, 63.7365d0, 60.2620d0, 57.0015d0,&
-     53.9436d0, 51.0899d0, 46.0000d0, 41.6772d0, 37.9820d0, 34.7576d0, 31.8818d0, 26.9258d0, 22.9179d0, 19.8322d0, 17.5660d0,&
-     15.9250d0, 13.2308d0, 11.0952d0, 9.12510d0, 7.50150d0, 5.55250d0, 4.63280d0], 0.2075234672851614d1, 13.7529d0) /
+     [8.500000e+01_fp_kind,8.362540e+01_fp_kind,8.015080e+01_fp_kind,7.582170e+01_fp_kind,7.149370e+01_fp_kind,&
+     6.746210e+01_fp_kind,6.373650e+01_fp_kind,6.026200e+01_fp_kind,5.700150e+01_fp_kind,5.394360e+01_fp_kind,&
+     5.108990e+01_fp_kind,4.600000e+01_fp_kind,4.167720e+01_fp_kind,3.798200e+01_fp_kind,3.475760e+01_fp_kind,&
+     3.188180e+01_fp_kind,2.692580e+01_fp_kind,2.291790e+01_fp_kind,1.983220e+01_fp_kind,1.756600e+01_fp_kind,&
+     1.592500e+01_fp_kind,1.323080e+01_fp_kind,1.109520e+01_fp_kind,9.125100e+00_fp_kind,7.501500e+00_fp_kind,&
+     5.552500e+00_fp_kind,4.632800e+00_fp_kind], 2.0752346728516140e+00_fp_kind,1.375290e+01_fp_kind) /
 data ionicXrayFF( 1, 86) / t_ionicFF('Rn',  86,  0, &
-    [86.0000d0, 84.6483d0, 81.1707d0, 76.7410d0, 72.2631d0, 68.1143d0, 64.3387d0, 60.8690d0, 57.6388d0,&
-     54.6115d0, 51.7746d0, 46.6674d0, 42.2891d0, 38.5410d0, 35.2852d0, 32.3978d0, 27.4336d0, 23.3851d0, 20.2198d0, 17.8628d0,&
-     16.1475d0, 13.3901d0, 11.2858d0, 9.33210d0, 7.68670d0, 5.65620d0, 4.69910d0], 0.2080759253587594d1, 13.4546d0) /
+     [8.600000e+01_fp_kind,8.464830e+01_fp_kind,8.117070e+01_fp_kind,7.674100e+01_fp_kind,7.226310e+01_fp_kind,&
+     6.811430e+01_fp_kind,6.433870e+01_fp_kind,6.086900e+01_fp_kind,5.763880e+01_fp_kind,5.461150e+01_fp_kind,&
+     5.177460e+01_fp_kind,4.666740e+01_fp_kind,4.228910e+01_fp_kind,3.854100e+01_fp_kind,3.528520e+01_fp_kind,&
+     3.239780e+01_fp_kind,2.743360e+01_fp_kind,2.338510e+01_fp_kind,2.021980e+01_fp_kind,1.786280e+01_fp_kind,&
+     1.614750e+01_fp_kind,1.339010e+01_fp_kind,1.128580e+01_fp_kind,9.332100e+00_fp_kind,7.686700e+00_fp_kind,&
+     5.656200e+00_fp_kind,4.699100e+00_fp_kind], 2.0807592535875941e+00_fp_kind,1.345460e+01_fp_kind) /
 data ionicXrayFF( 2, 86) / t_ionicFF('Rn',  86,  0, &
-    [86.0000d0, 84.6483d0, 81.1707d0, 76.7410d0, 72.2631d0, 68.1143d0, 64.3387d0, 60.8690d0, 57.6388d0,&
-     54.6115d0, 51.7746d0, 46.6674d0, 42.2891d0, 38.5410d0, 35.2852d0, 32.3978d0, 27.4336d0, 23.3851d0, 20.2198d0, 17.8628d0,&
-     16.1475d0, 13.3901d0, 11.2858d0, 9.33210d0, 7.68670d0, 5.65620d0, 4.69910d0], 0.2080759253587594d1, 13.4546d0) /
+     [8.600000e+01_fp_kind,8.464830e+01_fp_kind,8.117070e+01_fp_kind,7.674100e+01_fp_kind,7.226310e+01_fp_kind,&
+     6.811430e+01_fp_kind,6.433870e+01_fp_kind,6.086900e+01_fp_kind,5.763880e+01_fp_kind,5.461150e+01_fp_kind,&
+     5.177460e+01_fp_kind,4.666740e+01_fp_kind,4.228910e+01_fp_kind,3.854100e+01_fp_kind,3.528520e+01_fp_kind,&
+     3.239780e+01_fp_kind,2.743360e+01_fp_kind,2.338510e+01_fp_kind,2.021980e+01_fp_kind,1.786280e+01_fp_kind,&
+     1.614750e+01_fp_kind,1.339010e+01_fp_kind,1.128580e+01_fp_kind,9.332100e+00_fp_kind,7.686700e+00_fp_kind,&
+     5.656200e+00_fp_kind,4.699100e+00_fp_kind], 2.0807592535875941e+00_fp_kind,1.345460e+01_fp_kind) /
 data ionicXrayFF( 1, 87) / t_ionicFF('Fr',  87,  0, &
-    [87.0000d0, 85.2873d0, 81.6687d0, 77.4340d0, 73.0404d0, 68.8472d0, 65.0035d0, 61.4967d0, 58.2634d0,&
-     55.2503d0, 52.4280d0, 47.3191d0, 42.9005d0, 39.1038d0, 35.8133d0, 32.9091d0, 27.9347d0, 23.8534d0, 20.6169d0, 18.1723d0,&
-     16.3808d0, 13.5484d0, 11.4708d0, 9.53810d0, 7.87300d0, 5.76410d0, 4.76720d0], 0.2086992051833334d1, 18.5513d0) /
+     [8.700000e+01_fp_kind,8.528730e+01_fp_kind,8.166870e+01_fp_kind,7.743400e+01_fp_kind,7.304040e+01_fp_kind,&
+     6.884720e+01_fp_kind,6.500350e+01_fp_kind,6.149670e+01_fp_kind,5.826340e+01_fp_kind,5.525030e+01_fp_kind,&
+     5.242800e+01_fp_kind,4.731910e+01_fp_kind,4.290050e+01_fp_kind,3.910380e+01_fp_kind,3.581330e+01_fp_kind,&
+     3.290910e+01_fp_kind,2.793470e+01_fp_kind,2.385340e+01_fp_kind,2.061690e+01_fp_kind,1.817230e+01_fp_kind,&
+     1.638080e+01_fp_kind,1.354840e+01_fp_kind,1.147080e+01_fp_kind,9.538100e+00_fp_kind,7.873000e+00_fp_kind,&
+     5.764100e+00_fp_kind,4.767200e+00_fp_kind], 2.0869920518333340e+00_fp_kind,1.855130e+01_fp_kind) /
 data ionicXrayFF( 2, 87) / t_ionicFF('Fr',  87,  0, &
-    [87.0000d0, 85.2873d0, 81.6687d0, 77.4340d0, 73.0404d0, 68.8472d0, 65.0035d0, 61.4967d0, 58.2634d0,&
-     55.2503d0, 52.4280d0, 47.3191d0, 42.9005d0, 39.1038d0, 35.8133d0, 32.9091d0, 27.9347d0, 23.8534d0, 20.6169d0, 18.1723d0,&
-     16.3808d0, 13.5484d0, 11.4708d0, 9.53810d0, 7.87300d0, 5.76410d0, 4.76720d0], 0.2086992051833334d1, 18.5513d0) /
+     [8.700000e+01_fp_kind,8.528730e+01_fp_kind,8.166870e+01_fp_kind,7.743400e+01_fp_kind,7.304040e+01_fp_kind,&
+     6.884720e+01_fp_kind,6.500350e+01_fp_kind,6.149670e+01_fp_kind,5.826340e+01_fp_kind,5.525030e+01_fp_kind,&
+     5.242800e+01_fp_kind,4.731910e+01_fp_kind,4.290050e+01_fp_kind,3.910380e+01_fp_kind,3.581330e+01_fp_kind,&
+     3.290910e+01_fp_kind,2.793470e+01_fp_kind,2.385340e+01_fp_kind,2.061690e+01_fp_kind,1.817230e+01_fp_kind,&
+     1.638080e+01_fp_kind,1.354840e+01_fp_kind,1.147080e+01_fp_kind,9.538100e+00_fp_kind,7.873000e+00_fp_kind,&
+     5.764100e+00_fp_kind,4.767200e+00_fp_kind], 2.0869920518333340e+00_fp_kind,1.855130e+01_fp_kind) /
 data ionicXrayFF( 1, 88) / t_ionicFF('Ra',  88,  0, &
-    [88.0000d0, 86.1054d0, 82.2057d0, 77.9936d0, 73.7336d0, 69.5828d0, 65.7032d0, 62.1475d0, 48.8869d0,&
-     55.8701d0, 53.0562d0, 47.9566d0, 43.5132d0, 39.6733d0, 36.3445d0, 33.4171d0, 28.4274d0, 24.3206d0, 21.0226d0, 18.4958d0,&
-     16.6267d0, 13.7054d0, 11.6492d0, 9.74150d0, 8.06100d0, 5.87920d0, 4.83630d0], 0.2093543216571653d1, 20.3926d0) /
+     [8.800000e+01_fp_kind,8.610540e+01_fp_kind,8.220570e+01_fp_kind,7.799360e+01_fp_kind,7.373360e+01_fp_kind,&
+     6.958280e+01_fp_kind,6.570320e+01_fp_kind,6.214750e+01_fp_kind,4.888690e+01_fp_kind,5.587010e+01_fp_kind,&
+     5.305620e+01_fp_kind,4.795660e+01_fp_kind,4.351320e+01_fp_kind,3.967330e+01_fp_kind,3.634450e+01_fp_kind,&
+     3.341710e+01_fp_kind,2.842740e+01_fp_kind,2.432060e+01_fp_kind,2.102260e+01_fp_kind,1.849580e+01_fp_kind,&
+     1.662670e+01_fp_kind,1.370540e+01_fp_kind,1.164920e+01_fp_kind,9.741500e+00_fp_kind,8.061000e+00_fp_kind,&
+     5.879200e+00_fp_kind,4.836300e+00_fp_kind], 2.0935432165716530e+00_fp_kind,2.039260e+01_fp_kind) /
 data ionicXrayFF( 2, 88) / t_ionicFF('Ra',  88,  0, &
-    [88.0000d0, 86.1054d0, 82.2057d0, 77.9936d0, 73.7336d0, 69.5828d0, 65.7032d0, 62.1475d0, 48.8869d0,&
-     55.8701d0, 53.0562d0, 47.9566d0, 43.5132d0, 39.6733d0, 36.3445d0, 33.4171d0, 28.4274d0, 24.3206d0, 21.0226d0, 18.4958d0,&
-     16.6267d0, 13.7054d0, 11.6492d0, 9.74150d0, 8.06100d0, 5.87920d0, 4.83630d0], 0.2093543216571653d1, 20.3926d0) /
+     [8.800000e+01_fp_kind,8.610540e+01_fp_kind,8.220570e+01_fp_kind,7.799360e+01_fp_kind,7.373360e+01_fp_kind,&
+     6.958280e+01_fp_kind,6.570320e+01_fp_kind,6.214750e+01_fp_kind,4.888690e+01_fp_kind,5.587010e+01_fp_kind,&
+     5.305620e+01_fp_kind,4.795660e+01_fp_kind,4.351320e+01_fp_kind,3.967330e+01_fp_kind,3.634450e+01_fp_kind,&
+     3.341710e+01_fp_kind,2.842740e+01_fp_kind,2.432060e+01_fp_kind,2.102260e+01_fp_kind,1.849580e+01_fp_kind,&
+     1.662670e+01_fp_kind,1.370540e+01_fp_kind,1.164920e+01_fp_kind,9.741500e+00_fp_kind,8.061000e+00_fp_kind,&
+     5.879200e+00_fp_kind,4.836300e+00_fp_kind], 2.0935432165716530e+00_fp_kind,2.039260e+01_fp_kind) /
 data ionicXrayFF( 1, 89) / t_ionicFF('Ac',  89,  0, &
-    [89.0000d0, 87.0680d0, 82.9647d0, 78.5897d0, 74.3250d0, 70.2177d0, 66.3583d0, 62.7984d0, 59.5277d0,&
-     56.5054d0, 53.6909d0, 48.5871d0, 44.1183d0, 40.2386d0, 36.8730d0, 33.9221d0, 28.9153d0, 24.7877d0, 21.4355d0, 18.8309d0,&
-     16.8842d0, 13.8627d0, 11.8215d0, 9.94060d0, 8.25160d0, 6.00020d0, 4.90630d0], 0.2100357101661601d1, 20.4678d0) /
+     [8.900000e+01_fp_kind,8.706800e+01_fp_kind,8.296470e+01_fp_kind,7.858970e+01_fp_kind,7.432500e+01_fp_kind,&
+     7.021770e+01_fp_kind,6.635830e+01_fp_kind,6.279840e+01_fp_kind,5.952770e+01_fp_kind,5.650540e+01_fp_kind,&
+     5.369090e+01_fp_kind,4.858710e+01_fp_kind,4.411830e+01_fp_kind,4.023860e+01_fp_kind,3.687300e+01_fp_kind,&
+     3.392210e+01_fp_kind,2.891530e+01_fp_kind,2.478770e+01_fp_kind,2.143550e+01_fp_kind,1.883090e+01_fp_kind,&
+     1.688420e+01_fp_kind,1.386270e+01_fp_kind,1.182150e+01_fp_kind,9.940600e+00_fp_kind,8.251600e+00_fp_kind,&
+     6.000200e+00_fp_kind,4.906300e+00_fp_kind], 2.1003571016616012e+00_fp_kind,2.046780e+01_fp_kind) /
 data ionicXrayFF( 2, 89) / t_ionicFF('Ac',  89,  0, &
-    [89.0000d0, 87.0680d0, 82.9647d0, 78.5897d0, 74.3250d0, 70.2177d0, 66.3583d0, 62.7984d0, 59.5277d0,&
-     56.5054d0, 53.6909d0, 48.5871d0, 44.1183d0, 40.2386d0, 36.8730d0, 33.9221d0, 28.9153d0, 24.7877d0, 21.4355d0, 18.8309d0,&
-     16.8842d0, 13.8627d0, 11.8215d0, 9.94060d0, 8.25160d0, 6.00020d0, 4.90630d0], 0.2100357101661601d1, 20.4678d0) /
+     [8.900000e+01_fp_kind,8.706800e+01_fp_kind,8.296470e+01_fp_kind,7.858970e+01_fp_kind,7.432500e+01_fp_kind,&
+     7.021770e+01_fp_kind,6.635830e+01_fp_kind,6.279840e+01_fp_kind,5.952770e+01_fp_kind,5.650540e+01_fp_kind,&
+     5.369090e+01_fp_kind,4.858710e+01_fp_kind,4.411830e+01_fp_kind,4.023860e+01_fp_kind,3.687300e+01_fp_kind,&
+     3.392210e+01_fp_kind,2.891530e+01_fp_kind,2.478770e+01_fp_kind,2.143550e+01_fp_kind,1.883090e+01_fp_kind,&
+     1.688420e+01_fp_kind,1.386270e+01_fp_kind,1.182150e+01_fp_kind,9.940600e+00_fp_kind,8.251600e+00_fp_kind,&
+     6.000200e+00_fp_kind,4.906300e+00_fp_kind], 2.1003571016616012e+00_fp_kind,2.046780e+01_fp_kind) /
 data ionicXrayFF( 1, 90) / t_ionicFF('Th',  90,  0, &
-    [90.0000d0, 88.0678d0, 83.8234d0, 79.2520d0, 74.9053d0, 70.8049d0, 66.9708d0, 63.4258d0, 60.1597d0,&
-     57.1382d0, 54.3240d0, 49.2145d0, 44.7218d0, 40.8040d0, 37.4010d0, 34.4236d0, 29.3967d0, 25.2526d0, 21.8542d0, 19.1773d0,&
-     17.1539d0, 14.0218d0, 11.9881d0, 10.1356d0, 8.44410d0, 6.12600d0, 4.97850d0], 0.2108007974453521d1, 20.2022d0) /
+     [9.000000e+01_fp_kind,8.806780e+01_fp_kind,8.382340e+01_fp_kind,7.925200e+01_fp_kind,7.490530e+01_fp_kind,&
+     7.080490e+01_fp_kind,6.697080e+01_fp_kind,6.342580e+01_fp_kind,6.015970e+01_fp_kind,5.713820e+01_fp_kind,&
+     5.432400e+01_fp_kind,4.921450e+01_fp_kind,4.472180e+01_fp_kind,4.080400e+01_fp_kind,3.740100e+01_fp_kind,&
+     3.442360e+01_fp_kind,2.939670e+01_fp_kind,2.525260e+01_fp_kind,2.185420e+01_fp_kind,1.917730e+01_fp_kind,&
+     1.715390e+01_fp_kind,1.402180e+01_fp_kind,1.198810e+01_fp_kind,1.013560e+01_fp_kind,8.444100e+00_fp_kind,&
+     6.126000e+00_fp_kind,4.978500e+00_fp_kind], 2.1080079744535212e+00_fp_kind,2.020220e+01_fp_kind) /
 data ionicXrayFF( 2, 90) / t_ionicFF('Th',  90,  0, &
-    [90.0000d0, 88.0678d0, 83.8234d0, 79.2520d0, 74.9053d0, 70.8049d0, 66.9708d0, 63.4258d0, 60.1597d0,&
-     57.1382d0, 54.3240d0, 49.2145d0, 44.7218d0, 40.8040d0, 37.4010d0, 34.4236d0, 29.3967d0, 25.2526d0, 21.8542d0, 19.1773d0,&
-     17.1539d0, 14.0218d0, 11.9881d0, 10.1356d0, 8.44410d0, 6.12600d0, 4.97850d0], 0.2108007974453521d1, 20.2022d0) /
+     [9.000000e+01_fp_kind,8.806780e+01_fp_kind,8.382340e+01_fp_kind,7.925200e+01_fp_kind,7.490530e+01_fp_kind,&
+     7.080490e+01_fp_kind,6.697080e+01_fp_kind,6.342580e+01_fp_kind,6.015970e+01_fp_kind,5.713820e+01_fp_kind,&
+     5.432400e+01_fp_kind,4.921450e+01_fp_kind,4.472180e+01_fp_kind,4.080400e+01_fp_kind,3.740100e+01_fp_kind,&
+     3.442360e+01_fp_kind,2.939670e+01_fp_kind,2.525260e+01_fp_kind,2.185420e+01_fp_kind,1.917730e+01_fp_kind,&
+     1.715390e+01_fp_kind,1.402180e+01_fp_kind,1.198810e+01_fp_kind,1.013560e+01_fp_kind,8.444100e+00_fp_kind,&
+     6.126000e+00_fp_kind,4.978500e+00_fp_kind], 2.1080079744535212e+00_fp_kind,2.020220e+01_fp_kind) /
 data ionicXrayFF( 1, 91) / t_ionicFF('Pa',  91,  0, &
-    [91.0000d0, 89.1275d0, 85.0251d0, 80.5198d0, 76.0876d0, 71.8168d0, 67.8071d0, 64.1215d0, 60.7591d0,&
-     57.6809d0, 54.8396d0, 49.7268d0, 45.2521d0, 41.3458d0, 37.9424d0, 34.9568d0, 29.9055d0, 25.7268d0, 22.2739d0, 19.5254d0,&
-     17.4279d0, 14.1809d0, 12.1450d0, 10.3197d0, 8.63180d0, 6.25260d0, 5.05490d0], 0.2117356312343581d1, 19.6404d0) /
+     [9.100000e+01_fp_kind,8.912750e+01_fp_kind,8.502510e+01_fp_kind,8.051980e+01_fp_kind,7.608760e+01_fp_kind,&
+     7.181680e+01_fp_kind,6.780710e+01_fp_kind,6.412150e+01_fp_kind,6.075910e+01_fp_kind,5.768090e+01_fp_kind,&
+     5.483960e+01_fp_kind,4.972680e+01_fp_kind,4.525210e+01_fp_kind,4.134580e+01_fp_kind,3.794240e+01_fp_kind,&
+     3.495680e+01_fp_kind,2.990550e+01_fp_kind,2.572680e+01_fp_kind,2.227390e+01_fp_kind,1.952540e+01_fp_kind,&
+     1.742790e+01_fp_kind,1.418090e+01_fp_kind,1.214500e+01_fp_kind,1.031970e+01_fp_kind,8.631800e+00_fp_kind,&
+     6.252600e+00_fp_kind,5.054900e+00_fp_kind], 2.1173563123435808e+00_fp_kind,1.964040e+01_fp_kind) /
 data ionicXrayFF( 2, 91) / t_ionicFF('Pa',  91,  0, &
-    [91.0000d0, 89.1275d0, 85.0251d0, 80.5198d0, 76.0876d0, 71.8168d0, 67.8071d0, 64.1215d0, 60.7591d0,&
-     57.6809d0, 54.8396d0, 49.7268d0, 45.2521d0, 41.3458d0, 37.9424d0, 34.9568d0, 29.9055d0, 25.7268d0, 22.2739d0, 19.5254d0,&
-     17.4279d0, 14.1809d0, 12.1450d0, 10.3197d0, 8.63180d0, 6.25260d0, 5.05490d0], 0.2117356312343581d1, 19.6404d0) /
+     [9.100000e+01_fp_kind,8.912750e+01_fp_kind,8.502510e+01_fp_kind,8.051980e+01_fp_kind,7.608760e+01_fp_kind,&
+     7.181680e+01_fp_kind,6.780710e+01_fp_kind,6.412150e+01_fp_kind,6.075910e+01_fp_kind,5.768090e+01_fp_kind,&
+     5.483960e+01_fp_kind,4.972680e+01_fp_kind,4.525210e+01_fp_kind,4.134580e+01_fp_kind,3.794240e+01_fp_kind,&
+     3.495680e+01_fp_kind,2.990550e+01_fp_kind,2.572680e+01_fp_kind,2.227390e+01_fp_kind,1.952540e+01_fp_kind,&
+     1.742790e+01_fp_kind,1.418090e+01_fp_kind,1.214500e+01_fp_kind,1.031970e+01_fp_kind,8.631800e+00_fp_kind,&
+     6.252600e+00_fp_kind,5.054900e+00_fp_kind], 2.1173563123435808e+00_fp_kind,1.964040e+01_fp_kind) /
 data ionicXrayFF( 1, 92) / t_ionicFF('U ',  92,  0, &
-    [92.0000d0, 90.1546d0, 86.0667d0, 81.5218d0, 77.0215d0, 72.6719d0, 68.5817d0, 64.8221d0, 61.3996d0,&
-     58.2784d0, 55.4101d0, 50.2762d0, 45.7964d0, 41.8826d0, 38.4668d0, 35.4682d0, 30.3973d0, 26.1970d0, 22.7011d0, 19.8873d0,&
-     17.7164d0, 14.3449d0, 12.2993d0, 10.5019d0, 8.82080d0, 6.38560d0, 5.13330d0], 0.2127383680973260d1, 19.2909d0) /
+     [9.200000e+01_fp_kind,9.015460e+01_fp_kind,8.606670e+01_fp_kind,8.152180e+01_fp_kind,7.702150e+01_fp_kind,&
+     7.267190e+01_fp_kind,6.858170e+01_fp_kind,6.482210e+01_fp_kind,6.139960e+01_fp_kind,5.827840e+01_fp_kind,&
+     5.541010e+01_fp_kind,5.027620e+01_fp_kind,4.579640e+01_fp_kind,4.188260e+01_fp_kind,3.846680e+01_fp_kind,&
+     3.546820e+01_fp_kind,3.039730e+01_fp_kind,2.619700e+01_fp_kind,2.270110e+01_fp_kind,1.988730e+01_fp_kind,&
+     1.771640e+01_fp_kind,1.434490e+01_fp_kind,1.229930e+01_fp_kind,1.050190e+01_fp_kind,8.820800e+00_fp_kind,&
+     6.385600e+00_fp_kind,5.133300e+00_fp_kind], 2.1273836809732600e+00_fp_kind,1.929090e+01_fp_kind) /
 data ionicXrayFF( 2, 92) / t_ionicFF('U ',  92,  0, &
-    [92.0000d0, 90.1546d0, 86.0667d0, 81.5218d0, 77.0215d0, 72.6719d0, 68.5817d0, 64.8221d0, 61.3996d0,&
-     58.2784d0, 55.4101d0, 50.2762d0, 45.7964d0, 41.8826d0, 38.4668d0, 35.4682d0, 30.3973d0, 26.1970d0, 22.7011d0, 19.8873d0,&
-     17.7164d0, 14.3449d0, 12.2993d0, 10.5019d0, 8.82080d0, 6.38560d0, 5.13330d0], 0.2127383680973260d1, 19.2909d0) /
+     [9.200000e+01_fp_kind,9.015460e+01_fp_kind,8.606670e+01_fp_kind,8.152180e+01_fp_kind,7.702150e+01_fp_kind,&
+     7.267190e+01_fp_kind,6.858170e+01_fp_kind,6.482210e+01_fp_kind,6.139960e+01_fp_kind,5.827840e+01_fp_kind,&
+     5.541010e+01_fp_kind,5.027620e+01_fp_kind,4.579640e+01_fp_kind,4.188260e+01_fp_kind,3.846680e+01_fp_kind,&
+     3.546820e+01_fp_kind,3.039730e+01_fp_kind,2.619700e+01_fp_kind,2.270110e+01_fp_kind,1.988730e+01_fp_kind,&
+     1.771640e+01_fp_kind,1.434490e+01_fp_kind,1.229930e+01_fp_kind,1.050190e+01_fp_kind,8.820800e+00_fp_kind,&
+     6.385600e+00_fp_kind,5.133300e+00_fp_kind], 2.1273836809732600e+00_fp_kind,1.929090e+01_fp_kind) /
+
+
 
 type :: t_ionicFF_peng
   character(2) :: element
@@ -897,117 +1635,329 @@ end type t_ionicFF_peng
 
 type(t_ionicFF_peng):: ionicFF_Peng(113)
 
-data ionicFF_Peng(1  )/t_ionicFF_peng('H ', 1 ,  -1, [0.140E+0, 0.649E+0, 0.137E+1,  0.337E+0,  0.787E+0],  [0.984E+0,  	0.867E+1,	0.389E+2,	0.111E+3,	0.166E+3])/	
-data ionicFF_Peng(2  )/t_ionicFF_peng('Li', 3 ,  +1, [0.460E-2, 0.165E-1, 0.435E-1,  0.649E-1,  0.270E-1],  [0.358E-1,  	0.239E+0,	0.879E+0,	0.264E+1,	0.709E+1])/	
-data ionicFF_Peng(3  )/t_ionicFF_peng('Be', 4 ,  +2, [0.340E-2, 0.103E-1, 0.233E-1,  0.325E-1,  0.120E-1],  [0.267E-1,  	0.162E+0,	0.531E+0,	0.148E+1,	0.388E+1])/	
-data ionicFF_Peng(4  )/t_ionicFF_peng('O ', 8 ,  -1, [0.205E+0, 0.628E+0, 0.117E+1,  0.103E+1,  0.290E+0],  [0.397E+0,  	0.264E+1,	0.880E+1,	0.271E+2,	0.918E+2])/	
-data ionicFF_Peng(5  )/t_ionicFF_peng('O ', 8 ,  -2, [0.421E-1, 0.210E+0, 0.852E+0,  0.182E+1,  0.117E+1],  [0.609E-1,  	0.559E+0,	0.296E+1,	0.115E+2,	0.377E+2])/	
-data ionicFF_Peng(6  )/t_ionicFF_peng('F ', 9 ,  -1, [0.134E+0, 0.391E+0, 0.814E+0,  0.928E+0,  0.347E+0],  [0.228E+0,  	0.147E+1,	0.468E+1,	0.132E+2,	0.360E+2])/	
-data ionicFF_Peng(7  )/t_ionicFF_peng('Na', 11,  +1, [0.256E-1, 0.919E-1, 0.297E+0,  0.514E+0,  0.199E+0],  [0.397E-1,  	0.287E+0,	0.118E+1,	0.375E+1,	0.108E+2])/	
-data ionicFF_Peng(8  )/t_ionicFF_peng('Mg', 12,  +2, [0.210E-1, 0.672E-1, 0.198E+0,  0.368E+0,  0.174E+0],  [0.331E-1,  	0.222E+0,	0.838E+0,	0.248E+1,	0.675E+1])/	
-data ionicFF_Peng(9  )/t_ionicFF_peng('Al', 13,  +3, [0.192E-1, 0.579E-1, 0.163E+0,  0.284E+0,  0.114E+0],  [0.306E-1,  	0.198E+0,	0.713E+0,	0.204E+1,	0.525E+1])/	
-data ionicFF_Peng(10 )/t_ionicFF_peng('Si', 14,  +4, [0.192E+0, 0.289E+0, 0.100E+0, -0.728E-1,  0.120E-2],  [0.359E+0,  	0.196E+1,	0.934E+1,	0.111E+2,	0.134E+2])/	
-data ionicFF_Peng(11 )/t_ionicFF_peng('Cl', 17,  -1, [0.265E+0, 0.596E+0, 0.160E+1,  0.269E+1,  0.123E+1],  [0.252E+0,  	0.156E+1,	0.621E+1,	0.178E+2,	0.478E+2])/	
-data ionicFF_Peng(12 )/t_ionicFF_peng('K ', 19,  +1, [0.199E+0, 0.396E+0, 0.928E+0,  0.145E+1,  0.450E+0],  [0.192E+0,  	0.110E+1,	0.391E+1,	0.975E+1,	0.234E+2])/	
-data ionicFF_Peng(13 )/t_ionicFF_peng('Ca', 20,  +2, [0.164E+0, 0.327E+0, 0.743E+0,  0.116E+1,  0.307E+0],  [0.157E+0,  	0.894E+0,	0.315E+1,	0.767E+1,	0.177E+2])/	
-data ionicFF_Peng(14 )/t_ionicFF_peng('Sc', 21,  +3, [0.163E+0, 0.307E+0, 0.716E+0,  0.880E+0,  0.139E+0],  [0.157E+0,  	0.899E+0,	0.306E+1,	0.705E+1,	0.161E+2])/	
-data ionicFF_Peng(15 )/t_ionicFF_peng('Ti', 22,  +2, [0.399E+0, 0.104E+1, 0.121E+1, -0.797E-1,  0.352E+0],  [0.376E+0,  	0.274E+1,	0.810E+1,	0.142E+2,	0.232E+2])/	
-data ionicFF_Peng(16 )/t_ionicFF_peng('Ti', 22,  +3, [0.364E+0, 0.919E+0, 0.135E+1, -0.933E+0,  0.589E+0],  [0.364E+0,  	0.267E+1,	0.818E+1,	0.118E+2,	0.149E+2])/	
-data ionicFF_Peng(17 )/t_ionicFF_peng('Ti', 22,  +4, [0.116E+0, 0.256E+0, 0.565E+0,  0.772E+0,  0.132E+0],  [0.108E+0,  	0.655E+0,	0.238E+1,	0.551E+1,	0.123E+2])/	
-data ionicFF_Peng(18 )/t_ionicFF_peng('V ', 23,  +2, [0.317E+0, 0.939E+0, 0.149E+1, -0.131E+1,  0.147E+1],  [0.269E+0,  	0.209E+1,	0.722E+1,	0.152E+2,	0.176E+2])/	
-data ionicFF_Peng(19 )/t_ionicFF_peng('V ', 23,  +3, [0.341E+0, 0.805E+0, 0.942E+0,  0.783E-1,  0.156E+0],  [0.321E+0,  	0.223E+1,	0.599E+1,	0.134E+2,	0.169E+2])/	
-data ionicFF_Peng(20 )/t_ionicFF_peng('V ', 23,  +5, [0.367E-1, 0.124E+0, 0.244E+0,  0.723E+0,  0.435E+0],  [0.330E-1,  	0.222E+0,	0.824E+0,	0.280E+1,	0.670E+1])/	
-data ionicFF_Peng(21 )/t_ionicFF_peng('Cr', 24,  +2, [0.237E+0, 0.634E+0, 0.123E+1,  0.713E+0,  0.859E-1],  [0.177E+0,  	0.135E+1,	0.430E+1,	0.122E+2,	0.390E+2])/	
-data ionicFF_Peng(22 )/t_ionicFF_peng('Cr', 24,  +3, [0.393E+0, 0.105E+1, 0.162E+1, -0.115E+1,  0.407E+0],  [0.359E+0,  	0.257E+1,	0.868E+1,	0.110E+2,	0.158E+2])/	
-data ionicFF_Peng(23 )/t_ionicFF_peng('Cr', 24,  +4, [0.132E+0, 0.292E+0, 0.703E+0,  0.692E+0,  0.959E-1],  [0.109E+0,  	0.695E+0,	0.239E+1,	0.565E+1,	0.147E+2])/	
-data ionicFF_Peng(24 )/t_ionicFF_peng('Mn', 25,  +2, [0.576E-1, 0.210E+0, 0.604E+0,  0.132E+1,  0.659E+0],  [0.398E-1,  	0.284E+0,	0.129E+1,	0.423E+1,	0.145E+2])/	
-data ionicFF_Peng(25 )/t_ionicFF_peng('Mn', 25,  +3, [0.116E+0, 0.523E+0, 0.881E+0,  0.589E+0,  0.214E+0],  [0.117E-1,  	0.876E+0,	0.306E+1,	0.644E+1,	0.143E+2])/	
-data ionicFF_Peng(26 )/t_ionicFF_peng('Mn', 25,  +4, [0.381E+0, 0.183E+1,-0.133E+1,  0.995E+0,  0.618E-1],  [0.354E+0,  	0.272E+1,	0.347E+1,	0.547E+1,	0.161E+2])/	
-data ionicFF_Peng(27 )/t_ionicFF_peng('Fe', 26,  +2, [0.307E+0, 0.838E+0, 0.111E+1,  0.280E+0,  0.277E+0],  [0.230E+0,  	0.162E+1,	0.487E+1,	0.107E+2,	0.192E+2])/	
-data ionicFF_Peng(28 )/t_ionicFF_peng('Fe', 26,  +3, [0.198E+0, 0.387E+0, 0.889E+0,  0.709E+0,  0.117E+0],  [0.154E+0,  	0.893E+0,	0.262E+1,	0.665E+1,	0.180E+2])/	
-data ionicFF_Peng(29 )/t_ionicFF_peng('Co', 27,  +2, [0.213E+0, 0.488E+0, 0.998E+0,  0.828E+0,  0.230E+0],  [0.148E+0,  	0.939E+0,	0.278E+1,	0.731E+1,	0.207E+2])/	
-data ionicFF_Peng(30 )/t_ionicFF_peng('Co', 27,  +3, [0.331E+0, 0.487E+0, 0.729E+0,  0.608E+0,  0.131E+0],  [0.267E+0,  	0.141E+1,	0.289E+1,	0.645E+1,	0.158E+2])/	
-data ionicFF_Peng(31 )/t_ionicFF_peng('Ni', 28,  +2, [0.338E+0, 0.982E+0, 0.132E+1, -0.356E+1,  0.362E+1],  [0.237E+0,  	0.167E+1,	0.573E+1,	0.114E+2,	0.121E+2])/	
-data ionicFF_Peng(32 )/t_ionicFF_peng('Ni', 28,  +3, [0.347E+0, 0.877E+0, 0.790E+0,  0.538E-1,  0.192E+0],  [0.260E+0,  	0.171E+1,	0.475E+1,	0.751E+1,	0.130E+2])/	
-data ionicFF_Peng(33 )/t_ionicFF_peng('Cu', 29,  +1, [0.312E+0, 0.812E+0, 0.111E+1,  0.794E+0,  0.257E+0],  [0.201E+0,  	0.131E+1,	0.380E+1,	0.105E+2,	0.282E+2])/	
-data ionicFF_Peng(34 )/t_ionicFF_peng('Cu', 29,  +2, [0.224E+0, 0.544E+0, 0.970E+0,  0.727E+0,  0.182E+0],  [0.145E+0,  	0.933E+0,	0.269E+1,	0.711E+1,	0.194E+2])/	
-data ionicFF_Peng(35 )/t_ionicFF_peng('Zn', 30,  +2, [0.252E+0, 0.600E+0, 0.917E+0,  0.663E+0,  0.161E+0],  [0.161E+0,  	0.101E+1,	0.276E+1,	0.708E+1,	0.190E+2])/	
-data ionicFF_Peng(36 )/t_ionicFF_peng('Ga', 31,  +3, [0.391E+0, 0.947E+0, 0.690E+0,  0.709E-1,  0.653E-1],  [0.264E+0,  	0.165E+1,	0.482E+1,	0.107E+2,	0.152E+2])/	
-data ionicFF_Peng(37 )/t_ionicFF_peng('Ge', 32,  +4, [0.346E+0, 0.830E+0, 0.599E+0,  0.949E-1, -0.217E-1],  [0.232E+0,  	0.145E+1,	0.408E+1,	0.132E+2,	0.295E+2])/	
-data ionicFF_Peng(38 )/t_ionicFF_peng('Br', 35,  -1, [0.125E+0, 0.563E+0, 0.143E+1,  0.352E+1,  0.322E+1],  [0.530E-1,  	0.469E+0,	0.215E+1,	0.111E+2,	0.389E+2])/	
-data ionicFF_Peng(39 )/t_ionicFF_peng('Br', 37,  +1, [0.368E+0, 0.884E+0, 0.114E+1,  0.226E+1,  0.881E+0],  [0.187E+0,  	0.112E+1,	0.398E+1,	0.109E+2,	0.266E+2])/	
-data ionicFF_Peng(40 )/t_ionicFF_peng('Sr', 38,  +2, [0.346E+0, 0.804E+0, 0.988E+0,  0.189E+1,  0.609E+0],  [0.176E+0,  	0.104E+1,	0.359E+1,	0.932E+1,	0.214E+2])/	
-data ionicFF_Peng(41 )/t_ionicFF_peng('Y ', 39,  +3, [0.465E+0, 0.923E+0, 0.241E+1, -0.231E+1,  0.248E+1],  [0.240E+0,  	0.143E+1,	0.645E+1,	0.997E+1,	0.122E+2])/	
-data ionicFF_Peng(42 )/t_ionicFF_peng('Zr', 40,  +4, [0.234E+0, 0.642E+0, 0.747E+0,  0.147E+1,  0.377E+0],  [0.113E+0,  	0.736E+0,	0.254E+1,	0.672E+1,	0.147E+2])/	
-data ionicFF_Peng(43 )/t_ionicFF_peng('Nb', 41,  +3, [0.377E+0, 0.749E+0, 0.129E+1,  0.161E+1,  0.481E+0],  [0.184E+0,  	0.102E+1,	0.380E+1,	0.944E+1,	0.257E+2])/	
-data ionicFF_Peng(44 )/t_ionicFF_peng('Nb', 41,  +5, [0.828E-1, 0.271E+0, 0.654E+0,  0.124E+1,  0.829E+0],  [0.369E-1,  	0.261E+0,	0.957E+0,	0.394E+1,	0.944E+1])/	
-data ionicFF_Peng(45 )/t_ionicFF_peng('Mo', 42,  +3, [0.401E+0, 0.756E+0, 0.138E+1,  0.158E+1,  0.497E+0],  [0.191E+0,  	0.106E+1,	0.384E+1,	0.938E+1,	0.246E+2])/	
-data ionicFF_Peng(46 )/t_ionicFF_peng('Mo', 42,  +5, [0.479E+0, 0.846E+0, 0.156E+2, -0.152E+2,  0.160E+1],  [0.241E+0,  	0.146E+1,	0.679E+1,	0.713E+1,	0.104E+2])/	
-data ionicFF_Peng(47 )/t_ionicFF_peng('Mo', 42,  +6, [0.203E+0, 0.567E+0, 0.646E+0,  0.116E+1,  0.171E+0],  [0.971E-1,  	0.647E+0,	0.228E+1,	0.561E+1,	0.124E+2])/	
-data ionicFF_Peng(48 )/t_ionicFF_peng('Ru', 44,  +3, [0.428E+0, 0.773E+0, 0.155E+1,  0.146E+1,  0.486E+0],  [0.191E+0,  	0.109E+1,	0.382E+1,	0.908E+1,	0.217E+2])/	
-data ionicFF_Peng(49 )/t_ionicFF_peng('Ru', 44,  +4, [0.282E+0, 0.653E+0, 0.114E+1,  0.153E+1,  0.418E+0],  [0.125E+0,  	0.753E+0,	0.285E+1,	0.701E+1,	0.175E+2])/	
-data ionicFF_Peng(50 )/t_ionicFF_peng('Rh', 45,  +3, [0.352E+0, 0.723E+0, 0.150E+1,  0.163E+1,  0.499E+0],  [0.151E+0,  	0.878E+0,	0.328E+1,	0.816E+1,	0.207E+2])/	
-data ionicFF_Peng(51 )/t_ionicFF_peng('Rh', 45,  +4, [0.397E+0, 0.725E+0, 0.151E+1,  0.119E+1,  0.251E+0],  [0.177E+0,  	0.101E+1,	0.362E+1,	0.856E+1,	0.189E+2])/	
-data ionicFF_Peng(52 )/t_ionicFF_peng('Pd', 46,  +2, [0.935E+0, 0.311E+1, 0.246E+2, -0.436E+2,  0.211E+2],  [0.393E+0,  	0.406E+1,	0.431E+2,	0.540E+2,	0.698E+2])/	
-data ionicFF_Peng(53 )/t_ionicFF_peng('Pd', 46,  +4, [0.348E+0, 0.640E+0, 0.122E+1,  0.145E+1,  0.427E+0],  [0.151E+0,  	0.832E+0,	0.285E+1,	0.659E+1,	0.156E+2])/	
-data ionicFF_Peng(54 )/t_ionicFF_peng('Ag', 47,  +1, [0.503E+0, 0.940E+0, 0.217E+1,  0.199E+1,  0.726E+0],  [0.199E+0,  	0.119E+1,	0.405E+1,	0.113E+2,	0.324E+2])/	
-data ionicFF_Peng(55 )/t_ionicFF_peng('Ag', 47,  +2, [0.431E+0, 0.756E+0, 0.172E+1,  0.178E+1,  0.526E+0],  [0.175E+0,  	0.979E+0,	0.330E+1,	0.824E+1,	0.214E+2])/	
-data ionicFF_Peng(56 )/t_ionicFF_peng('Cd', 48,  +2, [0.425E+0, 0.745E+0, 0.173E+1,  0.174E+1,  0.487E+0],  [0.168E+0,  	0.944E+0,	0.314E+1,	0.784E+1,	0.204E+2])/	
-data ionicFF_Peng(57 )/t_ionicFF_peng('In', 49,  +3, [0.417E+0, 0.755E+0, 0.159E+1,  0.136E+1,  0.451E+0],  [0.164E+0,  	0.960E+0,	0.308E+1,	0.703E+1,	0.161E+2])/	
-data ionicFF_Peng(58 )/t_ionicFF_peng('Sn', 50,  +2, [0.797E+0, 0.213E+1, 0.215E+1, -0.164E+1,  0.272E+1],  [0.317E+0,  	0.251E+1,	0.904E+1,	0.242E+2,	0.264E+2])/	
-data ionicFF_Peng(59 )/t_ionicFF_peng('Sn', 50,  +4, [0.261E+0, 0.642E+0, 0.153E+1,  0.136E+1,  0.177E+0],  [0.957E-1,  	0.625E+0,	0.251E+1,	0.631E+1,	0.159E+2])/	
-data ionicFF_Peng(60 )/t_ionicFF_peng('Sb', 51,  +3, [0.552E+0, 0.114E+1, 0.187E+1,  0.136E+1,  0.414E+0],  [0.212E+0,  	0.142E+1,	0.421E+1,	0.125E+2,	0.290E+2])/	
-data ionicFF_Peng(61 )/t_ionicFF_peng('Sb', 51,  +5, [0.377E+0, 0.588E+0, 0.122E+1,  0.118E+1,  0.244E+0],  [0.151E+0,  	0.812E+0,	0.240E+1,	0.527E+1,	0.119E+2])/	
-data ionicFF_Peng(62 )/t_ionicFF_peng('I ', 53,  -1, [0.901E+0, 0.280E+1, 0.561E+1, -0.869E+1,  0.126E+2],  [0.312E+0,  	0.259E+1,	0.141E+2,	0.344E+2,	0.395E+2])/	
-data ionicFF_Peng(63 )/t_ionicFF_peng('Cs', 55,  +1, [0.587E+0, 0.140E+1, 0.187E+1,  0.348E+1,  0.167E+1],  [0.200E+0,  	0.138E+1,	0.412E+1,	0.130E+2,	0.318E+2])/	
-data ionicFF_Peng(64 )/t_ionicFF_peng('Ba', 56,  +2, [0.733E+0, 0.205E+1, 0.230E+2, -0.152E+3,  0.134E+3],  [0.258E+0,  	0.196E+1,	0.118E+2,	0.144E+2,	0.149E+2])/	
-data ionicFF_Peng(65 )/t_ionicFF_peng('La', 57,  +3, [0.493E+0, 0.110E+1, 0.150E+1,  0.270E+1,  0.108E+1],  [0.167E+0,  	0.111E+1,	0.311E+1,	0.961E+1,	0.212E+2])/	
-data ionicFF_Peng(66 )/t_ionicFF_peng('Ce', 58,  +3, [0.560E+0, 0.135E+1, 0.159E+1,  0.263E+1,  0.706E+0],  [0.190E+0,  	0.130E+1,	0.393E+1,	0.107E+2,	0.238E+2])/
-data ionicFF_Peng(67 )/t_ionicFF_peng('Ce', 58,  +4, [0.483E+0, 0.109E+1, 0.134E+1,  0.245E+1,  0.797E+0],  [0.165E+0,  	0.110E+1,	0.302E+1,	0.885E+1,	0.188E+2])/		
-data ionicFF_Peng(68 )/t_ionicFF_peng('Pr', 59,  +3, [0.663E+0, 0.173E+1, 0.235E+1,  0.351E+0,  0.159E+1],  [0.226E+0,  	0.161E+1,	0.633E+1,	0.110E+2,	0.169E+2])/		
-data ionicFF_Peng(69 )/t_ionicFF_peng('Pr', 59,  +4, [0.521E+0, 0.119E+1, 0.133E+1,  0.236E+1,  0.690E+0],  [0.177E+0,  	0.117E+1,	0.328E+1,	0.894E+1,	0.193E+2])/		
-data ionicFF_Peng(70 )/t_ionicFF_peng('Nd', 60,  +3, [0.501E+0, 0.118E+1, 0.145E+1,  0.253E+1,  0.920E+0],  [0.162E+0,  	0.108E+1,	0.306E+1,	0.880E+1,	0.196E+2])/		
-data ionicFF_Peng(71 )/t_ionicFF_peng('Pm', 61,  +3, [0.496E+0, 0.120E+1, 0.147E+1,  0.243E+1,  0.943E+0],  [0.156E+0,  	0.105E+1,	0.307E+1,	0.856E+1,	0.192E+2])/		
-data ionicFF_Peng(72 )/t_ionicFF_peng('Sm', 62,  +3, [0.518E+0, 0.124E+1, 0.143E+1,  0.240E+1,  0.781E+0],  [0.163E+0,  	0.108E+1,	0.311E+1,	0.852E+1,	0.191E+2])/		
-data ionicFF_Peng(73 )/t_ionicFF_peng('Eu', 63,  +2, [0.613E+0, 0.153E+1, 0.184E+1,  0.246E+1,  0.714E+0],  [0.190E+0,  	0.127E+1,	0.418E+1,	0.107E+2,	0.262E+2])/		
-data ionicFF_Peng(74 )/t_ionicFF_peng('Eu', 63,  +3, [0.496E+0, 0.121E+1, 0.145E+1,  0.236E+1,  0.774E+0],  [0.152E+0,  	0.101E+1,	0.295E+1,	0.818E+1,	0.185E+2])/		
-data ionicFF_Peng(75 )/t_ionicFF_peng('Gd', 64,  +3, [0.490E+0, 0.119E+1, 0.142E+1,  0.230E+1,  0.795E+0],  [0.148E+0,  	0.974E+0,	0.281E+1,	0.778E+1,	0.177E+2])/		
-data ionicFF_Peng(76 )/t_ionicFF_peng('Tb', 65,  +3, [0.503E+0, 0.122E+1, 0.142E+1,  0.224E+1,  0.710E+0],  [0.150E+0,  	0.982E+0,	0.286E+1,	0.777E+1,	0.177E+2])/		
-data ionicFF_Peng(77 )/t_ionicFF_peng('Dy', 66,  +3, [0.503E+0, 0.124E+1, 0.144E+1,  0.217E+1,  0.643E+0],  [0.148E+0,  	0.970E+0,	0.288E+1,	0.773E+1,	0.176E+2])/		
-data ionicFF_Peng(78 )/t_ionicFF_peng('Ho', 67,  +3, [0.456E+0, 0.117E+1, 0.143E+1,  0.215E+1,  0.692E+0],  [0.129E+0,  	0.869E+0,	0.261E+1,	0.724E+1,	0.167E+2])/		
-data ionicFF_Peng(79 )/t_ionicFF_peng('Er', 68,  +3, [0.522E+0, 0.128E+1, 0.146E+1,  0.205E+1,  0.508E+0],  [0.150E+0,  	0.964E+0,	0.293E+1,	0.772E+1,	0.178E+2])/		
-data ionicFF_Peng(80 )/t_ionicFF_peng('Tm', 69,  +3, [0.475E+0, 0.120E+1, 0.142E+1,  0.205E+1,  0.584E+0],  [0.132E+0,  	0.864E+0,	0.260E+1,	0.709E+1,	0.166E+2])/		
-data ionicFF_Peng(81 )/t_ionicFF_peng('Yb', 70,  +2, [0.508E+0, 0.137E+1, 0.176E+1,  0.223E+1,  0.584E+0],  [0.136E+0,  	0.922E+0,	0.312E+1,	0.872E+1,	0.237E+2])/		
-data ionicFF_Peng(82 )/t_ionicFF_peng('Yb', 70,  +3, [0.498E+0, 0.122E+1, 0.139E+1,  0.197E+1,  0.559E+0],  [0.138E+0,  	0.881E+0,	0.263E+1,	0.699E+1,	0.163E+2])/		
-data ionicFF_Peng(83 )/t_ionicFF_peng('Lu', 71,  +3, [0.483E+0, 0.121E+1, 0.141E+1,  0.194E+1,  0.522E+0],  [0.131E+0,  	0.845E+0,	0.257E+1,	0.688E+1,	0.162E+2])/		
-data ionicFF_Peng(84 )/t_ionicFF_peng('Hf', 72,  +4, [0.522E+0, 0.122E+1, 0.137E+1,  0.168E+1,  0.312E+0],  [0.145E+0,  	0.896E+0,	0.274E+1,	0.691E+1,	0.161E+2])/		
-data ionicFF_Peng(85 )/t_ionicFF_peng('Ta', 73,  +5, [0.569E+0, 0.126E+1, 0.979E+0,  0.129E+1,  0.551E+0],  [0.161E+0,  	0.972E+0,	0.276E+1,	0.540E+1,	0.109E+2])/		
-data ionicFF_Peng(86 )/t_ionicFF_peng('W' , 74,  +6, [0.181E+0, 0.873E+0, 0.118E+1,  0.148E+1,  0.562E+0],  [0.118E-1,  	0.442E+0,	0.152E+1,	0.435E+1,	0.942E+1])/		
-data ionicFF_Peng(87 )/t_ionicFF_peng('Os', 76,  +4, [0.586E+0, 0.131E+1, 0.163E+1,  0.171E+1,  0.540E+0],  [0.155E+0,  	0.938E+0,	0.319E+1,	0.784E+1,	0.193E+2])/		
-data ionicFF_Peng(88 )/t_ionicFF_peng('Ir', 77,  +3, [0.692E+0, 0.137E+1, 0.180E+1,  0.197E+1,  0.804E+0],  [0.182E+0,  	0.104E+1,	0.347E+1,	0.851E+1,	0.212E+2])/		
-data ionicFF_Peng(89 )/t_ionicFF_peng('Ir', 77,  +4, [0.653E+0, 0.129E+1, 0.150E+1,  0.174E+1,  0.683E+0],  [0.174E+0,  	0.992E+0,	0.314E+1,	0.722E+1,	0.172E+2])/		
-data ionicFF_Peng(90 )/t_ionicFF_peng('Pt', 78,  +2, [0.872E+0, 0.168E+1, 0.263E+1,  0.193E+1,  0.475E+0],  [0.223E+0,  	0.135E+1,	0.499E+1,	0.136E+2,	0.330E+2])/		
-data ionicFF_Peng(91 )/t_ionicFF_peng('Pt', 78,  +4, [0.550E+0, 0.121E+1, 0.162E+1,  0.195E+1,  0.610E+0],  [0.142E+0,  	0.833E+0,	0.281E+1,	0.721E+1,	0.177E+2])/		
-data ionicFF_Peng(92 )/t_ionicFF_peng('Au', 79,  +1, [0.811E+0, 0.157E+1, 0.263E+1,  0.268E+1,  0.998E+0],  [0.201E+0,  	0.118E+1,	0.425E+1,	0.121E+2,	0.344E+2])/		
-data ionicFF_Peng(93 )/t_ionicFF_peng('Au', 79,  +3, [0.722E+0, 0.139E+1, 0.194E+1,  0.194E+1,  0.699E+0],  [0.184E+0,  	0.106E+1,	0.358E+1,	0.856E+1,	0.204E+2])/		
-data ionicFF_Peng(94 )/t_ionicFF_peng('Hg', 80,  +1, [0.796E+0, 0.156E+1, 0.272E+1,  0.276E+1,  0.118E+1],  [0.194E+0,  	0.114E+1,	0.421E+1,	0.124E+2,	0.362E+2])/		
-data ionicFF_Peng(95 )/t_ionicFF_peng('Hg', 80,  +2, [0.773E+0, 0.149E+1, 0.245E+1,  0.223E+1,  0.570E+0],  [0.191E+0,  	0.112E+1,	0.400E+1,	0.108E+2,	0.276E+2])/		
-data ionicFF_Peng(96 )/t_ionicFF_peng('Tl', 81,  +1, [0.820E+0, 0.157E+1, 0.278E+1,  0.282E+1,  0.131E+1],  [0.197E+0,  	0.116E+1,	0.423E+1,	0.127E+2,	0.357E+2])/		
-data ionicFF_Peng(97 )/t_ionicFF_peng('Tl', 81,  +3, [0.836E+0, 0.143E+1, 0.394E+0,  0.251E+1,  0.150E+1],  [0.208E+0,  	0.120E+1,	0.257E+1,	0.486E+1,	0.135E+2])/		
-data ionicFF_Peng(98 )/t_ionicFF_peng('Pb', 82,  +2, [0.755E+0, 0.144E+1, 0.248E+1,  0.245E+1,  0.103E+1],  [0.181E+0,  	0.105E+1,	0.375E+1,	0.106E+2,	0.279E+2])/		
-data ionicFF_Peng(99 )/t_ionicFF_peng('Pb', 82,  +4, [0.583E+0, 0.114E+1, 0.160E+1,  0.206E+1,  0.662E+0],  [0.144E+0,  	0.796E+0,	0.258E+1,	0.622E+1,	0.148E+2])/		
-data ionicFF_Peng(100)/t_ionicFF_peng('Bi', 83,  +3, [0.708E+0, 0.135E+1, 0.228E+1,  0.218E+1,  0.797E+0],  [0.170E+0,  	0.981E+0,	0.344E+1,	0.941E+1,	0.237E+2])/		
-data ionicFF_Peng(101)/t_ionicFF_peng('Bi', 83,  +5, [0.654E+0, 0.118E+1, 0.125E+1,  0.166E+1,  0.778E+0],  [0.162E+0,  	0.905E+0,	0.268E+1,	0.514E+1,	0.112E+2])/		
-data ionicFF_Peng(102)/t_ionicFF_peng('Ra', 88,  +2, [0.911E+0, 0.165E+1, 0.253E+1,  0.362E+1,  0.158E+1],  [0.204E+0,  	0.126E+1,	0.403E+1,	0.126E+2,	0.300E+2])/		
-data ionicFF_Peng(103)/t_ionicFF_peng('Ac', 89,  +3, [0.915E+0, 0.164E+1, 0.226E+1,  0.318E+1,  0.125E+1],  [0.205E+0,  	0.128E+1,	0.392E+1,	0.113E+2,	0.251E+2])/		
-data ionicFF_Peng(104)/t_ionicFF_peng('U ', 92,  +3, [0.114E+1, 0.248E+1, 0.361E+1,  0.113E+1,  0.900E+0],  [0.250E+0,  	0.184E+1,	0.739E+1,	0.180E+2,	0.227E+2])/		
-data ionicFF_Peng(105)/t_ionicFF_peng('U ', 92,  +4, [0.109E+1, 0.232E+1, 0.120E+2,  0.911E+1,  0.215E+1],  [0.243E+0,  	0.175E+1,	0.779E+1,	0.831E+1,	0.165E+2])/		
-data ionicFF_Peng(106)/t_ionicFF_peng('U ', 92,  +6, [0.687E+0, 0.114E+1, 0.183E+1,  0.253E+1,  0.957E+0],  [0.154E+0,  	0.861E+0,	0.258E+1,	0.770E+1,	0.159E+2])/
+data ionicFF_Peng(1  )/t_ionicFF_peng('H ', 1 ,  -1, &
+    [0.140E+0_fp_kind, 0.649E+0_fp_kind, 0.137E+1_fp_kind,  0.337E+0_fp_kind,  0.787E+0_fp_kind]   ,  &
+    [0.984E+0_fp_kind,      0.867E+1_fp_kind,   0.389E+2_fp_kind,   0.111E+3_fp_kind,   0.166E+3_fp_kind])/
+data ionicFF_Peng(2  )/t_ionicFF_peng('Li', 3 ,  +1, &
+    [0.460E-2_fp_kind, 0.165E-1_fp_kind, 0.435E-1_fp_kind,  0.649E-1_fp_kind,  0.270E-1_fp_kind]   ,  &
+    [0.358E-1_fp_kind,      0.239E+0_fp_kind,   0.879E+0_fp_kind,   0.264E+1_fp_kind,   0.709E+1_fp_kind])/
+data ionicFF_Peng(3  )/t_ionicFF_peng('Be', 4 ,  +2, &
+    [0.340E-2_fp_kind, 0.103E-1_fp_kind, 0.233E-1_fp_kind,  0.325E-1_fp_kind,  0.120E-1_fp_kind]   ,  &
+    [0.267E-1_fp_kind,      0.162E+0_fp_kind,   0.531E+0_fp_kind,   0.148E+1_fp_kind,   0.388E+1_fp_kind])/
+data ionicFF_Peng(4  )/t_ionicFF_peng('O ', 8 ,  -1, &
+    [0.205E+0_fp_kind, 0.628E+0_fp_kind, 0.117E+1_fp_kind,  0.103E+1_fp_kind,  0.290E+0_fp_kind]   ,  &
+    [0.397E+0_fp_kind,      0.264E+1_fp_kind,   0.880E+1_fp_kind,   0.271E+2_fp_kind,   0.918E+2_fp_kind])/
+data ionicFF_Peng(5  )/t_ionicFF_peng('O ', 8 ,  -2, &
+    [0.421E-1_fp_kind, 0.210E+0_fp_kind, 0.852E+0_fp_kind,  0.182E+1_fp_kind,  0.117E+1_fp_kind]   ,  &
+    [0.609E-1_fp_kind,      0.559E+0_fp_kind,   0.296E+1_fp_kind,   0.115E+2_fp_kind,   0.377E+2_fp_kind])/
+data ionicFF_Peng(6  )/t_ionicFF_peng('F ', 9 ,  -1, &
+    [0.134E+0_fp_kind, 0.391E+0_fp_kind, 0.814E+0_fp_kind,  0.928E+0_fp_kind,  0.347E+0_fp_kind]   ,  &
+    [0.228E+0_fp_kind,      0.147E+1_fp_kind,   0.468E+1_fp_kind,   0.132E+2_fp_kind,   0.360E+2_fp_kind])/
+data ionicFF_Peng(7  )/t_ionicFF_peng('Na', 11,  +1, &
+    [0.256E-1_fp_kind, 0.919E-1_fp_kind, 0.297E+0_fp_kind,  0.514E+0_fp_kind,  0.199E+0_fp_kind]   ,  &
+    [0.397E-1_fp_kind,      0.287E+0_fp_kind,   0.118E+1_fp_kind,   0.375E+1_fp_kind,   0.108E+2_fp_kind])/
+data ionicFF_Peng(8  )/t_ionicFF_peng('Mg', 12,  +2, &
+    [0.210E-1_fp_kind, 0.672E-1_fp_kind, 0.198E+0_fp_kind,  0.368E+0_fp_kind,  0.174E+0_fp_kind]   ,  &
+    [0.331E-1_fp_kind,      0.222E+0_fp_kind,   0.838E+0_fp_kind,   0.248E+1_fp_kind,   0.675E+1_fp_kind])/
+data ionicFF_Peng(9  )/t_ionicFF_peng('Al', 13,  +3, &
+    [0.192E-1_fp_kind, 0.579E-1_fp_kind, 0.163E+0_fp_kind,  0.284E+0_fp_kind,  0.114E+0_fp_kind]   ,  &
+    [0.306E-1_fp_kind,      0.198E+0_fp_kind,   0.713E+0_fp_kind,   0.204E+1_fp_kind,   0.525E+1_fp_kind])/
+data ionicFF_Peng(10 )/t_ionicFF_peng('Si', 14,  +4, &
+    [0.192E+0_fp_kind, 0.289E+0_fp_kind, 0.100E+0_fp_kind, -0.728E-1_fp_kind,  0.120E-2_fp_kind]   ,  &
+    [0.359E+0_fp_kind,      0.196E+1_fp_kind,   0.934E+1_fp_kind,   0.111E+2_fp_kind,   0.134E+2_fp_kind])/
+data ionicFF_Peng(11 )/t_ionicFF_peng('Cl', 17,  -1, &
+    [0.265E+0_fp_kind, 0.596E+0_fp_kind, 0.160E+1_fp_kind,  0.269E+1_fp_kind,  0.123E+1_fp_kind]   ,  &
+    [0.252E+0_fp_kind,      0.156E+1_fp_kind,   0.621E+1_fp_kind,   0.178E+2_fp_kind,   0.478E+2_fp_kind])/
+data ionicFF_Peng(12 )/t_ionicFF_peng('K ', 19,  +1, &
+    [0.199E+0_fp_kind, 0.396E+0_fp_kind, 0.928E+0_fp_kind,  0.145E+1_fp_kind,  0.450E+0_fp_kind]   ,  &
+    [0.192E+0_fp_kind,      0.110E+1_fp_kind,   0.391E+1_fp_kind,   0.975E+1_fp_kind,   0.234E+2_fp_kind])/
+data ionicFF_Peng(13 )/t_ionicFF_peng('Ca', 20,  +2, &
+    [0.164E+0_fp_kind, 0.327E+0_fp_kind, 0.743E+0_fp_kind,  0.116E+1_fp_kind,  0.307E+0_fp_kind]   ,  &
+    [0.157E+0_fp_kind,      0.894E+0_fp_kind,   0.315E+1_fp_kind,   0.767E+1_fp_kind,   0.177E+2_fp_kind])/
+data ionicFF_Peng(14 )/t_ionicFF_peng('Sc', 21,  +3, &
+    [0.163E+0_fp_kind, 0.307E+0_fp_kind, 0.716E+0_fp_kind,  0.880E+0_fp_kind,  0.139E+0_fp_kind]   ,  &
+    [0.157E+0_fp_kind,      0.899E+0_fp_kind,   0.306E+1_fp_kind,   0.705E+1_fp_kind,   0.161E+2_fp_kind])/
+data ionicFF_Peng(15 )/t_ionicFF_peng('Ti', 22,  +2, &
+    [0.399E+0_fp_kind, 0.104E+1_fp_kind, 0.121E+1_fp_kind, -0.797E-1_fp_kind,  0.352E+0_fp_kind]   ,  &
+    [0.376E+0_fp_kind,      0.274E+1_fp_kind,   0.810E+1_fp_kind,   0.142E+2_fp_kind,   0.232E+2_fp_kind])/
+data ionicFF_Peng(16 )/t_ionicFF_peng('Ti', 22,  +3, &
+    [0.364E+0_fp_kind, 0.919E+0_fp_kind, 0.135E+1_fp_kind, -0.933E+0_fp_kind,  0.589E+0_fp_kind]   ,  &
+    [0.364E+0_fp_kind,      0.267E+1_fp_kind,   0.818E+1_fp_kind,   0.118E+2_fp_kind,   0.149E+2_fp_kind])/
+data ionicFF_Peng(17 )/t_ionicFF_peng('Ti', 22,  +4, &
+    [0.116E+0_fp_kind, 0.256E+0_fp_kind, 0.565E+0_fp_kind,  0.772E+0_fp_kind,  0.132E+0_fp_kind]   ,  &
+    [0.108E+0_fp_kind,      0.655E+0_fp_kind,   0.238E+1_fp_kind,   0.551E+1_fp_kind,   0.123E+2_fp_kind])/
+data ionicFF_Peng(18 )/t_ionicFF_peng('V ', 23,  +2, &
+    [0.317E+0_fp_kind, 0.939E+0_fp_kind, 0.149E+1_fp_kind, -0.131E+1_fp_kind,  0.147E+1_fp_kind]   ,  &
+    [0.269E+0_fp_kind,      0.209E+1_fp_kind,   0.722E+1_fp_kind,   0.152E+2_fp_kind,   0.176E+2_fp_kind])/
+data ionicFF_Peng(19 )/t_ionicFF_peng('V ', 23,  +3, &
+    [0.341E+0_fp_kind, 0.805E+0_fp_kind, 0.942E+0_fp_kind,  0.783E-1_fp_kind,  0.156E+0_fp_kind]   ,  &
+    [0.321E+0_fp_kind,      0.223E+1_fp_kind,   0.599E+1_fp_kind,   0.134E+2_fp_kind,   0.169E+2_fp_kind])/
+data ionicFF_Peng(20 )/t_ionicFF_peng('V ', 23,  +5, &
+    [0.367E-1_fp_kind, 0.124E+0_fp_kind, 0.244E+0_fp_kind,  0.723E+0_fp_kind,  0.435E+0_fp_kind]   ,  &
+    [0.330E-1_fp_kind,      0.222E+0_fp_kind,   0.824E+0_fp_kind,   0.280E+1_fp_kind,   0.670E+1_fp_kind])/
+data ionicFF_Peng(21 )/t_ionicFF_peng('Cr', 24,  +2, &
+    [0.237E+0_fp_kind, 0.634E+0_fp_kind, 0.123E+1_fp_kind,  0.713E+0_fp_kind,  0.859E-1_fp_kind]   ,  &
+    [0.177E+0_fp_kind,      0.135E+1_fp_kind,   0.430E+1_fp_kind,   0.122E+2_fp_kind,   0.390E+2_fp_kind])/
+data ionicFF_Peng(22 )/t_ionicFF_peng('Cr', 24,  +3, &
+    [0.393E+0_fp_kind, 0.105E+1_fp_kind, 0.162E+1_fp_kind, -0.115E+1_fp_kind,  0.407E+0_fp_kind]   ,  &
+    [0.359E+0_fp_kind,      0.257E+1_fp_kind,   0.868E+1_fp_kind,   0.110E+2_fp_kind,   0.158E+2_fp_kind])/
+data ionicFF_Peng(23 )/t_ionicFF_peng('Cr', 24,  +4, &
+    [0.132E+0_fp_kind, 0.292E+0_fp_kind, 0.703E+0_fp_kind,  0.692E+0_fp_kind,  0.959E-1_fp_kind]   ,  &
+    [0.109E+0_fp_kind,      0.695E+0_fp_kind,   0.239E+1_fp_kind,   0.565E+1_fp_kind,   0.147E+2_fp_kind])/
+data ionicFF_Peng(24 )/t_ionicFF_peng('Mn', 25,  +2, &
+    [0.576E-1_fp_kind, 0.210E+0_fp_kind, 0.604E+0_fp_kind,  0.132E+1_fp_kind,  0.659E+0_fp_kind]   ,  &
+    [0.398E-1_fp_kind,      0.284E+0_fp_kind,   0.129E+1_fp_kind,   0.423E+1_fp_kind,   0.145E+2_fp_kind])/
+data ionicFF_Peng(25 )/t_ionicFF_peng('Mn', 25,  +3, &
+    [0.116E+0_fp_kind, 0.523E+0_fp_kind, 0.881E+0_fp_kind,  0.589E+0_fp_kind,  0.214E+0_fp_kind]   ,  &
+    [0.117E-1_fp_kind,      0.876E+0_fp_kind,   0.306E+1_fp_kind,   0.644E+1_fp_kind,   0.143E+2_fp_kind])/
+data ionicFF_Peng(26 )/t_ionicFF_peng('Mn', 25,  +4, &
+    [0.381E+0_fp_kind, 0.183E+1_fp_kind,-0.133E+1_fp_kind,  0.995E+0_fp_kind,  0.618E-1_fp_kind]   ,  &
+    [0.354E+0_fp_kind,      0.272E+1_fp_kind,   0.347E+1_fp_kind,   0.547E+1_fp_kind,   0.161E+2_fp_kind])/
+data ionicFF_Peng(27 )/t_ionicFF_peng('Fe', 26,  +2, &
+    [0.307E+0_fp_kind, 0.838E+0_fp_kind, 0.111E+1_fp_kind,  0.280E+0_fp_kind,  0.277E+0_fp_kind]   ,  &
+    [0.230E+0_fp_kind,      0.162E+1_fp_kind,   0.487E+1_fp_kind,   0.107E+2_fp_kind,   0.192E+2_fp_kind])/
+data ionicFF_Peng(28 )/t_ionicFF_peng('Fe', 26,  +3, &
+    [0.198E+0_fp_kind, 0.387E+0_fp_kind, 0.889E+0_fp_kind,  0.709E+0_fp_kind,  0.117E+0_fp_kind]   ,  &
+    [0.154E+0_fp_kind,      0.893E+0_fp_kind,   0.262E+1_fp_kind,   0.665E+1_fp_kind,   0.180E+2_fp_kind])/
+data ionicFF_Peng(29 )/t_ionicFF_peng('Co', 27,  +2, &
+    [0.213E+0_fp_kind, 0.488E+0_fp_kind, 0.998E+0_fp_kind,  0.828E+0_fp_kind,  0.230E+0_fp_kind]   ,  &
+    [0.148E+0_fp_kind,      0.939E+0_fp_kind,   0.278E+1_fp_kind,   0.731E+1_fp_kind,   0.207E+2_fp_kind])/
+data ionicFF_Peng(30 )/t_ionicFF_peng('Co', 27,  +3, &
+    [0.331E+0_fp_kind, 0.487E+0_fp_kind, 0.729E+0_fp_kind,  0.608E+0_fp_kind,  0.131E+0_fp_kind]   ,  &
+    [0.267E+0_fp_kind,      0.141E+1_fp_kind,   0.289E+1_fp_kind,   0.645E+1_fp_kind,   0.158E+2_fp_kind])/
+data ionicFF_Peng(31 )/t_ionicFF_peng('Ni', 28,  +2, &
+    [0.338E+0_fp_kind, 0.982E+0_fp_kind, 0.132E+1_fp_kind, -0.356E+1_fp_kind,  0.362E+1_fp_kind]   ,  &
+    [0.237E+0_fp_kind,      0.167E+1_fp_kind,   0.573E+1_fp_kind,   0.114E+2_fp_kind,   0.121E+2_fp_kind])/
+data ionicFF_Peng(32 )/t_ionicFF_peng('Ni', 28,  +3, &
+    [0.347E+0_fp_kind, 0.877E+0_fp_kind, 0.790E+0_fp_kind,  0.538E-1_fp_kind,  0.192E+0_fp_kind]   ,  &
+    [0.260E+0_fp_kind,      0.171E+1_fp_kind,   0.475E+1_fp_kind,   0.751E+1_fp_kind,   0.130E+2_fp_kind])/
+data ionicFF_Peng(33 )/t_ionicFF_peng('Cu', 29,  +1, &
+    [0.312E+0_fp_kind, 0.812E+0_fp_kind, 0.111E+1_fp_kind,  0.794E+0_fp_kind,  0.257E+0_fp_kind]   ,  &
+    [0.201E+0_fp_kind,      0.131E+1_fp_kind,   0.380E+1_fp_kind,   0.105E+2_fp_kind,   0.282E+2_fp_kind])/
+data ionicFF_Peng(34 )/t_ionicFF_peng('Cu', 29,  +2, &
+    [0.224E+0_fp_kind, 0.544E+0_fp_kind, 0.970E+0_fp_kind,  0.727E+0_fp_kind,  0.182E+0_fp_kind]   ,  &
+    [0.145E+0_fp_kind,      0.933E+0_fp_kind,   0.269E+1_fp_kind,   0.711E+1_fp_kind,   0.194E+2_fp_kind])/
+data ionicFF_Peng(35 )/t_ionicFF_peng('Zn', 30,  +2, &
+    [0.252E+0_fp_kind, 0.600E+0_fp_kind, 0.917E+0_fp_kind,  0.663E+0_fp_kind,  0.161E+0_fp_kind]   ,  &
+    [0.161E+0_fp_kind,      0.101E+1_fp_kind,   0.276E+1_fp_kind,   0.708E+1_fp_kind,   0.190E+2_fp_kind])/
+data ionicFF_Peng(36 )/t_ionicFF_peng('Ga', 31,  +3, &
+    [0.391E+0_fp_kind, 0.947E+0_fp_kind, 0.690E+0_fp_kind,  0.709E-1_fp_kind,  0.653E-1_fp_kind]   ,  &
+    [0.264E+0_fp_kind,      0.165E+1_fp_kind,   0.482E+1_fp_kind,   0.107E+2_fp_kind,   0.152E+2_fp_kind])/
+data ionicFF_Peng(37 )/t_ionicFF_peng('Ge', 32,  +4, &
+    [0.346E+0_fp_kind, 0.830E+0_fp_kind, 0.599E+0_fp_kind,  0.949E-1_fp_kind, -0.217E-1_fp_kind]   ,  &
+    [0.232E+0_fp_kind,      0.145E+1_fp_kind,   0.408E+1_fp_kind,   0.132E+2_fp_kind,   0.295E+2_fp_kind])/
+data ionicFF_Peng(38 )/t_ionicFF_peng('Br', 35,  -1, &
+    [0.125E+0_fp_kind, 0.563E+0_fp_kind, 0.143E+1_fp_kind,  0.352E+1_fp_kind,  0.322E+1_fp_kind]   ,  &
+    [0.530E-1_fp_kind,      0.469E+0_fp_kind,   0.215E+1_fp_kind,   0.111E+2_fp_kind,   0.389E+2_fp_kind])/
+data ionicFF_Peng(39 )/t_ionicFF_peng('Br', 37,  +1, &
+    [0.368E+0_fp_kind, 0.884E+0_fp_kind, 0.114E+1_fp_kind,  0.226E+1_fp_kind,  0.881E+0_fp_kind]   ,  &
+    [0.187E+0_fp_kind,      0.112E+1_fp_kind,   0.398E+1_fp_kind,   0.109E+2_fp_kind,   0.266E+2_fp_kind])/
+data ionicFF_Peng(40 )/t_ionicFF_peng('Sr', 38,  +2, &
+    [0.346E+0_fp_kind, 0.804E+0_fp_kind, 0.988E+0_fp_kind,  0.189E+1_fp_kind,  0.609E+0_fp_kind]   ,  &
+    [0.176E+0_fp_kind,      0.104E+1_fp_kind,   0.359E+1_fp_kind,   0.932E+1_fp_kind,   0.214E+2_fp_kind])/
+data ionicFF_Peng(41 )/t_ionicFF_peng('Y ', 39,  +3, &
+    [0.465E+0_fp_kind, 0.923E+0_fp_kind, 0.241E+1_fp_kind, -0.231E+1_fp_kind,  0.248E+1_fp_kind]   ,  &
+    [0.240E+0_fp_kind,      0.143E+1_fp_kind,   0.645E+1_fp_kind,   0.997E+1_fp_kind,   0.122E+2_fp_kind])/
+data ionicFF_Peng(42 )/t_ionicFF_peng('Zr', 40,  +4, &
+    [0.234E+0_fp_kind, 0.642E+0_fp_kind, 0.747E+0_fp_kind,  0.147E+1_fp_kind,  0.377E+0_fp_kind]   ,  &
+    [0.113E+0_fp_kind,      0.736E+0_fp_kind,   0.254E+1_fp_kind,   0.672E+1_fp_kind,   0.147E+2_fp_kind])/
+data ionicFF_Peng(43 )/t_ionicFF_peng('Nb', 41,  +3, &
+    [0.377E+0_fp_kind, 0.749E+0_fp_kind, 0.129E+1_fp_kind,  0.161E+1_fp_kind,  0.481E+0_fp_kind]   ,  &
+    [0.184E+0_fp_kind,      0.102E+1_fp_kind,   0.380E+1_fp_kind,   0.944E+1_fp_kind,   0.257E+2_fp_kind])/
+data ionicFF_Peng(44 )/t_ionicFF_peng('Nb', 41,  +5, &
+    [0.828E-1_fp_kind, 0.271E+0_fp_kind, 0.654E+0_fp_kind,  0.124E+1_fp_kind,  0.829E+0_fp_kind]   ,  &
+    [0.369E-1_fp_kind,      0.261E+0_fp_kind,   0.957E+0_fp_kind,   0.394E+1_fp_kind,   0.944E+1_fp_kind])/
+data ionicFF_Peng(45 )/t_ionicFF_peng('Mo', 42,  +3, &
+    [0.401E+0_fp_kind, 0.756E+0_fp_kind, 0.138E+1_fp_kind,  0.158E+1_fp_kind,  0.497E+0_fp_kind]   ,  &
+    [0.191E+0_fp_kind,      0.106E+1_fp_kind,   0.384E+1_fp_kind,   0.938E+1_fp_kind,   0.246E+2_fp_kind])/
+data ionicFF_Peng(46 )/t_ionicFF_peng('Mo', 42,  +5, &
+    [0.479E+0_fp_kind, 0.846E+0_fp_kind, 0.156E+2_fp_kind, -0.152E+2_fp_kind,  0.160E+1_fp_kind]   ,  &
+    [0.241E+0_fp_kind,      0.146E+1_fp_kind,   0.679E+1_fp_kind,   0.713E+1_fp_kind,   0.104E+2_fp_kind])/
+data ionicFF_Peng(47 )/t_ionicFF_peng('Mo', 42,  +6, &
+    [0.203E+0_fp_kind, 0.567E+0_fp_kind, 0.646E+0_fp_kind,  0.116E+1_fp_kind,  0.171E+0_fp_kind]      ,  &
+    [0.971E-1_fp_kind,      0.647E+0_fp_kind,   0.228E+1_fp_kind,   0.561E+1_fp_kind,   0.124E+2_fp_kind])/
+data ionicFF_Peng(48 )/t_ionicFF_peng('Ru', 44,  +3, &
+    [0.428E+0_fp_kind, 0.773E+0_fp_kind, 0.155E+1_fp_kind,  0.146E+1_fp_kind,  0.486E+0_fp_kind]      ,  &
+    [0.191E+0_fp_kind,      0.109E+1_fp_kind,   0.382E+1_fp_kind,   0.908E+1_fp_kind,   0.217E+2_fp_kind])/
+data ionicFF_Peng(49 )/t_ionicFF_peng('Ru', 44,  +4, &
+    [0.282E+0_fp_kind, 0.653E+0_fp_kind, 0.114E+1_fp_kind,  0.153E+1_fp_kind,  0.418E+0_fp_kind]      ,  &
+    [0.125E+0_fp_kind,      0.753E+0_fp_kind,   0.285E+1_fp_kind,   0.701E+1_fp_kind,   0.175E+2_fp_kind])/
+data ionicFF_Peng(50 )/t_ionicFF_peng('Rh', 45,  +3, &
+    [0.352E+0_fp_kind, 0.723E+0_fp_kind, 0.150E+1_fp_kind,  0.163E+1_fp_kind,  0.499E+0_fp_kind]   ,  &
+    [0.151E+0_fp_kind,      0.878E+0_fp_kind,   0.328E+1_fp_kind,   0.816E+1_fp_kind,   0.207E+2_fp_kind])/
+data ionicFF_Peng(51 )/t_ionicFF_peng('Rh', 45,  +4, &
+    [0.397E+0_fp_kind, 0.725E+0_fp_kind, 0.151E+1_fp_kind,  0.119E+1_fp_kind,  0.251E+0_fp_kind]   ,  &
+    [0.177E+0_fp_kind,      0.101E+1_fp_kind,   0.362E+1_fp_kind,   0.856E+1_fp_kind,   0.189E+2_fp_kind])/
+data ionicFF_Peng(52 )/t_ionicFF_peng('Pd', 46,  +2, &
+    [0.935E+0_fp_kind, 0.311E+1_fp_kind, 0.246E+2_fp_kind, -0.436E+2_fp_kind,  0.211E+2_fp_kind]   ,  &
+    [0.393E+0_fp_kind,      0.406E+1_fp_kind,   0.431E+2_fp_kind,   0.540E+2_fp_kind,   0.698E+2_fp_kind])/
+data ionicFF_Peng(53 )/t_ionicFF_peng('Pd', 46,  +4, &
+    [0.348E+0_fp_kind, 0.640E+0_fp_kind, 0.122E+1_fp_kind,  0.145E+1_fp_kind,  0.427E+0_fp_kind]   ,  &
+    [0.151E+0_fp_kind,      0.832E+0_fp_kind,   0.285E+1_fp_kind,   0.659E+1_fp_kind,   0.156E+2_fp_kind])/
+data ionicFF_Peng(54 )/t_ionicFF_peng('Ag', 47,  +1, &
+    [0.503E+0_fp_kind, 0.940E+0_fp_kind, 0.217E+1_fp_kind,  0.199E+1_fp_kind,  0.726E+0_fp_kind]   ,  &
+    [0.199E+0_fp_kind,      0.119E+1_fp_kind,   0.405E+1_fp_kind,   0.113E+2_fp_kind,   0.324E+2_fp_kind])/
+data ionicFF_Peng(55 )/t_ionicFF_peng('Ag', 47,  +2, &
+    [0.431E+0_fp_kind, 0.756E+0_fp_kind, 0.172E+1_fp_kind,  0.178E+1_fp_kind,  0.526E+0_fp_kind]   ,  &
+    [0.175E+0_fp_kind,      0.979E+0_fp_kind,   0.330E+1_fp_kind,   0.824E+1_fp_kind,   0.214E+2_fp_kind])/
+data ionicFF_Peng(56 )/t_ionicFF_peng('Cd', 48,  +2, &
+    [0.425E+0_fp_kind, 0.745E+0_fp_kind, 0.173E+1_fp_kind,  0.174E+1_fp_kind,  0.487E+0_fp_kind]   ,  &
+    [0.168E+0_fp_kind,      0.944E+0_fp_kind,   0.314E+1_fp_kind,   0.784E+1_fp_kind,   0.204E+2_fp_kind])/
+data ionicFF_Peng(57 )/t_ionicFF_peng('In', 49,  +3, &
+    [0.417E+0_fp_kind, 0.755E+0_fp_kind, 0.159E+1_fp_kind,  0.136E+1_fp_kind,  0.451E+0_fp_kind]   ,  &
+    [0.164E+0_fp_kind,      0.960E+0_fp_kind,   0.308E+1_fp_kind,   0.703E+1_fp_kind,   0.161E+2_fp_kind])/
+data ionicFF_Peng(58 )/t_ionicFF_peng('Sn', 50,  +2, &
+    [0.797E+0_fp_kind, 0.213E+1_fp_kind, 0.215E+1_fp_kind, -0.164E+1_fp_kind,  0.272E+1_fp_kind]   ,  &
+    [0.317E+0_fp_kind,      0.251E+1_fp_kind,   0.904E+1_fp_kind,   0.242E+2_fp_kind,   0.264E+2_fp_kind])/
+data ionicFF_Peng(59 )/t_ionicFF_peng('Sn', 50,  +4, &
+    [0.261E+0_fp_kind, 0.642E+0_fp_kind, 0.153E+1_fp_kind,  0.136E+1_fp_kind,  0.177E+0_fp_kind]   ,  &
+    [0.957E-1_fp_kind,      0.625E+0_fp_kind,   0.251E+1_fp_kind,   0.631E+1_fp_kind,   0.159E+2_fp_kind])/
+data ionicFF_Peng(60 )/t_ionicFF_peng('Sb', 51,  +3, &
+    [0.552E+0_fp_kind, 0.114E+1_fp_kind, 0.187E+1_fp_kind,  0.136E+1_fp_kind,  0.414E+0_fp_kind]   ,  &
+    [0.212E+0_fp_kind,      0.142E+1_fp_kind,   0.421E+1_fp_kind,   0.125E+2_fp_kind,   0.290E+2_fp_kind])/
+data ionicFF_Peng(61 )/t_ionicFF_peng('Sb', 51,  +5, &
+    [0.377E+0_fp_kind, 0.588E+0_fp_kind, 0.122E+1_fp_kind,  0.118E+1_fp_kind,  0.244E+0_fp_kind]   ,  &
+    [0.151E+0_fp_kind,      0.812E+0_fp_kind,   0.240E+1_fp_kind,   0.527E+1_fp_kind,   0.119E+2_fp_kind])/
+data ionicFF_Peng(62 )/t_ionicFF_peng('I ', 53,  -1, &
+    [0.901E+0_fp_kind, 0.280E+1_fp_kind, 0.561E+1_fp_kind, -0.869E+1_fp_kind,  0.126E+2_fp_kind]   ,  &
+    [0.312E+0_fp_kind,      0.259E+1_fp_kind,   0.141E+2_fp_kind,   0.344E+2_fp_kind,   0.395E+2_fp_kind])/
+data ionicFF_Peng(63 )/t_ionicFF_peng('Cs', 55,  +1, &
+    [0.587E+0_fp_kind, 0.140E+1_fp_kind, 0.187E+1_fp_kind,  0.348E+1_fp_kind,  0.167E+1_fp_kind]   ,  &
+    [0.200E+0_fp_kind,      0.138E+1_fp_kind,   0.412E+1_fp_kind,   0.130E+2_fp_kind,   0.318E+2_fp_kind])/
+data ionicFF_Peng(64 )/t_ionicFF_peng('Ba', 56,  +2, &
+    [0.733E+0_fp_kind, 0.205E+1_fp_kind, 0.230E+2_fp_kind, -0.152E+3_fp_kind,  0.134E+3_fp_kind]   ,  &
+    [0.258E+0_fp_kind,      0.196E+1_fp_kind,   0.118E+2_fp_kind,   0.144E+2_fp_kind,   0.149E+2_fp_kind])/
+data ionicFF_Peng(65 )/t_ionicFF_peng('La', 57,  +3, &
+    [0.493E+0_fp_kind, 0.110E+1_fp_kind, 0.150E+1_fp_kind,  0.270E+1_fp_kind,  0.108E+1_fp_kind]   ,  &
+    [0.167E+0_fp_kind,      0.111E+1_fp_kind,   0.311E+1_fp_kind,   0.961E+1_fp_kind,   0.212E+2_fp_kind])/
+data ionicFF_Peng(66 )/t_ionicFF_peng('Ce', 58,  +3, &
+    [0.560E+0_fp_kind, 0.135E+1_fp_kind, 0.159E+1_fp_kind,  0.263E+1_fp_kind,  0.706E+0_fp_kind]   ,  &
+    [0.190E+0_fp_kind,      0.130E+1_fp_kind,   0.393E+1_fp_kind,   0.107E+2_fp_kind,   0.238E+2_fp_kind])/
+data ionicFF_Peng(67 )/t_ionicFF_peng('Ce', 58,  +4, &
+    [0.483E+0_fp_kind, 0.109E+1_fp_kind, 0.134E+1_fp_kind,  0.245E+1_fp_kind,  0.797E+0_fp_kind]   ,  &
+    [0.165E+0_fp_kind,      0.110E+1_fp_kind,   0.302E+1_fp_kind,   0.885E+1_fp_kind,   0.188E+2_fp_kind])/
+data ionicFF_Peng(68 )/t_ionicFF_peng('Pr', 59,  +3, &
+    [0.663E+0_fp_kind, 0.173E+1_fp_kind, 0.235E+1_fp_kind,  0.351E+0_fp_kind,  0.159E+1_fp_kind]   ,  &
+    [0.226E+0_fp_kind,      0.161E+1_fp_kind,   0.633E+1_fp_kind,   0.110E+2_fp_kind,   0.169E+2_fp_kind])/
+data ionicFF_Peng(69 )/t_ionicFF_peng('Pr', 59,  +4, &
+    [0.521E+0_fp_kind, 0.119E+1_fp_kind, 0.133E+1_fp_kind,  0.236E+1_fp_kind,  0.690E+0_fp_kind]   ,  &
+    [0.177E+0_fp_kind,      0.117E+1_fp_kind,   0.328E+1_fp_kind,   0.894E+1_fp_kind,   0.193E+2_fp_kind])/
+data ionicFF_Peng(70 )/t_ionicFF_peng('Nd', 60,  +3, &
+    [0.501E+0_fp_kind, 0.118E+1_fp_kind, 0.145E+1_fp_kind,  0.253E+1_fp_kind,  0.920E+0_fp_kind]   ,  &
+    [0.162E+0_fp_kind,      0.108E+1_fp_kind,   0.306E+1_fp_kind,   0.880E+1_fp_kind,   0.196E+2_fp_kind])/
+data ionicFF_Peng(71 )/t_ionicFF_peng('Pm', 61,  +3, &
+    [0.496E+0_fp_kind, 0.120E+1_fp_kind, 0.147E+1_fp_kind,  0.243E+1_fp_kind,  0.943E+0_fp_kind]   ,  &
+    [0.156E+0_fp_kind,      0.105E+1_fp_kind,   0.307E+1_fp_kind,   0.856E+1_fp_kind,   0.192E+2_fp_kind])/
+data ionicFF_Peng(72 )/t_ionicFF_peng('Sm', 62,  +3, &
+    [0.518E+0_fp_kind, 0.124E+1_fp_kind, 0.143E+1_fp_kind,  0.240E+1_fp_kind,  0.781E+0_fp_kind]   ,  &
+    [0.163E+0_fp_kind,      0.108E+1_fp_kind,   0.311E+1_fp_kind,   0.852E+1_fp_kind,   0.191E+2_fp_kind])/
+data ionicFF_Peng(73 )/t_ionicFF_peng('Eu', 63,  +2, &
+    [0.613E+0_fp_kind, 0.153E+1_fp_kind, 0.184E+1_fp_kind,  0.246E+1_fp_kind,  0.714E+0_fp_kind]   ,  &
+    [0.190E+0_fp_kind,      0.127E+1_fp_kind,   0.418E+1_fp_kind,   0.107E+2_fp_kind,   0.262E+2_fp_kind])/
+data ionicFF_Peng(74 )/t_ionicFF_peng('Eu', 63,  +3, &
+    [0.496E+0_fp_kind, 0.121E+1_fp_kind, 0.145E+1_fp_kind,  0.236E+1_fp_kind,  0.774E+0_fp_kind]   ,  &
+    [0.152E+0_fp_kind,      0.101E+1_fp_kind,   0.295E+1_fp_kind,   0.818E+1_fp_kind,   0.185E+2_fp_kind])/
+data ionicFF_Peng(75 )/t_ionicFF_peng('Gd', 64,  +3, &
+    [0.490E+0_fp_kind, 0.119E+1_fp_kind, 0.142E+1_fp_kind,  0.230E+1_fp_kind,  0.795E+0_fp_kind]   ,  &
+    [0.148E+0_fp_kind,      0.974E+0_fp_kind,   0.281E+1_fp_kind,   0.778E+1_fp_kind,   0.177E+2_fp_kind])/
+data ionicFF_Peng(76 )/t_ionicFF_peng('Tb', 65,  +3, &
+    [0.503E+0_fp_kind, 0.122E+1_fp_kind, 0.142E+1_fp_kind,  0.224E+1_fp_kind,  0.710E+0_fp_kind]   ,  &
+    [0.150E+0_fp_kind,      0.982E+0_fp_kind,   0.286E+1_fp_kind,   0.777E+1_fp_kind,   0.177E+2_fp_kind])/
+data ionicFF_Peng(77 )/t_ionicFF_peng('Dy', 66,  +3, &
+    [0.503E+0_fp_kind, 0.124E+1_fp_kind, 0.144E+1_fp_kind,  0.217E+1_fp_kind,  0.643E+0_fp_kind]   ,  &
+    [0.148E+0_fp_kind,      0.970E+0_fp_kind,   0.288E+1_fp_kind,   0.773E+1_fp_kind,   0.176E+2_fp_kind])/
+data ionicFF_Peng(78 )/t_ionicFF_peng('Ho', 67,  +3, &
+    [0.456E+0_fp_kind, 0.117E+1_fp_kind, 0.143E+1_fp_kind,  0.215E+1_fp_kind,  0.692E+0_fp_kind]   ,  &
+    [0.129E+0_fp_kind,      0.869E+0_fp_kind,   0.261E+1_fp_kind,   0.724E+1_fp_kind,   0.167E+2_fp_kind])/
+data ionicFF_Peng(79 )/t_ionicFF_peng('Er', 68,  +3, &
+    [0.522E+0_fp_kind, 0.128E+1_fp_kind, 0.146E+1_fp_kind,  0.205E+1_fp_kind,  0.508E+0_fp_kind]   ,  &
+    [0.150E+0_fp_kind,      0.964E+0_fp_kind,   0.293E+1_fp_kind,   0.772E+1_fp_kind,   0.178E+2_fp_kind])/
+data ionicFF_Peng(80 )/t_ionicFF_peng('Tm', 69,  +3, &
+    [0.475E+0_fp_kind, 0.120E+1_fp_kind, 0.142E+1_fp_kind,  0.205E+1_fp_kind,  0.584E+0_fp_kind]   ,  &
+    [0.132E+0_fp_kind,      0.864E+0_fp_kind,   0.260E+1_fp_kind,   0.709E+1_fp_kind,   0.166E+2_fp_kind])/
+data ionicFF_Peng(81 )/t_ionicFF_peng('Yb', 70,  +2, &
+    [0.508E+0_fp_kind, 0.137E+1_fp_kind, 0.176E+1_fp_kind,  0.223E+1_fp_kind,  0.584E+0_fp_kind]   ,  &
+    [0.136E+0_fp_kind,      0.922E+0_fp_kind,   0.312E+1_fp_kind,   0.872E+1_fp_kind,   0.237E+2_fp_kind])/
+data ionicFF_Peng(82 )/t_ionicFF_peng('Yb', 70,  +3, &
+    [0.498E+0_fp_kind, 0.122E+1_fp_kind, 0.139E+1_fp_kind,  0.197E+1_fp_kind,  0.559E+0_fp_kind]   ,  &
+    [0.138E+0_fp_kind,      0.881E+0_fp_kind,   0.263E+1_fp_kind,   0.699E+1_fp_kind,   0.163E+2_fp_kind])/
+data ionicFF_Peng(83 )/t_ionicFF_peng('Lu', 71,  +3, &
+    [0.483E+0_fp_kind, 0.121E+1_fp_kind, 0.141E+1_fp_kind,  0.194E+1_fp_kind,  0.522E+0_fp_kind]   ,  &
+    [0.131E+0_fp_kind,      0.845E+0_fp_kind,   0.257E+1_fp_kind,   0.688E+1_fp_kind,   0.162E+2_fp_kind])/
+data ionicFF_Peng(84 )/t_ionicFF_peng('Hf', 72,  +4, &
+    [0.522E+0_fp_kind, 0.122E+1_fp_kind, 0.137E+1_fp_kind,  0.168E+1_fp_kind,  0.312E+0_fp_kind]   ,  &
+    [0.145E+0_fp_kind,      0.896E+0_fp_kind,   0.274E+1_fp_kind,   0.691E+1_fp_kind,   0.161E+2_fp_kind])/
+data ionicFF_Peng(85 )/t_ionicFF_peng('Ta', 73,  +5, &
+    [0.569E+0_fp_kind, 0.126E+1_fp_kind, 0.979E+0_fp_kind,  0.129E+1_fp_kind,  0.551E+0_fp_kind]   ,  &
+    [0.161E+0_fp_kind,      0.972E+0_fp_kind,   0.276E+1_fp_kind,   0.540E+1_fp_kind,   0.109E+2_fp_kind])/
+data ionicFF_Peng(86 )/t_ionicFF_peng('W' , 74,  +6, &
+    [0.181E+0_fp_kind, 0.873E+0_fp_kind, 0.118E+1_fp_kind,  0.148E+1_fp_kind,  0.562E+0_fp_kind]   ,  &
+    [0.118E-1_fp_kind,      0.442E+0_fp_kind,   0.152E+1_fp_kind,   0.435E+1_fp_kind,   0.942E+1_fp_kind])/
+data ionicFF_Peng(87 )/t_ionicFF_peng('Os', 76,  +4, &
+    [0.586E+0_fp_kind, 0.131E+1_fp_kind, 0.163E+1_fp_kind,  0.171E+1_fp_kind,  0.540E+0_fp_kind]   ,  &
+    [0.155E+0_fp_kind,      0.938E+0_fp_kind,   0.319E+1_fp_kind,   0.784E+1_fp_kind,   0.193E+2_fp_kind])/
+data ionicFF_Peng(88 )/t_ionicFF_peng('Ir', 77,  +3, &
+    [0.692E+0_fp_kind, 0.137E+1_fp_kind, 0.180E+1_fp_kind,  0.197E+1_fp_kind,  0.804E+0_fp_kind]   ,  &
+    [0.182E+0_fp_kind,      0.104E+1_fp_kind,   0.347E+1_fp_kind,   0.851E+1_fp_kind,   0.212E+2_fp_kind])/
+data ionicFF_Peng(89 )/t_ionicFF_peng('Ir', 77,  +4, &
+    [0.653E+0_fp_kind, 0.129E+1_fp_kind, 0.150E+1_fp_kind,  0.174E+1_fp_kind,  0.683E+0_fp_kind]   ,  &
+    [0.174E+0_fp_kind,      0.992E+0_fp_kind,   0.314E+1_fp_kind,   0.722E+1_fp_kind,   0.172E+2_fp_kind])/
+data ionicFF_Peng(90 )/t_ionicFF_peng('Pt', 78,  +2, &
+    [0.872E+0_fp_kind, 0.168E+1_fp_kind, 0.263E+1_fp_kind,  0.193E+1_fp_kind,  0.475E+0_fp_kind]   ,  &
+    [0.223E+0_fp_kind,      0.135E+1_fp_kind,   0.499E+1_fp_kind,   0.136E+2_fp_kind,   0.330E+2_fp_kind])/
+data ionicFF_Peng(91 )/t_ionicFF_peng('Pt', 78,  +4, &
+    [0.550E+0_fp_kind, 0.121E+1_fp_kind, 0.162E+1_fp_kind,  0.195E+1_fp_kind,  0.610E+0_fp_kind]   ,  &
+    [0.142E+0_fp_kind,      0.833E+0_fp_kind,   0.281E+1_fp_kind,   0.721E+1_fp_kind,   0.177E+2_fp_kind])/
+data ionicFF_Peng(92 )/t_ionicFF_peng('Au', 79,  +1, &
+    [0.811E+0_fp_kind, 0.157E+1_fp_kind, 0.263E+1_fp_kind,  0.268E+1_fp_kind,  0.998E+0_fp_kind]   ,  &
+    [0.201E+0_fp_kind,      0.118E+1_fp_kind,   0.425E+1_fp_kind,   0.121E+2_fp_kind,   0.344E+2_fp_kind])/
+data ionicFF_Peng(93 )/t_ionicFF_peng('Au', 79,  +3, &
+    [0.722E+0_fp_kind, 0.139E+1_fp_kind, 0.194E+1_fp_kind,  0.194E+1_fp_kind,  0.699E+0_fp_kind]   ,  &
+    [0.184E+0_fp_kind,      0.106E+1_fp_kind,   0.358E+1_fp_kind,   0.856E+1_fp_kind,   0.204E+2_fp_kind])/
+data ionicFF_Peng(94 )/t_ionicFF_peng('Hg', 80,  +1, &
+    [0.796E+0_fp_kind, 0.156E+1_fp_kind, 0.272E+1_fp_kind,  0.276E+1_fp_kind,  0.118E+1_fp_kind]   ,  &
+    [0.194E+0_fp_kind,      0.114E+1_fp_kind,   0.421E+1_fp_kind,   0.124E+2_fp_kind,   0.362E+2_fp_kind])/
+data ionicFF_Peng(95 )/t_ionicFF_peng('Hg', 80,  +2, &
+    [0.773E+0_fp_kind, 0.149E+1_fp_kind, 0.245E+1_fp_kind,  0.223E+1_fp_kind,  0.570E+0_fp_kind]   ,  &
+    [0.191E+0_fp_kind,      0.112E+1_fp_kind,   0.400E+1_fp_kind,   0.108E+2_fp_kind,   0.276E+2_fp_kind])/
+data ionicFF_Peng(96 )/t_ionicFF_peng('Tl', 81,  +1, &
+    [0.820E+0_fp_kind, 0.157E+1_fp_kind, 0.278E+1_fp_kind,  0.282E+1_fp_kind,  0.131E+1_fp_kind]   ,  &
+    [0.197E+0_fp_kind,      0.116E+1_fp_kind,   0.423E+1_fp_kind,   0.127E+2_fp_kind,   0.357E+2_fp_kind])/
+data ionicFF_Peng(97 )/t_ionicFF_peng('Tl', 81,  +3, &
+    [0.836E+0_fp_kind, 0.143E+1_fp_kind, 0.394E+0_fp_kind,  0.251E+1_fp_kind,  0.150E+1_fp_kind]   ,  &
+    [0.208E+0_fp_kind,      0.120E+1_fp_kind,   0.257E+1_fp_kind,   0.486E+1_fp_kind,   0.135E+2_fp_kind])/
+data ionicFF_Peng(98 )/t_ionicFF_peng('Pb', 82,  +2, &
+    [0.755E+0_fp_kind, 0.144E+1_fp_kind, 0.248E+1_fp_kind,  0.245E+1_fp_kind,  0.103E+1_fp_kind]   ,  &
+    [0.181E+0_fp_kind,      0.105E+1_fp_kind,   0.375E+1_fp_kind,   0.106E+2_fp_kind,   0.279E+2_fp_kind])/
+data ionicFF_Peng(99 )/t_ionicFF_peng('Pb', 82,  +4, &
+    [0.583E+0_fp_kind, 0.114E+1_fp_kind, 0.160E+1_fp_kind,  0.206E+1_fp_kind,  0.662E+0_fp_kind]   ,  &
+    [0.144E+0_fp_kind,      0.796E+0_fp_kind,   0.258E+1_fp_kind,   0.622E+1_fp_kind,   0.148E+2_fp_kind])/
+data ionicFF_Peng(100)/t_ionicFF_peng('Bi', 83,  +3, &
+    [0.708E+0_fp_kind, 0.135E+1_fp_kind, 0.228E+1_fp_kind,  0.218E+1_fp_kind,  0.797E+0_fp_kind]   ,  &
+    [0.170E+0_fp_kind,      0.981E+0_fp_kind,   0.344E+1_fp_kind,   0.941E+1_fp_kind,   0.237E+2_fp_kind])/
+data ionicFF_Peng(101)/t_ionicFF_peng('Bi', 83,  +5, &
+    [0.654E+0_fp_kind, 0.118E+1_fp_kind, 0.125E+1_fp_kind,  0.166E+1_fp_kind,  0.778E+0_fp_kind]   ,  &
+    [0.162E+0_fp_kind,      0.905E+0_fp_kind,   0.268E+1_fp_kind,   0.514E+1_fp_kind,   0.112E+2_fp_kind])/
+data ionicFF_Peng(102)/t_ionicFF_peng('Ra', 88,  +2, &
+    [0.911E+0_fp_kind, 0.165E+1_fp_kind, 0.253E+1_fp_kind,  0.362E+1_fp_kind,  0.158E+1_fp_kind]   ,  &
+    [0.204E+0_fp_kind,      0.126E+1_fp_kind,   0.403E+1_fp_kind,   0.126E+2_fp_kind,   0.300E+2_fp_kind])/
+data ionicFF_Peng(103)/t_ionicFF_peng('Ac', 89,  +3, &
+    [0.915E+0_fp_kind, 0.164E+1_fp_kind, 0.226E+1_fp_kind,  0.318E+1_fp_kind,  0.125E+1_fp_kind]   ,  &
+    [0.205E+0_fp_kind,      0.128E+1_fp_kind,   0.392E+1_fp_kind,   0.113E+2_fp_kind,   0.251E+2_fp_kind])/
+data ionicFF_Peng(104)/t_ionicFF_peng('U ', 92,  +3, &
+    [0.114E+1_fp_kind, 0.248E+1_fp_kind, 0.361E+1_fp_kind,  0.113E+1_fp_kind,  0.900E+0_fp_kind]   ,  &
+    [0.250E+0_fp_kind,      0.184E+1_fp_kind,   0.739E+1_fp_kind,   0.180E+2_fp_kind,   0.227E+2_fp_kind])/
+data ionicFF_Peng(105)/t_ionicFF_peng('U ', 92,  +4, &
+    [0.109E+1_fp_kind, 0.232E+1_fp_kind, 0.120E+2_fp_kind,  0.911E+1_fp_kind,  0.215E+1_fp_kind]   ,  &
+    [0.243E+0_fp_kind,      0.175E+1_fp_kind,   0.779E+1_fp_kind,   0.831E+1_fp_kind,   0.165E+2_fp_kind])/
+data ionicFF_Peng(106)/t_ionicFF_peng('U ', 92,  +6, &
+    [0.687E+0_fp_kind, 0.114E+1_fp_kind, 0.183E+1_fp_kind,  0.253E+1_fp_kind,  0.957E+0_fp_kind]   ,  &
+    [0.154E+0_fp_kind,      0.861E+0_fp_kind,   0.258E+1_fp_kind,   0.770E+1_fp_kind,   0.159E+2_fp_kind])/
     contains
-    
-    
-    
-   
+
+
+
+
     !--------------------------------------------------------------------------------------
 !     This function returns the electron scattering factors in
 !     ANGSTROM units. The atom type is given by the index K, and
@@ -1018,25 +1968,25 @@ data ionicFF_Peng(106)/t_ionicFF_peng('U ', 92,  +6, [0.687E+0, 0.114E+1, 0.183E
 !
 !     Uses 5 gaussian summation coefficients from Waasmaier and Kirfel
 !     modified 4/6/96 for ions
-!	elsa_ext() determines the electron scattering factor using the
-!	shielded coulomb extrapolation for scattering vectors beyond
-!	the limits for which the parameterisation is fitted.
-!	
-!	see Elsa for further descriptions, as they are essentially the
-!	same function (AJD)
+!   elsa_ext() determines the electron scattering factor using the
+!   shielded coulomb extrapolation for scattering vectors beyond
+!   the limits for which the parameterisation is fitted.
+!
+!   see Elsa for further descriptions, as they are essentially the
+!   same function (AJD)
 
-	
+
     function double_elsa_ext(nt,k,atomf,s2)
-    
+
         implicit none
-      
+
         integer(4) nt,m,n,k
         real(8) atomf(13,nt),s2,deltak,alpha,total,xbs
-	    real(8) c1,fxray,s2l,a2
+        real(8) c1,fxray,s2l
         real(8) double_elsa_ext
         data c1/2.393367d-02/
 
-        ! alpha = inverse yukawa range in A (only used for small s2 in ions)      
+        ! alpha = inverse yukawa range in A (only used for small s2 in ions)
         alpha=0.02d0
 
         if(s2.lt.1.0d-03) then
@@ -1045,52 +1995,52 @@ data ionicFF_Peng(106)/t_ionicFF_peng('U ', 92,  +6, [0.687E+0, 0.114E+1, 0.183E
                 do n=1,5
                       total=total+atomf(n,k)
                 enddo
-                ! if deltak = 0 then we have a neutral atom else deltak = Z - sum a_i - c      
+                ! if deltak = 0 then we have a neutral atom else deltak = Z - sum a_i - c
                 deltak=float(nint(atomf(12,k)-total))
 
 
                 total = 0.0d0
                 do n= 1, 5
-	                m = n + 5
-	                total = total + atomf(n,k) * atomf(m,k)* (1.0 - atomf(m,k)/2.0d0*s2)
+                    m = n + 5
+                    total = total + atomf(n,k) * atomf(m,k)* (1.0 - atomf(m,k)/2.0d0*s2)
                 enddo
 
                 total=total+deltak/(s2+alpha**2d0)
                 double_elsa_ext = c1 * total
         else
                 if (s2.gt.36.0d0) then
-		          ! Large scattering vector limit
-	                s2l = s2 + atomf(13,k)
+                  ! Large scattering vector limit
+                    s2l = s2 + atomf(13,k)
                       double_elsa_ext = c1 * atomf(12,k) / s2l
-		          else
-       	          ! scattering vector in 
-		          ! parameterisation range
+                  else
+                  ! scattering vector in
+                  ! parameterisation range
                       fxray = atomf(11,k)
                       do n = 1, 5
-	                      m = n + 5
-	                      xbs = - atomf(m,k) * s2
-	                      xbs = exp(xbs)
-	                      fxray = fxray + atomf(n,k) * xbs
+                          m = n + 5
+                          xbs = - atomf(m,k) * s2
+                          xbs = exp(xbs)
+                          fxray = fxray + atomf(n,k) * xbs
                       enddo
                       double_elsa_ext = c1 * (atomf(12,k) - fxray) / s2
                 endif
         endif
 
     end function double_elsa_ext
-    
-    
-    
+
+
+
     function single_elsa_ext(nt,k,atomf,s2)
-    
+
         implicit none
-      
+
         integer(4) nt,m,n,k
         real(4) atomf(13,nt),s2,deltak,alpha,total,xbs
-	    real(4) c1,fxray,s2l,a2
+        real(4) c1,fxray,s2l
         real(4) single_elsa_ext
         data c1/2.393367e-02/
 
-        ! alpha = inverse yukawa range in A (only used for small s2 in ions)      
+        ! alpha = inverse yukawa range in A (only used for small s2 in ions)
         alpha=0.02
 
         if(s2.lt.1.0e-03) then
@@ -1099,110 +2049,107 @@ data ionicFF_Peng(106)/t_ionicFF_peng('U ', 92,  +6, [0.687E+0, 0.114E+1, 0.183E
                 do n=1,5
                       total=total+atomf(n,k)
                 enddo
-                ! if deltak = 0 then we have a neutral atom else deltak = Z - sum a_i - c      
+                ! if deltak = 0 then we have a neutral atom else deltak = Z - sum a_i - c
                 deltak=float(nint(atomf(12,k)-total))
 
 
                 total = 0.0
                 do n= 1, 5
-	                m = n + 5
-	                total = total + atomf(n,k) * atomf(m,k)* (1.0 - atomf(m,k)/2.0*s2)
+                    m = n + 5
+                    total = total + atomf(n,k) * atomf(m,k)* (1.0 - atomf(m,k)/2.0*s2)
                 enddo
 
                 total=total+deltak/(s2+alpha**2)
                 single_elsa_ext = c1 * total
         else
                 if (s2.gt.36.0) then
-		          ! Large scattering vector limit
-	                s2l = s2 + atomf(13,k)
+                  ! Large scattering vector limit
+                    s2l = s2 + atomf(13,k)
                       single_elsa_ext = c1 * atomf(12,k) / s2l
-		          else
-       	          ! scattering vector in 
-		          ! parameterisation range
+                  else
+                  ! scattering vector in
+                  ! parameterisation range
                       fxray = atomf(11,k)
                       do n = 1, 5
-	                      m = n + 5
-	                      xbs = - atomf(m,k) * s2
-	                      xbs = exp(xbs)
-	                      fxray = fxray + atomf(n,k) * xbs
+                          m = n + 5
+                          xbs = - atomf(m,k) * s2
+                          xbs = exp(xbs)
+                          fxray = fxray + atomf(n,k) * xbs
                       enddo
                       single_elsa_ext = c1 * (atomf(12,k) - fxray) / s2
                 endif
         endif
 
     end function single_elsa_ext
-   
+
 
     function Peng_ionic_FF_integer_ionicity(s2,Z,dZ,cutoff) result(fe)
-	    use m_precision	
-	
-	    real(fp_kind),intent(in)::s2,cutoff
-	    integer*4,intent(in):: Z,dZ
+        use m_precision
+
+        real(fp_kind),intent(in)::s2,cutoff
+        integer*4,intent(in):: Z,dZ
         integer*4::Zapprox
-	    optional:: cutoff
+        optional:: cutoff
 
-	    real(fp_kind)::fe,cutoff_
+        real(fp_kind)::fe,cutoff_
 
-	    integer*4::i,j
-	    
-	    cutoff_ = 1e-4
-	    if (present(cutoff)) cutoff_=cutoff
-	    
+        integer*4::i
+
+        cutoff_ = 1e-4
+        if (present(cutoff)) cutoff_=cutoff
+
         if (s2<cutoff_) then
-		    fe = 0
-	    else
-		    fe = 0.023934*dZ/s2
-	    endif
-        
-	    !First find atom
-	    do i=1,113
-		    if (ionicFF_Peng(i)%Z==Z.and.ionicFF_Peng(i)%dZ==dZ) then
+            fe = 0
+        else
+            fe = 0.023934*dZ/s2
+        endif
 
-	        cutoff_ = 1e-4
-	        if (present(cutoff)) cutoff_=cutoff
+        !First find atom
+        do i=1,113
+            if (ionicFF_Peng(i)%Z==Z.and.ionicFF_Peng(i)%dZ==dZ) then
 
-	        
+            cutoff_ = 1e-4
+            if (present(cutoff)) cutoff_=cutoff
 
-	        fe = fe+sum(ionicFF_Peng(i)%a(1:5)*exp(-ionicFF_Peng(i)%b(1:5)*s2))
+
+
+            fe = fe+sum(ionicFF_Peng(i)%a(1:5)*exp(-ionicFF_Peng(i)%b(1:5)*s2))
             return
             endif
         enddo
-		!write(*,*) 'A parametrization of Z = ',Z,' DeltaZ = ',dZ,'does not seem to be included in Peng (1998).'
-		!write(*,*) 'It will be approximated using the ionic scattering factors of Waasmaier and Kirfel (1994).' 
+        !write(*,*) 'A parametrization of Z = ',Z,' DeltaZ = ',dZ,'does not seem to be included in Peng (1998).'
+        !write(*,*) 'It will be approximated using the ionic scattering factors of Waasmaier and Kirfel (1994).'
         !If no atom, approximate it using the closest Z atom from Waasmeier and Kirfel
         !plus ionic contribtuion
-        
+
         Zapprox = Z-dZ
-        
-        fe = fe+ elsa_ext(92,Zapprox,xrayFF(2:14,:),s2)
-        
+
+        fe = fe + elsa_ext(92,Zapprox,xrayFF(2:14,:),s2)
+
     end function
-    
+
     function Peng_ionic_FF_fractional_ionicity(s2,Z,dZ,cutoff) result(fe)
-	    use m_precision	
-	
-	    real(fp_kind),intent(in)::s2,cutoff,dZ
-	    integer*4,intent(in):: Z
+        use m_precision
+
+        real(fp_kind),intent(in)::s2,cutoff,dZ
+        integer*4,intent(in):: Z
         integer*4::Zceil,Zfloor
-	    optional:: cutoff
+        optional:: cutoff
 
-	    real(fp_kind)::fe,frac,cutoff_
+        real(fp_kind)::fe,frac,cutoff_
 
-	    integer*4::i,j
-	    
-	    cutoff_ = 1e-4
-	    if (present(cutoff)) cutoff_=cutoff
-        
+        cutoff_ = 1e-4
+        if (present(cutoff)) cutoff_=cutoff
+
         !Find floor and ceiling of fractional ionicity and calculate
         Zceil = ceiling(dZ)
         frac = modulo(dZ,1.0)
         fe = Peng_ionic_FF_integer_ionicity(s2,Z,Zceil,cutoff_)*frac
         Zfloor = floor(dZ)
         fe = fe+Peng_ionic_FF_integer_ionicity(s2,Z,Zfloor,cutoff_)*(1-frac)
-	    
-        
+
+
     end function
-    
-    
+
+
    end module
-   

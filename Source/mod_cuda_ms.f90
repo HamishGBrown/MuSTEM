@@ -6,23 +6,24 @@
 !  it under the terms of the GNU General Public License as published by
 !  the Free Software Foundation, either version 3 of the License, or
 !  (at your option) any later version.
-!  
+!
 !  This program is distributed in the hope that it will be useful,
 !  but WITHOUT ANY WARRANTY; without even the implied warranty of
 !  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 !  GNU General Public License for more details.
-!   
+!
 !  You should have received a copy of the GNU General Public License
 !  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-!                       
+!
 !--------------------------------------------------------------------------------
 
 module cuda_ms
-     
+
     use global_variables
     use cuda_array_library
     use cudafor
-    
+    use cufft
+
     implicit none
 
     interface get_sum
@@ -34,7 +35,7 @@ module cuda_ms
         module procedure cuda_stem_detector_wavefunction
         module procedure cuda_stem_detector_cbed
     end interface
-    
+
 	interface cuda_multislice_iteration
 		module procedure cuda_multislice_iteration_fractorized_prop
 		module procedure cuda_multislice_iteration_single_prop
@@ -54,7 +55,7 @@ module cuda_ms
 
 		complex(fp_kind),device::shift_array_d(nopiy,nopix)
 
-		integer*4::shifty,shiftx		
+		integer*4::shifty,shiftx
 
 			call cuda_make_shift_array<<<blocks,threads>>>(shift_array_d,shift_arrayy_d,shift_arrayx_d,nopiy,nopix)     !make the qspace shift array
             call cuda_multiplication<<<blocks,threads>>>(arrayin,shift_array_d, arrayout,sqrt(normalisation),nopiy,nopix) !multiply by the qspace shift array
@@ -75,7 +76,7 @@ module cuda_ms
 
 		complex(fp_kind),dimension(nopiy,nopix),device::psi_temp_d
 
-		if(rspacein)  then 
+		if(rspacein)  then
 			call cufftExec(plan, psi_d, psi_temp_d, CUFFT_FORWARD)
 		else
 			psi_temp_d = psi_d
@@ -88,7 +89,7 @@ module cuda_ms
 	attributes(host) subroutine cuda_multislice_iteration_cshifted_transf(psi_d, transf_d, prop_d, normalisation, nopiy, nopix,nucy,nucx,plan)
 		use CUFFT_wrapper
        use cuda_array_library, only: blocks, threads
-		
+
 		use output
 		implicit none
 
@@ -97,7 +98,7 @@ module cuda_ms
 		real(fp_kind),intent(in),value::normalisation
 		complex(fp_kind)::out(nopiy,nopix)
 		integer,value::plan
-			
+
 			call cuda_multiplication<<<blocks,threads>>>(psi_d,transf_d, psi_out_d,1.0_fp_kind,nopiy,nopix,nucy,nucx)
             call cufftExec(plan,psi_out_d,psi_d,CUFFT_FORWARD)
             call cuda_multiplication<<<blocks,threads>>>(psi_d,prop_d, psi_out_d,normalisation,nopiy,nopix)
@@ -151,7 +152,7 @@ module cuda_ms
 		real(fp_kind),intent(in),value::normalisation,prop_distance
 		logical,intent(in)::even_slicing
 		integer,value::plan
-			
+
 			call cuda_multiplication<<<blocks,threads>>>(psi_d,transf_d, psi_out_d,1.0_fp_kind,nopiy,nopix)
             call cufftExec(plan,psi_out_d,psi_d,CUFFT_FORWARD)
 			if(even_slicing) then
@@ -164,12 +165,12 @@ module cuda_ms
             call cufftExec(plan,psi_out_d,psi_d,CUFFT_INVERSE)
 
 	end subroutine
-	 
-	
+
+
     attributes(global) subroutine cuda_phase_shift(shift_array, ifactory, ifactorx, ig1, ig2, n, m, coord)
-		
+
         implicit none
-    
+
         integer(4), value :: n,m,ix,iy
         integer(4), value :: ifactory,ifactorx
         integer(4) :: m1,m2
@@ -181,7 +182,7 @@ module cuda_ms
         complex(fp_kind),dimension(n,m) :: shift_array
 
         tp = atan(1.0_fp_kind)*8.0_fp_kind
-        
+
         !calculate the number of threads and blocks
         ix = (blockIdx%x-1)*blockDim%x + threadIdx%x
         iy = (blockIdx%y-1)*blockDim%y + threadIdx%y
@@ -190,12 +191,12 @@ module cuda_ms
             if (iy <= m) then
                 m1 = mod(ix+(n-1)/2-1,n)-(n-1)/2
                 ky = m1*ig1
-                m2 = mod(iy+(m-1)/2-1,m)-(m-1)/2           
+                m2 = mod(iy+(m-1)/2-1,m)-(m-1)/2
                 kx = m2*ig2
                 kr = kx/float(ifactorx)+ky/float(ifactory)
                 shift_array(ix,iy) = exp(cmplx(0.0_fp_kind,-tp*dot_product( kr, coord) ))
             endif
-        endif   
+        endif
 
     end subroutine cuda_phase_shift
 
@@ -205,7 +206,7 @@ module cuda_ms
 		real(fp_kind),device,dimension(nopiy,nopix)::intensity,temp
 		integer(4):: nopiy, nopix
 		call cuda_mod<<<blocks,threads>>>(psi, temp, 1.0_fp_kind, nopiy, nopix)
-        call cuda_addition<<<blocks,threads>>>(intensity, temp, intensity, 1.0_fp_kind, nopiy, nopix)                  
+        call cuda_addition<<<blocks,threads>>>(intensity, temp, intensity, 1.0_fp_kind, nopiy, nopix)
 	end subroutine
    !
 	!attributes(host) subroutine cuda_multislice_iteration(psi_d,transf_d,prop_d,plan)
@@ -220,19 +221,19 @@ module cuda_ms
    !
 	!	! Transmission
 	!	call cuda_multiplication<<<blocks,threads>>>(psi_d, transf_d, psi_out_d, 1.0_fp_kind, nopiy, nopix)
-   !            
+   !
 	!	! Propagate
 	!	call cufftExec(plan, psi_out_d, psi_d, CUFFT_FORWARD)
 	!	call cuda_multiplication<<<blocks,threads>>>(psi_d, prop_d, psi_out_d, normalisation, nopiy, nopix)
 	!	call cufftExec(plan, psi_out_d, psi_d, CUFFT_INVERSE)
 	!end subroutine
-    
+
     attributes(host) function cuda_stem_detector_wavefunction(psi_d, mask_d)
-    
+
         use cuda_array_library, only: blocks, threads
-    
+
         implicit none
-    
+
         real(fp_kind) :: cuda_stem_detector_wavefunction
         complex(fp_kind), device, dimension(nopiy,nopix),intent(in) :: psi_d
         real(fp_kind), device, dimension(nopiy,nopix) :: mask_d, cbed_d
@@ -241,13 +242,13 @@ module cuda_ms
         call cuda_multiplication<<<blocks,threads>>>(cbed_d,mask_d, cbed_d ,1.0_fp_kind,nopiy,nopix)
 
         cuda_stem_detector_wavefunction = get_sum(cbed_d)
-        
+
     end function cuda_stem_detector_wavefunction
-    
-	!attributes(global) subroutine cuda_stem_detector_wavefunction_on_the_fly(psi_d,result_d, inner,outer,dimy,dimx,n,m) 
+
+	!attributes(global) subroutine cuda_stem_detector_wavefunction_on_the_fly(psi_d,result_d, inner,outer,dimy,dimx,n,m)
   !
   !    implicit none
-  ! 
+  !
   !    integer*4:: l
 	!	real(fp_kind),device :: get_sum_complex_d,xx_d,yy_d,dimx_d,dimy_d,r_d,inner_d,outer_d
 	!	real(fp_kind),value:: result_d,inner,outer,dimy,dimx,xx,yy,r
@@ -255,8 +256,8 @@ module cuda_ms
   !    integer :: istat
 	!	integer,value:: n,m
 	!	complex(fp_kind), device, dimension(n,m) :: psi_d
-  !    
-	!	
+  !
+	!
 	!	integer(4), value :: ix,iy
 	!	real(fp_kind),value :: iix,iiy
   !
@@ -273,7 +274,7 @@ module cuda_ms
 	!			!else
 	!			!	arrayin(iy,ix) = arrayin(iy,ix)*scale
 	!			!endif
-	!			
+	!
 	!			xx = (modulo(ix+m/2-1,m)-m/2+1)/dimx
 	!			yy = (modulo(iy+n/2-1,n)-n/2+1)/dimy
 	!			r = sqrt(xx**2+yy**2)
@@ -284,16 +285,16 @@ module cuda_ms
 	!				istat = atomicAdd(result_d,r)
 	!			endif
   !        endif
-  !    endif   
+  !    endif
   !end subroutine cuda_stem_detector_wavefunction_on_the_fly
 
-    !attributes(host) function cuda_stem_detector_wavefunction_on_the_fly(psi_d, inner,outer,dimy,dimx) 
+    !attributes(host) function cuda_stem_detector_wavefunction_on_the_fly(psi_d, inner,outer,dimy,dimx)
     !
 	!	use cudafor
     !    use cuda_array_library, only: blocks, threads
     !
     !    implicit none
-	!	
+	!
 	!	integer*4:: l,m
     !    real(fp_kind) :: cuda_stem_detector_wavefunction_on_the_fly
 	!	real(fp_kind),device :: get_sum_complex_d,xx_d,yy_d,dimx_d,dimy_d,r_d,inner_d,outer_d
@@ -307,12 +308,12 @@ module cuda_ms
 	!	!write(*,*) outer;outer_d=outer
 	!	!write(*,*) dimx;dimx_d=dimx
 	!	!write(*,*) dimy;dimy_d=dimy
-	!	
+	!
 	!	write(*,*) 'hi'
     !    !$cuf kernel do (2) <<<*,*>>>
     !    do m = 1, nopix
     !        do l = 1, nopiy
-	!			!xx_d = 
+	!			!xx_d =
 	!			!xx = (modulo(m+nopix/2-1,m)-m/2+1)/dimx
 	!			!yy = (modulo(l+nopiy/2-1,l)-l/2+1)/dimy
 	!			!r = xx**2+yy**2
@@ -321,76 +322,76 @@ module cuda_ms
 	!			!get_sum_complex_d = get_sum_complex_d + abs(psi_d(l,m))**2
     !        enddo
     !    enddo
-    !    
+    !
     !    cuda_stem_detector_wavefunction_on_the_fly = get_sum_complex_d
-    !    
+    !
     !end function cuda_stem_detector_wavefunction_on_the_fly
 
 
-    
+
     attributes(host) function cuda_stem_detector_cbed(cbed_d, mask_d)
-    
+
         use cuda_array_library, only: blocks, threads
-        
+
         implicit none
-    
+
         real(fp_kind) :: cuda_stem_detector_cbed
         real(fp_kind), device, dimension(nopiy,nopix) :: mask_d, image_d, cbed_d
 
         call cuda_multiplication<<<blocks,threads>>>(cbed_d,mask_d, image_d ,1.0_fp_kind,nopiy,nopix)
-    
+
         cuda_stem_detector_cbed = get_sum(image_d)
-    
+
     end function cuda_stem_detector_cbed
-    
-    
+
+
 
     attributes(host) function get_sum_complex(psi_d)
-    
+
         implicit none
-    
+
         integer(4) l,m
         real(fp_kind) :: get_sum_complex
         real(fp_kind),device :: get_sum_complex_d
         complex(fp_kind), device, dimension(nopiy,nopix) :: psi_d
-    
+
         get_sum_complex_d = 0.0_fp_kind
-    
+
         !$cuf kernel do (2) <<<*,*>>>
         do m = 1, nopix
             do l = 1, nopiy
                 get_sum_complex_d = get_sum_complex_d + abs(psi_d(l,m))**2
             enddo
         enddo
-        
+
         get_sum_complex = get_sum_complex_d
-    
+
     end function get_sum_complex
-    
-    
-    
+
+
+
     attributes(host) function get_sum_real(psi_d)
-    
+
         implicit none
-        
+
         integer(4) l, m
         real(fp_kind) :: get_sum_real
         real(fp_kind), device, dimension(nopiy,nopix) :: psi_d
         real(fp_kind),device :: get_sum_real_d
-    
+
         get_sum_real_d = 0.0_fp_kind
-    
+
         !$cuf kernel do (2) <<<*,*>>>
         do m = 1, nopix
           do l = 1, nopiy
               get_sum_real_d = get_sum_real_d + psi_d(l,m)
           enddo
         enddo
-        
+
         get_sum_real = get_sum_real_d
-    
+
     end function get_sum_real
 
-    
+
 
 end module

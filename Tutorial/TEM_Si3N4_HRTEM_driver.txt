@@ -1,3 +1,5 @@
+ Device used for calculation
+ 0
  Output filename
  TEM_Si3N4_HRTEM\TEM_Si3N4_HRTEM
  Input crystal file name

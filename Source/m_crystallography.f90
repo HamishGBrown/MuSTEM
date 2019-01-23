@@ -31,7 +31,7 @@
         use m_precision, only: fp_kind
         use global_variables, only: nopiy, nopix, ig1, ig2
         
-	    implicit none
+        implicit none
     
         real(fp_kind) :: g_vec_array(3,nopiy,nopix)
         integer,intent(in),optional:: ifactory,ifactorx
@@ -46,14 +46,14 @@
         
         !$OMP PARALLEL PRIVATE(i, m2, j, m1)
         !$OMP DO
-	    do i = 1, nopiy
-	        m2 = mod( i+shifty, nopiy) - shifty -1
-	        do j = 1, nopix
-	            m1 = mod( j+shiftx, nopix) - shiftx -1
-	            g_vec_array(:,i,j) = m1 * ig1/ifactorx_ + m2 * ig2/ifactory_                
-	   	    enddo
+        do i = 1, nopiy
+            m2 = mod( i+shifty, nopiy) - shifty -1
+            do j = 1, nopix
+                m1 = mod( j+shiftx, nopix) - shiftx -1
+                g_vec_array(:,i,j) = m1 * ig1/ifactorx_ + m2 * ig2/ifactory_                
+            enddo
         enddo
-	    !$OMP END DO
+        !$OMP END DO
         !$OMP END PARALLEL
 
     end subroutine make_g_vec_array_real
@@ -63,7 +63,7 @@
         use m_precision, only: fp_kind
         use global_variables, only: nopiy, nopix, ig1, ig2
         
-	    implicit none
+        implicit none
     
         integer :: g_vec_array(3,nopiy,nopix)
         
@@ -74,14 +74,14 @@
         
         !$OMP PARALLEL PRIVATE(i, m2, j, m1)
         !$OMP DO
-	    do i = 1, nopiy
-	        m2 = mod( i+shifty, nopiy) - shifty -1
-	        do j = 1, nopix
-	            m1 = mod( j+shiftx, nopix) - shiftx -1
-	            g_vec_array(:,i,j) = m1 * ig1 + m2 * ig2
-	   	    enddo
+        do i = 1, nopiy
+            m2 = mod( i+shifty, nopiy) - shifty -1
+            do j = 1, nopix
+                m1 = mod( j+shiftx, nopix) - shiftx -1
+                g_vec_array(:,i,j) = m1 * ig1 + m2 * ig2
+            enddo
         enddo
-	    !$OMP END DO
+        !$OMP END DO
         !$OMP END PARALLEL
 
     end subroutine make_g_vec_array_int
@@ -130,7 +130,7 @@
       return
       end SUBROUTINE
 !--------------------------------------------------------------------------------------
-	subroutine zone(ig1,ig2,izone)
+    subroutine zone(ig1,ig2,izone)
       !
       ! Derived from zone axis law CJR 29/3/90
       ! Thanks to Peter Miller. Find [uvw] zone
@@ -148,22 +148,22 @@
       max = 0
       do i = 1, 3
             izz = abs(izone(i))
-	      max = max0(max,izz)
-	enddo
+          max = max0(max,izz)
+    enddo
       ic = 1
    21 continue
       do i = 1, 3
             zzz = float(ic * izone(i))
             diff = zzz / max - ic * izone(i) / max
             if(abs(diff).gt.0.01_fp_kind) then
-		      ic = ic + 1
-		      go to 21
+              ic = ic + 1
+              go to 21
             endif
-	enddo
+    enddo
       do i = 1,3
-		  izone(i) = izone(i) * float(ic)/float(max)
+          izone(i) = izone(i) * float(ic)/float(max)
       enddo
-	return
+    return
       end subroutine
 
 !--------------------------------------------------------------------------------------
@@ -185,12 +185,12 @@
       fuvw(3) = hkl(1)*ss(6)+hkl(2)*ss(5)+hkl(3)*ss(3)
       amaxim=0.0_fp_kind
       do i=1,3
-		if(abs(fuvw(i)).gt.amaxim) then
-			j = i
-			amaxim = abs(fuvw(i))
-			ruvw(j) = 1.0_fp_kind
-		endif
-	  enddo
+        if(abs(fuvw(i)).gt.amaxim) then
+            j = i
+            amaxim = abs(fuvw(i))
+            ruvw(j) = 1.0_fp_kind
+        endif
+      enddo
       do i = 1,3
        ruvw(i) = ruvw(j)*fuvw(i)/fuvw(j)
       enddo
@@ -202,23 +202,23 @@
       do i = 1,3
        ruvw(i) = ruvw(i)/factor
        if(abs(ruvw(i)).gt.amaxr) amaxr = abs(ruvw(i))
-	  enddo
+      enddo
 
       do  i = 1,3
-		if(abs(ruvw(i)/amaxr).lt.0.00001_fp_kind) ruvw(i) = 0.0_fp_kind
-	  enddo
-!	----------------------------------------------------------------
-!	Bug fix inserted 4/6/99. LJA. Otherwise for 0 -2 2, for example,
-!	the real space vector was in the wrong direction. If the first
-!	nonzero component is positive then there was no problem.
-!	----------------------------------------------------------------
+        if(abs(ruvw(i)/amaxr).lt.0.00001_fp_kind) ruvw(i) = 0.0_fp_kind
+      enddo
+!   ----------------------------------------------------------------
+!   Bug fix inserted 4/6/99. LJA. Otherwise for 0 -2 2, for example,
+!   the real space vector was in the wrong direction. If the first
+!   nonzero component is positive then there was no problem.
+!   ----------------------------------------------------------------
 
 
-	  if (fuvw(j).lt.0.0_fp_kind) then
-		do i=1,3
-			ruvw(i) = -ruvw(i)
-		enddo
-	  endif
+      if (fuvw(j).lt.0.0_fp_kind) then
+        do i=1,3
+            ruvw(i) = -ruvw(i)
+        enddo
+      endif
 
       return
       end subroutine
@@ -240,16 +240,16 @@
 
       radeg=180.0_fp_kind/(atan(1.0_fp_kind)*4.0_fp_kind)  
       do i = 1,3
-		c(i) = cos( deg(i) / radeg)
-		if(c(i).gt.0.9999_fp_kind) c(i) = 1.0_fp_kind
-	  enddo
-      fuvw(1) = izone(1) * a0(1) ** 2.0_fp_kind +		  &
+        c(i) = cos( deg(i) / radeg)
+        if(c(i).gt.0.9999_fp_kind) c(i) = 1.0_fp_kind
+      enddo
+      fuvw(1) = izone(1) * a0(1) ** 2.0_fp_kind +         &
      &          izone(2) * a0(1) * a0(2) * c(3) + &
-     &          izone(3) * a0(3) * a0(1) * c(2)	  
-      fuvw(2) = izone(2) * a0(2) ** 2.0_fp_kind +		  &
+     &          izone(3) * a0(3) * a0(1) * c(2)   
+      fuvw(2) = izone(2) * a0(2) ** 2.0_fp_kind +         &
      &          izone(3) * a0(2) * a0(3) * c(1) + &
      &          izone(1) * a0(1) * a0(2) * c(3)
-      fuvw(3) = izone(3) * a0(3) ** 2.0_fp_kind +		  &
+      fuvw(3) = izone(3) * a0(3) ** 2.0_fp_kind +         &
      &          izone(1) * a0(3) * a0(1) * c(2) + &
      &          izone(2) * a0(2) * a0(3) * c(1)
 
@@ -259,17 +259,17 @@
       do i = 1, 3
        ruvw(i) = dble(izone(i))
        if(abs(fuvw(i)).gt.amaxim) then
-		j = i
-		ihit = 1
-		amaxim = abs(fuvw(i))
-		gg(j) = 1.0_fp_kind
+        j = i
+        ihit = 1
+        amaxim = abs(fuvw(i))
+        gg(j) = 1.0_fp_kind
        endif
       enddo
 
       if(ihit.eq.1) then
        do i = 1,3
-	gg(i) = gg(j) * fuvw(i) / fuvw(j)
-	   enddo
+    gg(i) = gg(j) * fuvw(i) / fuvw(j)
+       enddo
 
        ahkl = trimr(gg,ss)
        auvw = rsd(ruvw,a0,deg)
@@ -277,21 +277,21 @@
 
        sign = 1.0_fp_kind
        if(gg(j)/fuvw(j).lt.0.0_fp_kind) sign = -1.0_fp_kind
-	       amaxg = 0.0_fp_kind
-		   do i = 1,3
-			gg(i) = sign * gg(i) / factor
-			if(abs(gg(i)).gt.amaxg) amaxg = abs(gg(i))
-		   enddo
+           amaxg = 0.0_fp_kind
+           do i = 1,3
+            gg(i) = sign * gg(i) / factor
+            if(abs(gg(i)).gt.amaxg) amaxg = abs(gg(i))
+           enddo
 
-		   do i = 1,3
-			  if(abs(gg(i)/amaxg).lt.0.00001_fp_kind) gg(i) = 0.0_fp_kind
-		   enddo
-	   endif
+           do i = 1,3
+              if(abs(gg(i)/amaxg).lt.0.00001_fp_kind) gg(i) = 0.0_fp_kind
+           enddo
+       endif
 
-	   if(ihit.eq.0) then
+       if(ihit.eq.0) then
        do i = 1,3
-			gg(i) = 0.0_fp_kind
-	   enddo
+            gg(i) = 0.0_fp_kind
+       enddo
       endif
 
       return
@@ -313,29 +313,29 @@
       radeg=180.0_fp_kind/(atan(1.0_fp_kind)*4.0_fp_kind)  
 
       do i = 1,3
-		c(i) = cos( deg(i) / radeg)
-		if(c(i).gt.0.99990_fp_kind) c(i) = 1.00_fp_kind
-	  enddo
-      fuvw(1) = zone(1) * a0(1) ** 2.00_fp_kind +		&
+        c(i) = cos( deg(i) / radeg)
+        if(c(i).gt.0.99990_fp_kind) c(i) = 1.00_fp_kind
+      enddo
+      fuvw(1) = zone(1) * a0(1) ** 2.00_fp_kind +       &
      &          zone(2) * a0(1) * a0(2) * c(3) +&
      &          zone(3) * a0(3) * a0(1) * c(2)
-      fuvw(2) = zone(2) * a0(2) ** 2.00_fp_kind +		&
+      fuvw(2) = zone(2) * a0(2) ** 2.00_fp_kind +       &
      &          zone(3) * a0(2) * a0(3) * c(1) +&
      &          zone(1) * a0(1) * a0(2) * c(3)
-      fuvw(3) = zone(3) * a0(3) ** 2.00_fp_kind +		&
+      fuvw(3) = zone(3) * a0(3) ** 2.00_fp_kind +       &
      &          zone(1) * a0(3) * a0(1) * c(2) +&
      &          zone(2) * a0(2) * a0(3) * c(1)
 
       amaxim=0.00_fp_kind
 
       do i=1,3
-		ruvw(i) = zone(i)
-		if(abs(fuvw(i)).gt.amaxim) then
-			j = i
-			amaxim = abs(fuvw(i))
-			gg(j) = 1.00_fp_kind
-		endif
-	  enddo
+        ruvw(i) = zone(i)
+        if(abs(fuvw(i)).gt.amaxim) then
+            j = i
+            amaxim = abs(fuvw(i))
+            gg(j) = 1.00_fp_kind
+        endif
+      enddo
 
       do i = 1,3
        gg(i) = gg(j) * fuvw(i) / fuvw(j)
@@ -352,11 +352,11 @@
       do i = 1,3
        gg(i) = sign * gg(i) / factor
        if(abs(gg(i)).gt.amaxg) amaxg = abs(gg(i))
-	  enddo
+      enddo
 
       do i = 1,3
-		if(abs(gg(i)/amaxg).lt.0.000010_fp_kind) gg(i) = 0.00_fp_kind
-	  enddo
+        if(abs(gg(i)/amaxg).lt.0.000010_fp_kind) gg(i) = 0.00_fp_kind
+      enddo
 
       return
       end subroutine
@@ -388,8 +388,8 @@
       do i = 1,3
             h1(i) = float(ig1(i))/ag1
             h2(i) = float(ig2(i))/ag2
-	      h12(i) = h1(i) + h2(i)
-	enddo
+          h12(i) = h1(i) + h2(i)
+    enddo
       if(h12(1).eq.0.0_fp_kind.and.h12(2).eq.0.0_fp_kind.and.h12(3).eq.0.0_fp_kind) then
             thetad = 180.0_fp_kind
             go to 99
@@ -459,7 +459,7 @@
       ONE = 0.0_fp_kind
       do I = 1, 3
             ONE = (A0(I) * Z(I)) ** 2.0_fp_kind + ONE
-	enddo
+    enddo
 
       TWO = 2.0_fp_kind * A0(2) * A0(3) * Z(2) * Z(3) * c(1)  + &
       &2.0_fp_kind * A0(3) * A0(1) * Z(3) * Z(1) * c(2)  + &
@@ -521,28 +521,28 @@
 
       pi=4.0_fp_kind*atan(1.0_fp_kind)
 
-	ag1 = trimr(g1,ss)
-	ag2 = trimr(g2,ss)
-	if(ag1.eq.0.0.or.ag2.eq.0.0) then
-	write(6,101)
+    ag1 = trimr(g1,ss)
+    ag2 = trimr(g2,ss)
+    if(ag1.eq.0.0.or.ag2.eq.0.0) then
+    write(6,101)
 101   format(' Error in Angle - one vector has zero magnitude')
-	go to 99
-	endif
-	do i = 1,3
-	      h1(i) = g1(i)/ag1
-	      h2(i) = g2(i)/ag2
+    go to 99
+    endif
+    do i = 1,3
+          h1(i) = g1(i)/ag1
+          h2(i) = g2(i)/ag2
             h12(i) = h1(i) + h2(i)
-	enddo
+    enddo
       if(h12(1).eq.0.and.h12(2).eq.0.and.h12(3).eq.0) then
-	thetad = 180.0_fp_kind
-	go to 99
-	endif
-	deg1 = acos(cosanr(h1,h12,ss)) * 180.0_fp_kind / pi
-	deg2 = acos(cosanr(h12,h2,ss)) * 180.0_fp_kind / pi
-	thetad = deg1 + deg2
-	if(abs(thetad-90).lt.0.0001_fp_kind) thetad = 90.0_fp_kind
+    thetad = 180.0_fp_kind
+    go to 99
+    endif
+    deg1 = acos(cosanr(h1,h12,ss)) * 180.0_fp_kind / pi
+    deg2 = acos(cosanr(h12,h2,ss)) * 180.0_fp_kind / pi
+    thetad = deg1 + deg2
+    if(abs(thetad-90).lt.0.0001_fp_kind) thetad = 90.0_fp_kind
  99   return
-	end subroutine
-	
+    end subroutine
+    
 end module m_crystallography
 

@@ -23,6 +23,13 @@ else if (indexOf(name, ".raw") != -1 ^ (indexOf(name, ".bin") !=-1))
     nopiy = parseInt(substring(fnam,x1+1,x));
     nopix = parseInt(substring(fnam,x+1,y));
     }
+    else if(matches(fnam,"[0-9]+x[0-9]+_.+"))
+    {
+    x1 =  indexOf(fnam,'_');
+    x = indexOf(fnam,'x');
+    nopiy = parseInt(substring(fnam,0,x));
+    nopix = parseInt(substring(fnam,x+1,x1));
+    }
     else{
 	//If no muSTEM dimensions string query user for dimensions
     Dialog.create("Raw input file dimensions");
@@ -34,23 +41,26 @@ else if (indexOf(name, ".raw") != -1 ^ (indexOf(name, ".bin") !=-1))
     }
 	
 	//Datatype can be intuited from filesize given dimensions
-     if (l/(nopiy*nopix) == 1)
+     bytes =  (l-8)/(nopiy*nopix);   
+    offset=bytes;
+    openString = "width="+nopiy+" height="+nopix+" offset="+offset+" number=1 gap=0";
+ 
+     if (bytes  == 1)
     {
-    openString="open=["+name+"] image=[8-bit] width="+nopiy+" height="+nopix+" offset=0 number=1 gap=0";
+    openString="open=["+name+"] image=[8-bit] "+openString ;
     }
-    if (l/(nopiy*nopix) == 2)
+    if (bytes == 2)
     {
-    openString="open=["+name+"] image=[16-bit Signed] width="+nopiy+" height="+nopix+" offset=0 number=1 gap=0";
+    openString="open=["+name+"] image=[16-bit Signed] "+openString ;
     }
-    if (l/(nopiy*nopix) == 8)
+    if (bytes == 8)
     {
-    openString="open=["+name+"] image=[64-bit Real] width="+nopiy+" height="+nopix+" offset=0 number=1 gap=0";
+    openString="open=["+name+"] image=[64-bit Real] "+openString ;
     }
-    if(l/(nopiy*nopix) == 4)
+    if(bytes  == 4)
     {
-    openString="open=["+name+"] image=[32-bit Real] width="+nopiy+" height="+nopix+" offset=0 number=1 gap=0";
+    openString="open=["+name+"] image=[32-bit Real] "+openString ;
     }
-    run("Raw...",openString);
     
 }
 else

@@ -29,11 +29,11 @@
 !implementation of MuSTEM.
 
 module m_numerical_tools
-	use m_precision
+    use m_precision
 
-	interface ran1
-		module procedure r8_uniform_01	
-	end interface
+    interface ran1
+        module procedure r8_uniform_01  
+    end interface
 
 contains        
         
@@ -42,27 +42,27 @@ contains
 
         use m_precision
     
-	    implicit none
+        implicit none
 
-	    real(fp_kind) tauin(3), tauout(3), a0(3)
-	    real(fp_kind) urms
-	    integer(4) idum
-	    real(fp_kind) xran, yran, zran
-	    !real(fp_kind) gasdev
+        real(fp_kind) tauin(3), tauout(3), a0(3)
+        real(fp_kind) urms
+        integer(4) idum
+        real(fp_kind) xran, yran, zran
+        !real(fp_kind) gasdev
 
-	    xran = gasdev(idum)
-	    yran = gasdev(idum)
-	    !zran = gasdev(idum)
+        xran = gasdev(idum)
+        yran = gasdev(idum)
+        !zran = gasdev(idum)
 
-	    xran = xran * urms / a0(1)
-	    yran = yran * urms / a0(2)
-	    !zran = zran * urms / a0(3)
+        xran = xran * urms / a0(1)
+        yran = yran * urms / a0(2)
+        !zran = zran * urms / a0(3)
 
-	    tauout(1) = tauin(1) + xran
-	    tauout(2) = tauin(2) + yran
-	    tauout(3) = tauin(3)
-    !	tauout(3) = tauin(3) + zran
-	
+        tauout(1) = tauin(1) + xran
+        tauout(2) = tauin(2) + yran
+        tauout(3) = tauin(3)
+    !   tauout(3) = tauin(3) + zran
+    
     end subroutine displace
 
 subroutine normal_sample ( a, b, seed, x )
@@ -115,12 +115,12 @@ end subroutine
 !the interface to the gasdev function from Numerical Recipes (see comment
 !at the beginning of this file).
 function gasdev(seed)
-	real(fp_kind)::gasdev
-	real*8::x
-	integer*4,intent(inout)::seed
+    real(fp_kind)::gasdev
+    real*8::x
+    integer*4,intent(inout)::seed
 
-	call normal_01_sample(seed,x)
-	gasdev = real(x, fp_kind)
+    call normal_01_sample(seed,x)
+    gasdev = real(x, fp_kind)
 end function
 
 subroutine normal_01_sample ( seed, x )

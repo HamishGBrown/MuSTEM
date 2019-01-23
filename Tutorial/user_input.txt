@@ -1,6 +1,6 @@
 play
-STEM_Al110_CBED_test_driver.txt
 STEM_Al3Li_ABF_driver.txt
+STEM_Al110_CBED_test_driver.txt
 STEM_SrTiO3_STEM_driver.txt
 STEM_Si110_PACBED_test_driver.txt
 TEM_Si3N4_HRTEM_driver.txt

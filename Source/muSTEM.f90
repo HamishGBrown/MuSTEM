@@ -52,7 +52,7 @@
         use m_multislice
         use m_string
         use m_electron
-		use m_Hn0
+		    use m_Hn0
 
         implicit none
 
@@ -141,8 +141,13 @@
         call setup_GPU
 		double_channeling =.true. !Double channeling possible with GPU calculation
 #else
-        open(6,carriagecontrol ='fortran')
+
 		double_channeling =.false. !Double channeling not possible with CPU calculation
+#endif
+
+#ifdef GCC
+#else
+  open(6,carriagecontrol ='fortran')
 #endif
 
         call command_line_title_box('Dataset output')
@@ -168,7 +173,7 @@
         call setup_specimen_thickness
 
         ! Set up the potential calculation method
-        call prompt_high_accuracy
+        call prompt_high_accuracy(high_accuracy)
 
         ! Set the unit cell tiling and grid size
         call set_tiling_grid

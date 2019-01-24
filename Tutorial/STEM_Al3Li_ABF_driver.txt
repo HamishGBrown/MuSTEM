@@ -1,7 +1,9 @@
+! Device used for calculation
+! 0
  Output filename
- STEM_Al3Li_ABF\STEM_Al3Li_ABF
+ STEM_Al3Li_ABF/STEM_Al3Li_ABF
  Input crystal file name
- xtl_files\Al3Li.xtl
+ Tutorial/Xtl_files/Al3Li.xtl
  Probe accelerating voltage (kV)
  300
  Slice unit cell <1> yes <2> no
@@ -11,7 +13,7 @@
 <1> manual or <2> auto slicing
     2
  Thickness
-   39.7200000000000     
+   100.
 Scattering factor accuracy
     2
  Tile supercell x
@@ -27,19 +29,25 @@ Scattering factor accuracy
  calculation type
            2
  aperture cutoff
-   19.0000000000000     
+   19.0000000000000
  defocus
   0.0
  Change probe forming lens parameters
            0
  <1> QEP <2> ABS
-           2
- <1> Absorption <2> No absorption
            1
+ !<1> Absorption <2> No absorption
+ !          1
  Elastic and inelastic scattering output choice
            1
 <0> Continue <1> Beam tilt <2> Specimen tilt
 0
+Number of phase grates calculated
+10
+Number of Monte Carlo calculated
+30
+Number of ran1 discarded
+1
  <0> continue <1> save <2> load
     0
  <1> CBED <2> STEM/PACBED
@@ -51,7 +59,7 @@ Scattering factor accuracy
 Probe scan menu choice
     1
  output interpolation max pixels
-     256
+     128
  output interpolation tilex
      4
  output interpolation tiley
@@ -76,5 +84,7 @@ inner
     50
 outer
     200
+<0> Precalculated potentials <1> On-the-fly calculation
+ 0
  Ionization choice
            3

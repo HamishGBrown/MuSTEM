@@ -45,8 +45,7 @@ module cuda_ms
     contains
 
 	attributes(host) subroutine cuda_phase_shift_from_1d_factor_arrays(arrayin,arrayout,shift_arrayy_d,shift_arrayx_d,nopiy,nopix,plan)
-		use CUFFT_wrapper
-       use cuda_array_library, only: blocks, threads
+     use cuda_array_library, only: blocks, threads
 		complex(fp_kind),intent(in),device::arrayin(nopiy,nopix),shift_arrayy_d(nopiy),shift_arrayx_d(nopix)
 		integer(4),intent(in)::nopiy,nopix
 		integer,value::plan
@@ -63,7 +62,6 @@ module cuda_ms
 	end subroutine
 
 	attributes(host) subroutine cuda_image(psi_d,ctf_d,image_d,normalisation, nopiy, nopix,plan,rspacein)
-		use CUFFT_wrapper
        use cuda_array_library, only: blocks, threads
 		implicit none
 
@@ -87,7 +85,7 @@ module cuda_ms
 	end subroutine
 
 	attributes(host) subroutine cuda_multislice_iteration_cshifted_transf(psi_d, transf_d, prop_d, normalisation, nopiy, nopix,nucy,nucx,plan)
-		use CUFFT_wrapper
+
        use cuda_array_library, only: blocks, threads
 
 		use output
@@ -107,7 +105,7 @@ module cuda_ms
 	end subroutine
 
 	attributes(host) subroutine cuda_multislice_iteration_single_prop(psi_d, transf_d, prop_d, normalisation, nopiy, nopix,plan)
-		use CUFFT_wrapper
+
        use cuda_array_library, only: blocks, threads
 		implicit none
 
@@ -124,7 +122,6 @@ module cuda_ms
 	end subroutine
 
 	attributes(host) subroutine cuda_multislice_iteration_fractorized_prop(psi_d, transf_d, propy_d, propx_d,normalisation, nopiy, nopix,plan)
-		use CUFFT_wrapper
        use cuda_array_library, only: blocks, threads
 		implicit none
 
@@ -142,7 +139,6 @@ module cuda_ms
 	end subroutine
 
 	attributes(host) subroutine cuda_multislice_iteration_new(psi_d, transf_d, prop_d,prop_distance,even_slicing, normalisation, nopiy, nopix,plan)
-		use CUFFT_wrapper
        use cuda_array_library, only: blocks, threads
 		implicit none
 

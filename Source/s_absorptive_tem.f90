@@ -48,7 +48,7 @@ subroutine absorptive_tem
     use m_absorption
     use m_precision
     use output
-	use cufft_wrapper
+	use FFTW3
 #ifdef GPU
     use CUFFT
     use cuda_array_library
@@ -115,7 +115,10 @@ subroutine absorptive_tem
 
     call command_line_title_box('Pre-calculation setup')
 	do i=1,imaging_ndf
-        if(pw_illum) lens_ctf(:,:,i) =  make_ctf([0.0_fp_kind,0.0_fp_kind,0.0_fp_kind],imaging_df(i),imaging_cutoff,imaging_aberrations,imaging_apodisation)
+    if(pw_illum) then
+      lens_ctf(:,:,i) =  make_ctf(real([0,0,0],kind=fp_kind),imaging_df(i),&
+                        &imaging_cutoff,imaging_aberrations,imaging_apodisation)
+    endif
 	enddo
     ! Precalculate the scattering factors on a grid
     call precalculate_scattering_factors()
@@ -124,7 +127,7 @@ subroutine absorptive_tem
         psi_initial = 1.0_fp_kind/sqrt(float(nopiy*nopix))
 	else
         psi_initial = make_ctf(probe_initial_position,probe_df(1),probe_cutoff,probe_aberrations,probe_apodisation)
-        call ifft2(nopiy, nopix, psi_initial, nopiy, psi_initial, nopiy)
+        call inplace_ifft(nopiy, nopix, psi_initial)
         psi_initial = psi_initial/sqrt(sum(abs(psi_initial)**2))
     endif
     call tilt_wave_function(psi_initial)
@@ -181,7 +184,8 @@ subroutine absorptive_tem
 	!and propagators
 
     if(even_slicing.and.(.not.factorized_propagator)) then
-		call make_propagator(nopiy,nopix,prop,prop_distance(1),Kz(ntilt),ss,ig1,ig2,claue(:,ntilt),ifactorx,ifactory,exponentiate = .true.)
+		call make_propagator(nopiy,nopix,prop,prop_distance(1),Kz(ntilt),ss,ig1,ig2&
+                       &,claue(:,ntilt),ifactorx,ifactory,exponentiate = .true.)
 		prop = prop*bwl_mat
 	elseif(.not.factorized_propagator) then
 		call make_propagator(nopiy,nopix,prop,1.0_fp_kind,Kz(ntilt),ss,ig1,ig2,claue(:,ntilt),ifactorx,ifactory,exponentiate = .false.)
@@ -190,9 +194,9 @@ subroutine absorptive_tem
     do i = 1, n_slices
         transf_absorptive(:,:,i) = exp(ci*pi*a0_slice(3,i)/Kz(ntilt)*projected_potential(:,:,i))
         ! Bandwith limit the phase grate, psi is used for temporary storage
-        call fft2(nopiy, nopix, transf_absorptive(:,:,i), nopiy, psi, nopiy)
-        psi = psi * bwl_mat
-        call ifft2(nopiy, nopix, psi, nopiy, transf_absorptive(:,:,i), nopiy)
+        call inplace_fft(nopiy, nopix, transf_absorptive(:,:,i))
+        transf_absorptive(:,:,i) = psi * transf_absorptive(:,:,i)/nopiy/nopix
+        call inplace_ifft(nopiy, nopix,transf_absorptive(:,:,i))
     enddo
 	endif
 #ifdef GPU
@@ -290,8 +294,7 @@ subroutine absorptive_tem
 		!If this thickness cprop_dorresponds to any of the output values then output images
 		if (any(i_cell==ncells)) then
 
-			call fft2(nopiy, nopix, psi, nopiy, psi_out, nopiy)
-			cbed = abs(psi_out)**2
+			cbed = abs(fft(nopiy, nopix, psi,norm=.true.))**2
 			z_indx = minloc(abs(ncells-i_cell))
 			filename = trim(adjustl(output_prefix))
 			if (nz>1) filename = trim(adjustl(filename))//'_z='//zero_padded_int(int(zarray(z_indx(1))),lengthz)//'_A'
@@ -303,12 +306,7 @@ subroutine absorptive_tem
             call binary_out(nopiy, nopix, abs(psi)**2, trim(adjustl(filename))//'_Exit_surface_intensity')
             call binary_out(nopiy, nopix, atan2(imag(psi),real(psi)), trim(adjustl(filename))//'_Exit_surface_phase')
 			do i=1,imaging_ndf
-
-				call fft2(nopiy, nopix, psi, nopiy, psi_out, nopiy)
-
-				psi_out = psi_out*lens_ctf(:,:,i)
-				call ifft2(nopiy, nopix, psi_out, nopiy, psi_out, nopiy)
-				tem_image = abs(psi_out)**2
+				tem_image = make_image(nopiy,nopix,psi,lens_ctf(:,:,i))
 				fnam_df = trim(adjustl(filename))// '_Image'
 				if(imaging_ndf>1) fnam_df = trim(adjustl(fnam_df))//'_Defocus_'//zero_padded_int(int(imaging_df(i)),lengthdf)//'_Ang'
 				call binary_out(nopiy, nopix, tem_image, fnam_df)
@@ -331,7 +329,7 @@ subroutine absorptive_tem
 
 	if(timing) then
 		open(unit=9834, file=trim(adjustl(output_prefix))//'_timing.txt', access='append')
-		write(9834, '(a, g, a, /)') 'The multislice calculation took ', delta, 'seconds.'
+		write(9834, '(a, g9.4, a, /)') 'The multislice calculation took ', delta, 'seconds.'
 		close(9834)
 	endif
 

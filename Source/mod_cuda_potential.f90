@@ -303,7 +303,7 @@ end subroutine
         use global_variables
         use m_precision
         use CUFFT
-	    use cufft_wrapper
+
         use cudafor
         use cuda_array_library, only: blocks, threads
 		use output
@@ -466,7 +466,7 @@ end subroutine
         use global_variables
         use m_precision
         use CUFFT
-	    use cufft_wrapper
+
         use cudafor
         use cuda_array_library, only: blocks, threads
 		use output
@@ -639,7 +639,7 @@ end subroutine
 	subroutine cuda_band_width_limit(arrayin,nopiy,nopix,szey,szex,normalisation,fftin,fftout,plan)
 
         use CUFFT
-	    use cufft_wrapper
+
 	complex(fp_kind),intent(inout),device::arrayin(nopiy,nopix)
 	integer*4,intent(in)::nopiy,nopix
 	integer,intent(in)::plan

@@ -32,13 +32,7 @@ module m_potential
       real(fp_kind),    allocatable :: adf_potential(:,:,:,:)
       real(fp_kind),    allocatable :: ionization_potential(:,:,:,:)
       real(fp_kind),    allocatable :: eels_correction_detector(:,:)
-<<<<<<< HEAD
-	 !complex(fp_kind), allocatable :: inverse_sinc_new(:,:)
-    
-=======
-     complex(fp_kind), allocatable :: inverse_sinc_new(:,:)
 
->>>>>>> GCC-compatibleMuSTEM
     integer(4) :: n_qep_grates,n_qep_passes,nran ! Start of random number sequence
 
     logical :: phase_ramp_shift
@@ -54,13 +48,14 @@ module m_potential
 
     contains
 
-    subroutine prompt_high_accuracy
+    subroutine prompt_high_accuracy(high_accuracy)
 
         use m_user_input, only: get_input
-        use global_variables, only: high_accuracy
-        use m_string
+        use m_string,only: command_line_title_box
 
         implicit none
+        logical :: high_accuracy
+
 
         integer :: i
 
@@ -75,26 +70,17 @@ module m_potential
         write(*,*)
         write(*,*) 'Note: if there is insufficient GPU memory, this choice will be overridden.'
         write(*,*)
-    10  write(*,*) 'Please choose a method:'
-        write(*,*) '<1> Reciprocal space (accuracy)'
-        write(*,*) '<2> Hybrid (speed)'
-        call get_input('Scattering factor accuracy', i)
-        write(*,*)
-
-        if (i.eq.1) then
-            high_accuracy = .true.
-
-        elseif (i.eq.2) then
-            high_accuracy = .false.
-
-        else
-            goto 10
-
-        endif
+        i=-1
+        do while(i<1.or.i>2)
+          write(*,*) 'Please choose a method:'
+          write(*,*) '<1> Reciprocal space (accuracy)'
+          write(*,*) '<2> Hybrid (speed)'
+          call get_input('Scattering factor accuracy', i)
+          write(*,*)
+          high_accuracy = i == 1
+        enddo
 
     end subroutine prompt_high_accuracy
-
-
 
     subroutine precalculate_scattering_factors
 
@@ -106,18 +92,11 @@ module m_potential
         use m_numerical_tools, only: cubspl,ppvalu
         use m_string
 
-<<<<<<< HEAD
 	    implicit none
-    
+
         integer(4) :: i, j, k,Z
         real(fp_kind) :: xkstep, temp,el_scat,ax,ay,g2,s2,sky,skx
-        real(fp_kind),allocatable :: xdata(:),tdsbrc(:,:,:) 
-=======
-        implicit none
-
-        integer(4) :: i, j, k
-        real(fp_kind) :: el_scat,ax,ay,g2,s2,sky,skx
->>>>>>> GCC-compatibleMuSTEM
+        real(fp_kind),allocatable :: xdata(:),tdsbrc(:,:,:)
         real(fp_kind) :: factor, eps, g_vec_array(3,nopiy,nopix)
 
         if(allocated(inverse_sinc)) deallocate(inverse_sinc)
@@ -150,30 +129,14 @@ module m_potential
                 fz(i,j,k) = cmplx( el_scat, 0.0_fp_kind ,fp_kind)
                 fz_DWF(i,j,k) = cmplx( exp( -tp**2.0_fp_kind*g2*atf(3,k) / 2.0_fp_kind ), 0.0_fp_kind,fp_kind )
             enddo
-<<<<<<< HEAD
-            
-            !Sinc 
+
+            !Sinc
             inverse_sinc(i,j) = cmplx((tp*skx*ax+eps)/(sin(tp*skx*ax)+eps)*(tp*sky*ay+eps)/(sin(tp*sky*ay)+eps),0.0_fp_kind,fp_kind)
         enddo; enddo
         ! Currently have U(g)/2K, so multiply by 2K
         fz = 2*ak*fz
-        
+
         ! Normalise the sinc function
-=======
-
-            !Sinc
-            sinc(i,j) = cmplx((sin(tp*skx*ax)+eps)/(tp*skx*ax+eps)*((sin(tp*sky*ay)+eps)&
-                                                  /(tp*sky*ay+eps)),0.0_fp_kind,fp_kind)
-            inverse_sinc(i,j) = cmplx((tp*skx*ax+eps)/(sin(tp*skx*ax)+eps)*(tp*sky*ay+eps)&
-                                              /(sin(tp*sky*ay)+eps),0.0_fp_kind,fp_kind)
-            inverse_sinc_new(i,j) = cmplx((tp*skx*ax+eps)/(sin(tp*skx*ax)+eps)*(tp*sky*ay+eps)&
-                                              /(sin(tp*sky*ay)+eps),0.0_fp_kind,fp_kind)
-        enddo; enddo
-        ! Currently have U(g)/2K, so multiply by 2K
-        fz = 2*ak*fz
-
-        ! Normalise the sinc functions
->>>>>>> GCC-compatibleMuSTEM
         inverse_sinc = inverse_sinc*float(nopiy)*float(nopix)
     end subroutine precalculate_scattering_factors
 
@@ -206,7 +169,6 @@ module m_potential
         !$OMP END PARALLEL
 
     end subroutine make_site_factor_matmul
-
 
 #ifdef GPU
     subroutine make_site_factor_cuda(site_factor, tau)
@@ -244,17 +206,10 @@ module m_potential
     subroutine make_site_factor_hybrid(site_factor, tau)
 
         use m_precision, only: fp_kind
-<<<<<<< HEAD
         use global_variables, only: nopiy, nopix,inverse_sinc
-        use CUFFT_wrapper, only: fft2
-        use output
-        
-=======
-        use global_variables, only: nopiy, nopix
         use FFTW3
         use output
 
->>>>>>> GCC-compatibleMuSTEM
         implicit none
 
         complex(fp_kind),intent(out) :: site_factor(:,:)
@@ -262,31 +217,21 @@ module m_potential
         real(fp_kind),intent(in) :: tau(:,:)
 
         integer :: j
-<<<<<<< HEAD
         integer :: uxpixel, uypixel,lxpixel, lypixel
         real(fp_kind) :: xpos, ypos, ufracx, ufracy, lfracx, lfracy
-    
+
         site_factor = 0.0_fp_kind
-        
+
         !$OMP PARALLEL PRIVATE(xpos, ypos, j, uxpixel,uypixel,lxpixel,lypixel,ufracx,ufracy,lfracx,lfracy)
-=======
-        integer :: xpixel, ypixel
-        real(fp_kind) :: xpos, ypos, fracx, fracy
-
-        site_factor = 0.0_fp_kind
-
-        !$OMP PARALLEL PRIVATE(xpos, ypos, j, xpixel,ypixel,fracx,fracy)
->>>>>>> GCC-compatibleMuSTEM
         !$OMP DO
         do j = 1, size(tau, 2)
             xpos = tau(1,j)*nopix
             ypos = tau(2,j)*nopiy
 
             ! Ensure that the pixel positions are in range
-<<<<<<< HEAD
             xpos = modulo(xpos-1,real(nopix,kind=fp_kind))+1
             ypos = modulo(ypos-1,real(nopiy,kind=fp_kind))+1
-            
+
             !fraction of the pixel top right
             call frac_upper(xpos,nopix,uxpixel,ufracx)
             call frac_upper(ypos,nopiy,uypixel,ufracy)
@@ -296,118 +241,38 @@ module m_potential
             site_factor(uypixel,lxpixel) = site_factor(uypixel,lxpixel) + ufracy*lfracx
             site_factor(lypixel,uxpixel) = site_factor(lypixel,uxpixel) + lfracy*ufracx
             site_factor(lypixel,lxpixel) = site_factor(lypixel,lxpixel) + lfracy*lfracx
-            
+
         enddo
         !$OMP end do
         !$OMP end parallel
-        call fft2(nopiy, nopix, site_factor, nopiy, site_factor, nopiy)
-        site_factor = site_factor * inverse_sinc/sqrt(float(nopiy)*float(nopix))!_new * sqrt(float(nopiy)*float(nopix))
-        
-    contains
-    
+        call inplace_fft(nopiy, nopix, site_factor)
+        site_factor = site_factor * inverse_sinc/nopiy/nopix
+
+    end subroutine
+
     subroutine frac_upper(pos,npixel,pixel,frac)
         real(fp_kind),intent(in)::pos
         integer*4,intent(in)::npixel
         real(fp_kind),intent(out)::frac
         integer*4,intent(out)::pixel
-        
+
         pixel = ceiling(pos)
         frac = mod(pos,1.0_fp_kind)
         pixel = modulo(pixel-1,npixel)+1
-        
+
     end subroutine
-    
+
     subroutine frac_lower(pos,npixel,pixel,frac)
         real(fp_kind),intent(in)::pos
         integer*4,intent(in)::npixel
         real(fp_kind),intent(out)::frac
         integer*4,intent(out)::pixel
-        
+
         pixel = floor(pos)
         frac = 1.0_fp_kind - mod(pos,1.0_fp_kind)
         pixel = modulo(pixel-1,npixel)+1
-        
+
     end subroutine
-    
-=======
-
-            if (ceiling(xpos).gt.nopix) then
-                xpos = xpos - float(nopix)
-            elseif (floor(xpos).lt.1) then
-                xpos = xpos + float(nopix)
-            endif
-
-            if (ceiling(ypos).gt.nopiy) then
-                ypos = ypos - float(nopiy)
-            elseif (floor(ypos).lt.1) then
-                ypos = ypos + float(nopiy)
-            endif
-
-            !fraction of the pixel top right
-            xpixel = ceiling(xpos)
-            ypixel = ceiling(ypos)
-            fracx = mod(xpos, 1.0_fp_kind)
-            fracy = mod(ypos, 1.0_fp_kind)
-
-            call pixel_check(xpixel, ypixel)
-            site_factor(ypixel,xpixel) = site_factor(ypixel,xpixel) + fracx*fracy
-
-            !fraction of the pixel top left
-            xpixel = floor(xpos)
-            ypixel = ceiling(ypos)
-            fracx = 1.0_fp_kind - mod(xpos, 1.0_fp_kind)
-            fracy = mod(ypos, 1.0_fp_kind)
-
-            call pixel_check(xpixel, ypixel)
-            site_factor(ypixel,xpixel) = site_factor(ypixel,xpixel) + fracx*fracy
-
-            !fraction of the pixel bottom right
-            xpixel = ceiling(xpos)
-            ypixel = floor(ypos)
-            fracx = mod(xpos, 1.0_fp_kind)
-            fracy = 1.0_fp_kind - mod(ypos,1.0_fp_kind)
-
-            call pixel_check(xpixel, ypixel)
-            site_factor(ypixel,xpixel) = site_factor(ypixel,xpixel) + fracx*fracy
-
-            !fraction of the pixel bottom left
-            xpixel = floor(xpos)
-            ypixel = floor(ypos)
-            fracx = 1.0_fp_kind - mod(xpos, 1.0_fp_kind)
-            fracy = 1.0_fp_kind - mod(ypos, 1.0_fp_kind)
-
-            call pixel_check(xpixel, ypixel)
-            site_factor(ypixel,xpixel) = site_factor(ypixel,xpixel) + fracx*fracy
-        enddo
-        !$OMP end do
-        !$OMP end parallel
-        !fix pixel offset
-        site_factor = cshift(site_factor,SHIFT = -1,DIM=1)
-        site_factor = cshift(site_factor,SHIFT = -1,DIM=2)
-
-        !call binary_out(nopiy, nopix, site_factor,'site_factor_pre_fft')
-        call inplace_fft(nopiy, nopix, site_factor,norm=.false.)
-!        call binary_out(nopiy, nopix, site_factor,'site_factor_post_fft')
-        site_factor = site_factor * inverse_sinc_new
-
-        contains
-
-        subroutine pixel_check(x, y)
-            ! Wrap pixel coordinates around so that they remain in range.
-
-            implicit none
-
-            integer(4) :: x,y
-
-            if(x.eq.0) x = nopix
-            if(x.eq.nopix+1) x = 1
-            if(y.eq.0) y = nopiy
-            if(y.eq.nopiy+1) y = 1
-
-        end subroutine pixel_check
-
->>>>>>> GCC-compatibleMuSTEM
-    end subroutine make_site_factor_hybrid
 
     subroutine setup_inelastic_ionization_types()
         use global_variables
@@ -813,14 +678,8 @@ module m_potential
     function potential_from_scattering_factors(scattering_factor,atom_posn,nat_layer,nopiy,nopix,high_accuracy)&
         result(slice_potential)
     use m_precision
-<<<<<<< HEAD
-    use cufft_wrapper
 	use output
-    
-=======
-    use FFTW3
-
->>>>>>> GCC-compatibleMuSTEM
+  use FFTW3
     implicit none
 
     integer(4),intent(in) :: nat_layer,nopiy,nopix
@@ -935,13 +794,7 @@ module m_potential
 
         end function seed_rng
 
-<<<<<<< HEAD
-      
     subroutine make_propagator(nopiy,nopix,prop,dz,ak1,ss,ig1,ig2,claue,ifactorx,ifactory,exponentiate)
-=======
-
-    subroutine make_propagator(nopiy,nopix,prop,dz,ak1,ss,claue,ifactorx,ifactory)
->>>>>>> GCC-compatibleMuSTEM
 
         use m_precision, only: fp_kind
         use m_crystallography, only: trimr,make_g_vec_array
@@ -951,25 +804,16 @@ module m_potential
         integer(4) :: nopiy,nopix
         complex(fp_kind) :: prop(nopiy,nopix)
         real(fp_kind) :: ak1, ss(7), claue(3), dz, g_vec_array(3,nopiy,nopix)
-<<<<<<< HEAD
         integer(4) :: ifactorx, ifactory, ig1(3), ig2(3)
 		logical,intent(in),optional::exponentiate
-		
-		logical::exp_
-        real(fp_kind),parameter :: pi = atan(1.0d0)*4.0d0
-        integer(4) :: ny, nx
-        
-		exp_=.true.
-		if(present(exponentiate)) exp_ = exponentiate
-        
-=======
-        integer(4) :: ifactorx, ifactory
 
+		logical::exp_
         real(fp_kind),parameter :: pi = atan(1.0_fp_kind)*4.0_fp_kind
         integer(4) :: ny, nx
 
+		exp_=.true.
+		if(present(exponentiate)) exp_ = exponentiate
 
->>>>>>> GCC-compatibleMuSTEM
         call make_g_vec_array(g_vec_array,ifactory,ifactorx)
 
         do ny = 1, nopiy;do nx = 1, nopix
@@ -979,12 +823,12 @@ module m_potential
 		if(exp_) prop = exp(prop)
 
     end subroutine
-	      
+
     subroutine make_propagator_components(nopiy,nopix,propy,propx,dz,ak1,ss,ig1,ig2,ifactorx,ifactory)
 
         use m_precision, only: fp_kind
         use m_crystallography, only: trimr,make_g_vec_array
-            
+
         implicit none
 
         integer(4) :: nopiy,nopix
@@ -994,8 +838,8 @@ module m_potential
 
         real(fp_kind),parameter :: pi = atan(1.0d0)*4.0d0
         integer(4) :: ny, nx
-        
-        
+
+
         call make_g_vec_array(g_vec_array,ifactory,ifactorx)
 
         do ny = 1, nopiy;

@@ -171,13 +171,14 @@ module m_multislice
 		psi = psi*transmission
 
         ! Propagate to next slice
-		call fft2(nopiy,nopix,psi,nopiy,psi,nopiy)
+		call inplace_fft(nopiy,nopix,psi)
 		if(even_slicing) then
             psi = psi*propagator
         else
             psi = psi*exp(prop_distance*propagator)
         endif
-		call ifft2(nopiy,nopix,psi,nopiy,psi,nopiy)
+		call inplace_ifft(nopiy,nopix,psi)
+    psi=psi/nopiy/nopix
 
     end subroutine
 
@@ -1114,43 +1115,19 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
 		logical,intent(in),optional::rspacein
 		real(fp_kind)::image(nopiy,nopix)
 
-		complex(fp_kind),dimension(nopiy,nopix)::psi_temp2,psi_temp
+		complex(fp_kind),dimension(nopiy,nopix)::psi_temp
 
 		if(present(rspacein)) then
-			if(rspacein)call fft2(nopiy,nopix,psi,nopiy,psi_temp,nopiy)
+			if(rspacein) psi_temp = fft(nopiy,nopix,psi)
 			if(.not.rspacein) psi_temp = psi
 		else
-			call fft2(nopiy,nopix,psi,nopiy,psi_temp,nopiy)
+			psi_temp = fft(nopiy,nopix,psi)
 		endif
 
 		psi_temp = psi_temp*ctf
-		call ifft2(nopiy,nopix,psi_temp,nopiy,psi_temp2,nopiy)
-		image = abs(psi_temp2)**2
+		call inplace_ifft(nopiy,nopix,psi_temp)
+		image = abs(psi_temp)**2/nopiy/nopix
 
 	end function
-
-end module
-
-
-    do i=1,nt
-        jj=1
-        do j=1,nat(i)
-            if( (tau(3,i,j) .lt. (depth2-tol)) .and.(tau(3,i,j) .ge. (depth1-tol)) ) then
-                mod_tau(1,i,jj) = tau(1,i,j)
-                mod_tau(2,i,jj) = tau(2,i,j)
-                mod_tau(3,i,jj) = (tau(3,i,j)-depth1)/diff
-                jj = jj+1
-            elseif(diff.eq.1.0) then
-                mod_tau(1,i,jj) = tau(1,i,j)
-                mod_tau(2,i,jj) = tau(2,i,j)
-                mod_tau(3,i,jj) = (tau(3,i,j)-depth1)/diff
-            endif
-        enddo
-        nat2(i)=jj-1
-    enddo
-
-    end subroutine
-
-
 
 end module

@@ -86,8 +86,8 @@ implicit none
 	!List of values in the format: [z1],[z2],[z3]
 	!A sequence of values in the format: [zstart]:[zstop]:[zstep]
 	subroutine read_sequence_string(string,lstring,nz,zarray,minstep)
-		character(len=lstring), intent(in) :: string
-		integer*4,intent(in)::lstring
+    integer*4,intent(in)::lstring
+    character(len=lstring), intent(in) :: string
 		integer*4,intent(inout)::nz
 		real(fp_kind),optional::zarray(nz),minstep
 
@@ -104,7 +104,9 @@ implicit none
 		is_list = (index(string,',').ne.0)
 
 		if (is_sequence.and.is_list) then
-			pause "Both of the characters ',', for a list of values, and ':', for an ordered sequence of values, were found in the input, please rectify and re-run program"
+			pause "Both of the characters ',', for a list of values, and ':', for an &
+             &ordered sequence of values, were found in the input, please rectify&
+             &and re-run program"
 			stop
 		endif
 

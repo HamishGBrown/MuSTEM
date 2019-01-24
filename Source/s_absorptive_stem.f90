@@ -57,7 +57,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     use cufft, only: cufft_z2z, cufft_c2c, cufft_forward, cufft_inverse, cufftplan, cufftexec
     use cuda_setup, only: GPU_memory_message
 #endif
-    use m_crystallography; use m_multislice;use m_tilt;use m_potential;use m_string;use output;use cufft_wrapper
+    use m_crystallography; use m_multislice;use m_tilt;use m_potential;use m_string;use output;use FFTW3
 	use m_Hn0; use m_absorption;use m_lens;use global_variables; use m_precision
 
     implicit none
@@ -418,7 +418,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 								enddo;endif;
 								!stop
 							endif
-                        enddo
+              enddo
 						enddo
 				enddo
 			endif  ! End loop over cells,targets and states and end double_channeling section
@@ -507,10 +507,14 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 
 #endif
 			elseif(stem.and.adf) then
-                do k=1,ndet; adf_image(:,:,k) = psi_intensity*adf_potential(:,:,j,k)*prop_distance(j) + adf_image(:,:,k); enddo
-            endif
+        do k=1,ndet
+          adf_image(:,:,k) = psi_intensity*adf_potential(:,:,j,k)*prop_distance(j)&
+                             & + adf_image(:,:,k)
+        enddo
+      endif
 
-			if(ionization) ion_image = ion_image + spread(psi_intensity,ncopies=num_ionizations,dim=3) * ionization_potential(:,:,:,j) * prop_distance(j)
+			if(ionization) ion_image = ion_image + spread(psi_intensity,ncopies=num_ionizations,dim=3) &
+                              &* ionization_potential(:,:,:,j) * prop_distance(j)
 			call multislice_iteration(psi,prop,transf_absorptive(:,:,j),prop_distance(j),even_slicing,nopiy,nopix)
 
 			if (output_probe_intensity) then
@@ -519,7 +523,8 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 					probe_intensity(:,:,cell_map(k)) = probe_intensity(:,:,cell_map(k)) + abs(psi)**2
 				endif
 			endif
-        enddo
+
+      enddo !End loop over slices
 #endif
 			!If this thickness corresponds to any of the output values then output images
 			if (any(i==ncells)) then
@@ -528,8 +533,8 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 				if (adf.and.(.not.on_the_fly)) adf_image= adf_image_d
 #endif
 				z_indx = minloc(abs(ncells-i))
-				call fft2(nopiy,nopix,psi,nopiy,psi_out,nopiy)
-				temp = abs(psi_out)**2
+
+				temp = abs(fft(nopiy,nopix,psi,norm=.true.))**2
 				if(stem) then
                     do k=1,ndet
                         stem_elastic_image(ny,nx,i_df,z_indx(1),k) = sum(masks(:,:,k)*temp)
@@ -551,7 +556,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 				if(ionization) then
 					do ii=1,num_ionizations
 						stem_ion_image(ny,nx,i_df,z_indx(1),ii) = sum(ion_image(:,:,ii))
-                    enddo
+          			enddo
 					if(.not.EDX) eels_correction_image(ny,nx,i_df,z_indx(1)) = sum(temp*eels_correction_detector)
 				endif
 
@@ -560,7 +565,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 													  &zarray(z_indx(1)),probe_df(i_df),length,lengthdf,tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2),&
 													  &nopiyout=nopiyout,nopixout=nopixout,pp=[ny,nx],write_to_screen=.false.)
 			endif
-		enddo ! End loops over cells and slices
+		enddo ! End loops over cells
 #ifdef GPU
 		intens = get_sum(psi_d)
 #else
@@ -651,10 +656,6 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 
 #endif
     if (pacbed) then
-#ifdef GPU
-	!pacbed_pattern = pacbed_pattern_d
-
-#endif
 		do i=1,nz
 			pacbed_pattern(:,:,i) = pacbed_pattern(:,:,i)/nysample/nxsample
 			call output_TEM_result(output_prefix,pacbed_pattern(:,:,i),'PACBED',nopiy,nopix,manyz,.false.,manytilt,zarray(i)&
@@ -675,7 +676,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 			call output_TEM_result(output_prefix,tile_out_image(temp/nysample/nxsample,ifactory,ifactorx),'energy_filtered_ISTEM',nopiy,nopix,manyz,imaging_ndf>1,manytilt,z=zarray(i)&
 								&,lengthz=length,lengthdf=lengthimdf,tiltstring = tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2),df = imaging_df(l))
 		enddo;enddo;endif
-
+#endif
 if(double_channeling) then
 	do l=1,numeels
 		filename =  trim(adjustl(fnam))//'_double_channeling_EELS_'//zero_padded_int(l,2)
@@ -684,5 +685,5 @@ if(double_channeling) then
 	endif
 #endif
 
-    enddo !End loop over tilts
+    !enddo !End loop over tilts
 end subroutine absorptive_stem

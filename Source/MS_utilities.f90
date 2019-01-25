@@ -522,12 +522,6 @@
 		ncells = nint(zarray/a0(3))
 		zarray = ncells*a0(3)
 
-        call read_sequence_string(thickness_string,120,nz,minstep=a0(3))
-        allocate(zarray(nz),ncells(nz))
-        call read_sequence_string(thickness_string,120,nz,zarray,a0(3))
-        ncells = nint(zarray/a0(3))
-        zarray = ncells*a0(3)
-
         thickness = zarray(nz)
 
         n_cells = nint(thickness/a0(3))

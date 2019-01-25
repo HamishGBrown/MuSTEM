@@ -92,31 +92,29 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     logical:: many_df,manyz,dodf,manytilt,factorized_propagator
 
 #ifdef GPU
-    !device variables
-    integer :: plan
-    complex(fp_kind),device,dimension(nopiy,nopix) :: psi_d!,psi_out_d
+  !device variables
+  integer :: plan
+  complex(fp_kind),device,dimension(nopiy,nopix) :: psi_d!,psi_out_d
 
-    real(fp_kind),device, allocatable,dimension(:,:) :: psi_intensity_d,eels_correction_detector_d,inelastic_potential_d,temp_d
-    real(fp_kind),device,allocatable,dimension(:,:,:) :: adf_image_d,ion_image_d,pacbed_pattern_d,masks_d
-    real(fp_kind),device,allocatable,dimension(:,:,:,:) :: adf_potential_d,ion_potential_d
+  real(fp_kind),device, allocatable,dimension(:,:) :: psi_intensity_d,eels_correction_detector_d,inelastic_potential_d,temp_d
+  real(fp_kind),device,allocatable,dimension(:,:,:) :: adf_image_d,ion_image_d,pacbed_pattern_d,masks_d
+  real(fp_kind),device,allocatable,dimension(:,:,:,:) :: adf_potential_d,ion_potential_d
 
-    !device variables for on the fly potentials
-	complex(fp_kind),device,allocatable,dimension(:) :: propy_d,propx_d
-    complex(fp_kind),device,allocatable,dimension(:,:) :: inverse_sinc_d,trans_d,prop_d
-    complex(fp_kind),device,allocatable,dimension(:,:,:) :: fz_d,fz_dwf_d,fz_abs_d,fz_mu_d,transf_d
-	complex(fp_kind),device,allocatable,dimension(:,:,:,:) :: fz_adf_d
+  !device variables for on the fly potentials
+  complex(fp_kind),device,allocatable,dimension(:) :: propy_d,propx_d
+  complex(fp_kind),device,allocatable,dimension(:,:) :: inverse_sinc_d,trans_d,prop_d
+  complex(fp_kind),device,allocatable,dimension(:,:,:) :: fz_d,fz_dwf_d,fz_abs_d,fz_mu_d,transf_d
+  complex(fp_kind),device,allocatable,dimension(:,:,:,:) :: fz_adf_d
 
-	!Double channeling variables
-	complex(fp_kind),device,allocatable,dimension(:,:) ::psi_inel_d,shiftarray,tmatrix_d,q_tmatrix_d
-	complex(fp_kind),device,allocatable,dimension(:,:,:)::tmatrix_states_d,Hn0_shifty_coord_d,Hn0_shiftx_coord_d,ctf_d
-	real(fp_kind),device,allocatable,dimension(:,:)::cbed_inel_dc_d
-	real(fp_kind),device,allocatable,dimension(:,:,:)::Hn0_eels_detector_d
-	real(fp_kind),device,allocatable,dimension(:,:,:,:)::efistem_image_d,istem_image_d
-	real(fp_kind),allocatable,dimension(:,:,:,:,:)::Hn0_eels_dc
-	real(fp_kind),allocatable,dimension(:,:,:)::tmatrix_states
-	integer::jj,i_target
-
-
+  !Double channeling variables
+  complex(fp_kind),device,allocatable,dimension(:,:) ::psi_inel_d,shiftarray,tmatrix_d,q_tmatrix_d
+  complex(fp_kind),device,allocatable,dimension(:,:,:)::tmatrix_states_d,Hn0_shifty_coord_d,Hn0_shiftx_coord_d,ctf_d
+  real(fp_kind),device,allocatable,dimension(:,:)::cbed_inel_dc_d
+  real(fp_kind),device,allocatable,dimension(:,:,:)::Hn0_eels_detector_d
+  real(fp_kind),device,allocatable,dimension(:,:,:,:)::efistem_image_d,istem_image_d
+  real(fp_kind),allocatable,dimension(:,:,:,:,:)::Hn0_eels_dc
+  real(fp_kind),allocatable,dimension(:,:,:)::tmatrix_states
+  integer::jj,i_target
 #endif
     integer,parameter :: iu = 8945
 
@@ -274,7 +272,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     if ((stem.and.adf.and.(.not.on_the_fly)).or.ionization) allocate(psi_intensity_d(nopiy,nopix))
     if (stem.and.adf.and.(.not.on_the_fly)) allocate(adf_image_d(nopiy,nopix,ndet))
     if (ionization) allocate(ion_image_d(nopiy,nopix,num_ionizations))
-	if (pacbed) allocate(pacbed_pattern_d(nopiy,nopix,nz))
+	  if (pacbed) allocate(pacbed_pattern_d(nopiy,nopix,nz))
     if (stem.and.(.not.on_the_fly)) allocate(masks_d(nopiy,nopix,ndet))
     if (stem.and.(.not.on_the_fly)) masks_d = masks
 
@@ -305,8 +303,6 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 	if(.not.on_the_fly) then
 	do i = 1, n_slices
         transf_absorptive(:,:,i) = exp(ci*pi*a0_slice(3,i)/Kz(ntilt)*projected_potential(:,:,i))
-	    !if(.not.on_the_fly) call make_propagator(nopiy,nopix,prop(:,:,i),prop_distance(i),Kz(ntilt),ss,ig1,ig2,claue(:,ntilt),ifactorx,ifactory)
-	    !if(.not.on_the_fly) prop(:,:) = prop(:,:,i) * bwl_mat
         !! Bandwith limit the phase grate, psi is used for temporary storage
         call inplace_fft(nopiy, nopix, transf_absorptive(:,:,i),norm=.true.)
         transf_absorptive(:,:,i) = transf_absorptive(:,:,i) * bwl_mat
@@ -503,9 +499,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 
 
 			if(stem.and.adf.and.on_the_fly) then
-#ifdef GPU
 
-#endif
 			elseif(stem.and.adf) then
         do k=1,ndet
           adf_image(:,:,k) = psi_intensity*adf_potential(:,:,j,k)*prop_distance(j)&
@@ -652,9 +646,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
         endif
 
     endif
-#ifdef GPU
 
-#endif
     if (pacbed) then
 		do i=1,nz
 			pacbed_pattern(:,:,i) = pacbed_pattern(:,:,i)/nysample/nxsample
@@ -685,5 +677,5 @@ if(double_channeling) then
 	endif
 #endif
 
-    !enddo !End loop over tilts
+    enddo !End loop over tilts
 end subroutine absorptive_stem

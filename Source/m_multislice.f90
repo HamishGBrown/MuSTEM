@@ -694,8 +694,9 @@ subroutine load_save_add_grates_abs(abs_grates,nopiy,nopix,n_slices)
         write(6,*) 'atomic displacements in the QEP model. You are given the'
         write(6,*) 'option of choosing the seed for this random number generator.'
         write(6,*) 'Any integer number is acceptable and you will need to reuse'
-        write(6,*) 'this seed if you want to reproduce calculations.'
-        call get_input("Rrandom number generator seed", nran )
+        write(6,*) 'this seed if you want to reproduce calculations exactly.'
+        write(6,*)
+        call get_input("Random number generator seed", nran )
         write(*,*)
 
         end subroutine

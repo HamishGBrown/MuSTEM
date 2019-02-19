@@ -1,5 +1,5 @@
 module FFTW3
-#ifdef GPUd
+#ifdef GPU
 use cufft
 implicit none
   save

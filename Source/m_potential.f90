@@ -303,9 +303,7 @@ module m_potential
         site_factor = cshift(site_factor,SHIFT = -1,DIM=1)
         site_factor = cshift(site_factor,SHIFT = -1,DIM=2)
 
-        !call binary_out(nopiy, nopix, site_factor,'site_factor_pre_fft')
         call inplace_fft(nopiy, nopix, site_factor,norm=.false.)
-!        call binary_out(nopiy, nopix, site_factor,'site_factor_post_fft')
         site_factor = site_factor * inverse_sinc_new
 
         contains

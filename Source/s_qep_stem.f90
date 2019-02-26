@@ -170,6 +170,14 @@ subroutine qep_stem(STEM,ionization,PACBED)
     allocate(cbed_inel_dc_d(nopiy,nopix),tmatrix_states(nopiy,nopix,nstates))
     allocate(shiftarray(nopiy,nopix),tmatrix_d(nopiy,nopix),q_tmatrix_d(nopiy,nopix))
     tmatrix_states_d = setup_ms_hn0_tmatrices(nopiy,nopix,nstates)*alpha_n
+
+    do i=1,nstates
+      psi = tmatrix_states_d(:,:,i)
+      call binary_out(nopiy,nopix,quad_shift(psi,nopiy,nopix),'Hn0_ml='//to_string(state_vector(i,1))//&
+                            &'_lprime='//to_string(state_vector(i,2))//'_mlprime='//&
+                            &to_string(state_vector(i,3)))
+    enddo
+
     allocate(Hn0_shifty_coord_d(nopiy,maxval(natoms_slice_total),n_slices))
     allocate(Hn0_shiftx_coord_d(nopix,maxval(natoms_slice_total),n_slices))
     Hn0_shiftx_coord_d = Hn0_shiftx_coord
@@ -695,7 +703,7 @@ subroutine qep_stem(STEM,ionization,PACBED)
                       &//'_'//trim(adjustl(Ion_description(ii)))//'_shell_EDX'
             call output_stem_image(stem_ion_image(:,:,:,:,ii), filename,probe_df)
         else
-            filename = trim(adjustl(fnam))// '_'//trim(adjustl(atom_type))&
+            filename = trim(adjustl(fnam))//'_'//trim(adjustl(atom_type))&
                     &//'_'//trim(adjustl(Ion_description(ii)))//'_orbital_EELS'
             call output_stem_image(stem_ion_image(:,:,:,:,ii), filename,probe_df)
             stem_ion_image(:,:,:,:,ii) = stem_ion_image(:,:,:,:,ii)*eels_correction_image

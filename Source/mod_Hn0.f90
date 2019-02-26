@@ -11,49 +11,49 @@
 
 module m_Hn0
 
-    use global_variables
-    use m_precision
-    use m_user_input
-    use m_lens
-	use m_string
+  use global_variables
+  use m_precision
+  use m_user_input
+  use m_lens
+  use m_string
 
-    implicit none
+  implicit none
 
-    integer(4) :: target_atom
-    integer(4) :: numwve = 100
-    integer(4) :: nsplpts = 300 !continuum wavefunction para
-    integer(4) :: nstates                        !number of atomic states used in a calculation
-    integer(4), allocatable :: state_vector(:,:) !lists the states as, ml,lpr,ml_pr
-    !real(fp_kind)  ::  bwl_rad  !band width limiting radius (in q space)
-    real(fp_kind) :: VA(10000)  !potential of the atom seen by the ejected electron
-    real(fp_kind) :: Pnl(2000)  !Bound state wavefunction of the target electron to be ionized
-    integer(4) :: lorb             !angular momentum quantum number of the bound state
-    real(fp_kind) :: Z          !atomic number of the target atom
-    real(fp_kind) :: eval       !Energy of the ejected electron
-    integer(4) :: nrad       !number of points that the radial wavefunctions are computed on
-    real(fp_kind) :: et         !threshold energy
-    real(fp_kind)  :: FAK(100)                    ! factorials necessary for the cleb3j code
-                                                  ! must be run
-    complex(fp_kind) :: alpha_n  !constant for the current conversion factor
-    real(fp_kind),allocatable :: qmin(:),gint(:,:,:,:),dgint(:,:,:,:),qpos(:,:)
-	integer*4:: numeels
-	real(fp_kind),allocatable::outerrad(:)
-    real(fp_kind),allocatable :: Hn0_eels_detector(:,:,:)
-    !complex(fp_kind) :: tmatrix(nopiy,nopix)
+  integer(4) :: target_atom
+  integer(4) :: numwve = 100
+  integer(4) :: nsplpts = 300 !continuum wavefunction para
+  integer(4) :: nstates                        !number of atomic states used in a calculation
+  integer(4), allocatable :: state_vector(:,:) !lists the states as, ml,lpr,ml_pr
+  !real(fp_kind)  ::  bwl_rad  !band width limiting radius (in q space)
+  real(fp_kind) :: VA(10000)  !potential of the atom seen by the ejected electron
+  real(fp_kind) :: Pnl(2000)  !Bound state wavefunction of the target electron to be ionized
+  integer(4) :: lorb             !angular momentum quantum number of the bound state
+  real(fp_kind) :: Z          !atomic number of the target atom
+  real(fp_kind) :: eval       !Energy of the ejected electron
+  integer(4) :: nrad       !number of points that the radial wavefunctions are computed on
+  real(fp_kind) :: et         !threshold energy
+  real(fp_kind)  :: FAK(100)                    ! factorials necessary for the cleb3j code
+                                                ! must be run
+  complex(fp_kind) :: alpha_n  !constant for the current conversion factor
+  real(fp_kind),allocatable :: qmin(:),gint(:,:,:,:),dgint(:,:,:,:),qpos(:,:)
+  integer*4:: numeels
+  real(fp_kind),allocatable::outerrad(:)
+  real(fp_kind),allocatable :: Hn0_eels_detector(:,:,:)
+  !complex(fp_kind) :: tmatrix(nopiy,nopix)
 
-    !the code constructs transition matrices at the origin and shifts uses the 1D factorisation
-    ! shift arrays for the atoms in the unit cell
-    integer(4),allocatable :: natoms_slice_total(:) !the number of target atoms per slice
-    complex(fp_kind),allocatable :: Hn0_shiftx_coord(:,:,:),Hn0_shifty_coord(:,:,:)
-    integer*4::ycells,xcells
+  !the code constructs transition matrices at the origin and shifts uses the 1D factorisation
+  ! shift arrays for the atoms in the unit cell
+  integer(4),allocatable :: natoms_slice_total(:) !the number of target atoms per slice
+  complex(fp_kind),allocatable :: Hn0_shiftx_coord(:,:,:),Hn0_shifty_coord(:,:,:)
+  integer*4::ycells,xcells
 
-    logical :: all_atoms
-    real(fp_kind) :: ionize_fraction
-    real(fp_kind) :: tpb                                  ! constant 2pi*bohr
-	real(fp_kind),allocatable :: ion_tau(:,:)
+  logical :: all_atoms
+  real(fp_kind) :: ionize_fraction
+  real(fp_kind) :: tpb                                  ! constant 2pi*bohr
+  real(fp_kind),allocatable :: ion_tau(:,:)
 
 
-	logical::efistem,eftem,hn0_calc
+  logical::efistem,eftem,hn0_calc
     contains
 
 

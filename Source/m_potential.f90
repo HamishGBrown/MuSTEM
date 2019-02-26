@@ -307,7 +307,7 @@ module m_potential
 
         !open the pertinent data files
         lineno=1
-        filename = 'ionization_data\EELS_EDX_'//shell//'.dat'
+        filename = 'ionization_data/EELS_EDX_'//shell//'.dat'
         open(unit=35,file=filename,status='old',err=970)
 
         l = len('Z = '//to_string(int(atno))//' ')
@@ -365,7 +365,7 @@ module m_potential
         lineno = get_ionization_shell_line(shell,atno)
 
         !open the pertinent data files and read to relevant line
-        open(unit=16,file='ionization_data\EELS_EDX_'//shell//'.dat',status='old',err=970)
+        open(unit=16,file='ionization_data/EELS_EDX_'//shell//'.dat',status='old',err=970)
         do iz = 1,lineno
            read(16,*) junk
         enddo
@@ -417,7 +417,7 @@ module m_potential
       enddo
 
         return
-970     write(*,*) ' Cannot access data file EELS_EDX_'//shell//'.dat'
+970     write(*,*) ' Cannot access data file ionization_data/EELS_EDX_'//shell//'.dat'
         stop
     end function
 

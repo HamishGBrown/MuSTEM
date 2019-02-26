@@ -105,12 +105,13 @@ module cuda_setup
                 write(*,*) 'Warning: this device has compute capability less than 2.0'
                 write(*,*) 'which will likely result in failure.'
                 write(*,*)
+                read(*,*)
             endif
 
-    5       write(*,*) 'Enter <0> to continue.'
-            call get_input('Device used for calculation',i)
-            if (i.ne.0) goto 5
-            write(*,*)
+    ! 5       write(*,*) 'Enter <0> to continue.'
+    !         call get_input('Device used for calculation',i)
+    !         if (i.ne.0) goto 5
+    !         write(*,*)
 
 	    else
 

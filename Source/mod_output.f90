@@ -232,6 +232,10 @@ module output
     end subroutine
 
     function quad_shift_real(array,nopiy,nopix)
+      !Quadrant shifts an array, useful for taking arrays in reciprocal space
+      !and transforming such that the zeroth order Fourier coefficient is shifted
+      !from the top right-hand corner of the array to the middle of the array
+      !(and vice versa)
         real(fp_kind),intent(in)::array(nopiy,nopix)
         integer*4,intent(in)::nopiy,nopix
 
@@ -253,27 +257,32 @@ module output
     end function
 
     function quad_shift_complex(array,nopiy,nopix)
+      !Quadrant shifts an array, useful for taking arrays in reciprocal space
+      !and transforming such that the zeroth order Fourier coefficient is shifted
+      !from the top right-hand corner of the array to the middle of the array
+      !(and vice versa)
         complex(fp_kind),intent(in)::array(nopiy,nopix)
         integer*4,intent(in)::nopiy,nopix
 
         complex(fp_kind)::quad_shift_complex(nopiy,nopix)
-        integer::Npos_y, Npos_x, Nneg_y, Nneg_x
-        integer::shifty, shiftx
 
-        Npos_y = int(floor(float(nopiy)/2))
-        Npos_x = int(floor(float(nopix)/2))
-
-        Nneg_y = nopiy - Npos_y - 1
-        Nneg_x = nopix - Npos_x - 1
-
-        shifty = -Nneg_y
-        shiftx = -Nneg_x
-
-        quad_shift_complex = cshift(cshift(array, shifty, 1), shiftx, 2)
+        quad_shift_complex = cshift(cshift(array, -nopiy/2, 1), -nopix/2, 2)
 
     end function
 
+    function inverse_quad_shift_complex(array,nopiy,nopix)
+      !Quadrant shifts an array, useful for taking arrays in reciprocal space
+      !and transforming such that the zeroth order Fourier coefficient is shifted
+      !from the top right-hand corner of the array to the middle of the array
+      !(and vice versa)
+        complex(fp_kind),intent(in)::array(nopiy,nopix)
+        integer*4,intent(in)::nopiy,nopix
 
+        complex(fp_kind)::inverse_quad_shift_complex(nopiy,nopix)
+
+        inverse_quad_shift_complex = cshift(cshift(array, nopiy/2, 1), nopix/2, 2)
+
+      end function
 
     subroutine printout_1d(image, nopix, filename)
 
@@ -354,22 +363,44 @@ module output
 
     end subroutine
 
+    subroutine fft_interpolate_indices(sampin,sampout,windowin,windowout)
+      !Finds the array indices for Fourier interpolation of array with dimensions given
+      !by sampin to array with dimensions given by sampout. The indices are returned
+      !in the arrays windowin and windowout
+      integer*4,intent(in)::sampin,sampout
+      integer*4,intent(out)::windowin(2),windowout(2)
 
+      integer*4::centrein,centreout,window
 
-    subroutine interpolate_real2D(a, b)
+      !Find the centre pixel (zeroth order Fourier coefficient) of input and
+      !output Fourier arrays.
+      centrein  = sampin/2 + 1
+      centreout = sampout/2 + 1
 
+      !Find common window
+      window = min(sampin,sampout)
+
+      !Find the array indices for Fourier interpolation
+      windowin (1) = centrein  - window/2
+      windowin (2) = centrein  + window/2 - 1 + mod(window,2)
+      windowout(1) = centreout - window/2
+      windowout(2) = centreout + window/2 - 1 + mod(window,2)
+    end subroutine
+
+    subroutine interpolate_real2D(a, b,norm)
+        !Fourier interpolation routine, this either upsample or down sample array
+        !a onto the grid implied by array b
         use FFTW3
 
         implicit none
 
         real(fp_kind)::a(:,:), b(:,:)
+        logical,intent(in),optional::norm
 
-        complex(fp_kind),allocatable::a1(:,:), a2(:,:), b1(:,:), b2(:,:)
+        complex(fp_kind),allocatable::a1(:,:), b1(:,:)
 
-        integer::nopiy_a, nopix_a, nopiy_b, nopix_b
-
-        integer::Npos_y, Npos_x, Nneg_y, Nneg_x
-        integer::shifty, shiftx
+        integer*4::nopiy_a, nopix_a, nopiy_b, nopix_b,winy_a(2),winx_a(2)
+        integer*4::winy_b(2),winx_b(2)
 
         nopiy_a = size(a, 1)
         nopix_a = size(a, 2)
@@ -377,38 +408,44 @@ module output
         nopix_b = size(b, 2)
 
         allocate(a1(nopiy_a,nopix_a))
-        allocate(a2(nopiy_a,nopix_a))
-
         allocate(b1(nopiy_b,nopix_b))
-        allocate(b2(nopiy_b,nopix_b))
 
+        !allocate(b1(nopiy_b,nopix_b))
+        !allocate(b2(nopiy_b,nopix_b))
+
+        !First cast a to a complex array (a1) and Fourier transform
         a1 = a
+        call inplace_fft(nopiy_a,nopix_a,a1,norm=.true.)
+        !Quadrant shift a1 so that the central pixel corresponds to the 0th
+        !order Fourier coefficient (default is for 0th order Fourier coefficient
+        !to be in position 1,1)
+        a1 = quad_shift(a1,nopiy_a,nopix_a)
 
-        a2 = fft(nopiy_a, nopix_a, a1,norm=.true.)
-        a2 = a2 * sqrt(float(nopiy_a*nopix_a))
+        !Now place array a1 into array b1
+        !First get correct indices for input and output arrays
+        call fft_interpolate_indices(nopiy_a,nopiy_b,winy_a,winy_b)
+        call fft_interpolate_indices(nopix_a,nopix_b,winx_a,winx_b)
 
-        Npos_y = int(floor(float(nopiy_a)/2))
-        Npos_x = int(floor(float(nopix_a)/2))
+        !Initialize b1 to zero (default array initialization is compiler dependent)
+        b1= 0
+        !now place array a1 within array b1
+        b1(winy_b(1):winy_b(2),winx_b(1):winx_b(2)) = a1(winy_a(1):winy_a(2),winx_a(1):winx_a(2))
 
-        Nneg_y = nopiy_a - Npos_y - 1
-        Nneg_x = nopix_a - Npos_x - 1
+        !Quadshift b1 back to original FFT shift positioning
+        b1 = inverse_quad_shift_complex(b1,nopiy_b,nopix_b)
+        !Inverse FFT b1
+        call inplace_ifft(nopiy_b,nopix_b,b1,norm=.true.)
 
-        shifty = -Nneg_y
-        shiftx = -Nneg_x
+        !Take real part of b1
+        b = real(b1,kind=fp_kind)
 
-        a1 = cshift(a2, shifty, 1)
-        a2 = cshift(a1, shiftx, 2)
-
-        b1 = 0.0_fp_kind
-        b1(1:nopiy_a,1:nopix_a) = a2
-
-        b2 = cshift(cshift(b1, -shifty, 1), -shiftx, 2)
-
-        b1 = ifft(nopiy_b, nopix_b, b2,norm=.true.)
-        b1 = b1 / sqrt(float(nopiy_b*nopix_b))
-
-        b = real(b1) * float(product(shape(b))) / float(product(shape(a)))
-
+        !norm determines the array normalization, if True then the mean array value is kept constant
+        !if False,the summed array normalization is kept constant
+        if(present(norm)) then
+          if(norm) b=b*sqrt(float(nopiy_b*nopix_b)/float(nopiy_a*nopix_a))
+        else
+          b=b*sqrt(float(nopiy_b*nopix_b)/float(nopiy_a*nopix_a))
+        endif
     end subroutine
 
 

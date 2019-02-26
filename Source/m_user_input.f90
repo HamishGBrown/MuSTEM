@@ -284,21 +284,18 @@ module m_user_input
 
     end function
 
-    subroutine get_input_int(prompt, num,default)
+    subroutine get_input_int(prompt, num)
 
         implicit none
 
         character(*) :: prompt
-        integer(4) :: num,default
-        optional :: default
+        integer(4) :: num
 
         character(128)::s
         integer :: iostat
-        logical :: prompt_
 
-        prompt_  = test_prompt(prompt)
+        call test_prompt(prompt)
 
-        if(prompt_) then
 5       write(*,'(1x, a)', advance='no') '> '
         s = get_string_from_file(input_file_number,line_no)
 
@@ -322,14 +319,6 @@ module m_user_input
         !line_no = line_no + 1
         call write_to_in_file(prompt, num)
 
-      else
-        if(present(default)) then
-          num = default
-        else
-          stop
-        endif
-      endif
-
     end subroutine
 
 
@@ -340,9 +329,8 @@ module m_user_input
 
         character(*) :: prompt
         character(*) :: s
-        logical :: prompt_
 
-        prompt_  = test_prompt(prompt)
+        call test_prompt(prompt)
 
        write(*,'(1x, a)', advance='no') '> '
         s = get_string_from_file(input_file_number,line_no)
@@ -365,9 +353,8 @@ module m_user_input
 
         character(128) :: s
         integer :: iostat
-        logical :: prompt_
 
-        prompt_  = test_prompt(prompt)
+        call test_prompt(prompt)
 
 5       write(*,'(1x, a)', advance='no') '> '
         s = get_string_from_file(input_file_number,line_no)
@@ -409,9 +396,8 @@ module m_user_input
 
         character(128)::s
         integer :: iostat
-        logical :: prompt_
 
-        prompt_  = test_prompt(prompt)
+        call test_prompt(prompt)
 
 5       write(*,'(1x, a)', advance='no') '> '
         s = get_string_from_file(input_file_number,line_no)
@@ -454,9 +440,8 @@ module m_user_input
 
         character(1024) :: s
         integer :: iostat
-        logical :: prompt_
 
-        prompt_  = test_prompt(prompt)
+        call test_prompt(prompt)
 
 5       write(*,'(1x, a)', advance='no') '> '
         s = get_string_from_file(input_file_number,line_no,formatter = '(a128)')
@@ -496,7 +481,7 @@ module m_user_input
 
 
 
-    subroutine get_input_two_ints(prompt, num1, num2,default)
+    subroutine get_input_two_ints(prompt, num1, num2)
 
         implicit none
 
@@ -504,11 +489,9 @@ module m_user_input
         integer(4) num1, num2
 
         character(128)::s
-        integer :: iostat,default
-        optional :: default
-        logical :: prompt_
+        integer :: iostat
 
-        prompt_  = test_prompt(prompt)
+        call test_prompt(prompt)
 
 5       write(*,'(1x, a)', advance='no') '> '
         s = get_string_from_file(input_file_number,line_no)
@@ -552,9 +535,8 @@ module m_user_input
         character(1024) :: s
         integer :: iostat
         real(fp_kind) :: array2(length+1)
-        logical :: prompt_
 
-        prompt_  = test_prompt(prompt)
+        call test_prompt(prompt)
 
 5       write(*,'(1x, a)', advance='no') '> '
         s = get_string_from_file(input_file_number,line_no)
@@ -594,19 +576,16 @@ module m_user_input
 
 
 
-    function test_prompt(prompt)
+    subroutine test_prompt(prompt)
         use m_string, only:to_upper
         implicit none
 
         character(*) :: prompt
         character(120) :: temp_string
 
-        logical :: test_prompt
-
         integer :: iostat,excl
         logical:: commented
 
-        test_prompt = .true.
         if (input_file_number .ne. 5) then
             commented = .true.
             do while(commented)
@@ -625,23 +604,24 @@ module m_user_input
                 write(*,*) 'End of file reached, but more parameters need to'
                 write(*,*) 'be read. Please record the file again.'
                 write(*,*)
+                pause
                 stop
             endif
 
             !line_no = line_no + 1
             !Tabs can cause all sorts of strife so must be removed
-            if (to_upper(trim(adjustl(remove_tabs(temp_string)))) .ne. to_upper(trim(prompt))) then
+            if (.not.(to_upper(trim(adjustl(remove_tabs(temp_string)))) .eq. to_upper(trim(adjustl(prompt))))) then
                 write(6,*) 'Wrong input string:'
-                write(6,*) trim(adjustl(temp_string))
+                write(6,*) trim(adjustl(remove_tabs(temp_string)))
                 write(6,*) 'Expected:'
                 write(6,*) trim(prompt)
                 write(6,100) line_no
 100             format(' On line number: ', i3)
-                test_prompt = .false.
+                call exit(0)
             endif
         endif
 
-    end function
+    end subroutine
 
 
 

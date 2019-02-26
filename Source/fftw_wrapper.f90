@@ -58,7 +58,7 @@ module FFTW3
             plan_mode_ = planning(0)
         endif
 
-        plan = fftwf_plan_dft_2d (nopiy,nopix,array_in,array_out,direction,plan_mode_ )
+        plan = fftwf_plan_dft_2d (nopix,nopiy,array_in,array_out,direction,plan_mode_ )
 
     end function
 
@@ -76,7 +76,7 @@ module FFTW3
             plan_mode_ = planning(0)
         endif
 
-        plan = fftw_plan_dft_2d (nopiy,nopix,array_in,array_out,direction,plan_mode_ )
+        plan = fftw_plan_dft_2d (nopix,nopiy,array_in,array_out,direction,plan_mode_ )
 
     end function
 
@@ -132,7 +132,7 @@ module FFTW3
             plan_mode_ = planning(0)
         endif
 
-        plan = fftwf_plan_dft_2d (nopiy,nopix,array,array,direction,plan_mode_ )
+        plan = fftwf_plan_dft_2d (nopix,nopiy,array,array,direction,plan_mode_ )
 
     end function
 
@@ -150,7 +150,7 @@ module FFTW3
             plan_mode_ = planning(0)
         endif
 
-        plan = fftw_plan_dft_2d (nopiy,nopix,array,array,direction,plan_mode_ )
+        plan = fftw_plan_dft_2d (nopix,nopiy,array,array,direction,plan_mode_ )
 
     end function
 
@@ -226,7 +226,7 @@ module FFTW3
     if(present(plan)) then
         call fftwf_execute_dft(plan,array_in,sfft2)
     else
-        plan_ = fftwf_plan_dft_2d (nopiy,nopix,array_in,sfft2,FFTW_FORWARD,FFTW_ESTIMATE )
+        plan_ = fftwf_plan_dft_2d (nopix,nopiy,array_in,sfft2,FFTW_FORWARD,FFTW_ESTIMATE )
         call fftwf_execute_dft(plan_,array_in,sfft2)
         call fftwf_destroy_plan ( plan_ )
     endif
@@ -319,7 +319,7 @@ module FFTW3
     if(present(plan)) then
         call fftwf_execute_dft(plan,array_in,sifft2)
     else
-        plan_ = fftwf_plan_dft_2d (nopiy,nopix,array_in,sifft2,FFTW_BACKWARD,FFTW_ESTIMATE )
+        plan_ = fftwf_plan_dft_2d (nopix,nopiy,array_in,sifft2,FFTW_BACKWARD,FFTW_ESTIMATE )
         call fftwf_execute_dft(plan_,array_in,sifft2)
         call fftwf_destroy_plan ( plan_ )
     endif
@@ -386,9 +386,9 @@ module FFTW3
         call fftw_execute_dft(plan,array_in,array_in)
     else
 
-    if(present(norm)) then
-        if(norm) array_in=array_in/sqrt(float(nopiy*nopix))
-    end if
+        if(present(norm)) then
+            if(norm) array_in=array_in/sqrt(float(nopiy*nopix))
+        end if
         plan_ = fftw_plan_dft_2d (nopiy,nopix,array_in,array_in,FFTW_FORWARD,FFTW_ESTIMATE )
         call fftw_execute_dft(plan_,array_in,array_in)
         call fftw_destroy_plan ( plan_ )
@@ -407,7 +407,7 @@ module FFTW3
     if(present(plan)) then
         call fftwf_execute_dft(plan,array_in,array_in)
     else
-        plan_ = fftwf_plan_dft_2d (nopiy,nopix,array_in,array_in,FFTW_FORWARD,FFTW_ESTIMATE )
+        plan_ = fftwf_plan_dft_2d (nopix,nopiy,array_in,array_in,FFTW_FORWARD,FFTW_ESTIMATE )
         call fftwf_execute_dft(plan_,array_in,array_in)
         call fftwf_destroy_plan ( plan_ )
     endif
@@ -512,7 +512,7 @@ module FFTW3
     if(present(plan)) then
         call fftwf_execute_dft(plan,array_in,array_in)
     else
-        plan_ = fftwf_plan_dft_2d (nopiy,nopix,array_in,array_in,FFTW_BACKWARD,FFTW_ESTIMATE )
+        plan_ = fftwf_plan_dft_2d (nopix,nopiy,array_in,array_in,FFTW_BACKWARD,FFTW_ESTIMATE )
         call fftwf_execute_dft(plan_,array_in,array_in)
         call fftwf_destroy_plan ( plan_ )
     endif

@@ -45,7 +45,7 @@
         use cuda_setup, only: setup_GPU
         use cuda_array_library, only: set_blocks
 #endif
-        use output, only: setup_output_prefix,timing
+        use output
         use m_tilt, only: prompt_tilt
         use m_absorption
         use m_potential
@@ -57,7 +57,6 @@
         implicit none
 
         integer :: i_illum, i_tds_model, i_cb_menu, i_cb_calc_type,ifile,nfiles,i_arg,idum,i,ieftem
-
         logical :: nopause = .false.,there,ionization,stem,pacbed
         character(512)::command_argument
         character(120)::fnam

@@ -597,8 +597,6 @@ module m_lens
             if(tilex.lt.1) tilex = 1
             if(tiley.lt.1) tiley = 1
 
-            if(mod(out_max, 2).ne.0) out_max = out_max + 1
-
             if(out_max.lt.max(nxsample*tilex, nysample*tiley)) then
                 write(6,105) out_max,max(nxsample*tilex, nysample*tiley)
 105         format(' The choice of ',i4,' output pixels means that sampling of the output STEM image',/,&

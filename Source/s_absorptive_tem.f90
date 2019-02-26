@@ -194,9 +194,11 @@ subroutine absorptive_tem
     do i = 1, n_slices
         transf_absorptive(:,:,i) = exp(ci*pi*a0_slice(3,i)/Kz(ntilt)*projected_potential(:,:,i))
         ! Bandwith limit the phase grate, psi is used for temporary storage
+        write(*,*) sum(transf_absorptive(:,:,i))/nopiy/nopix
         call inplace_fft(nopiy, nopix, transf_absorptive(:,:,i))
-        transf_absorptive(:,:,i) = psi * transf_absorptive(:,:,i)/nopiy/nopix
+        transf_absorptive(:,:,i) = bwl_mat * transf_absorptive(:,:,i)/nopiy/nopix
         call inplace_ifft(nopiy, nopix,transf_absorptive(:,:,i))
+        write(*,*) sum(transf_absorptive(:,:,i))/nopiy/nopix
     enddo
 	endif
 #ifdef GPU

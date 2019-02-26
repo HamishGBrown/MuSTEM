@@ -136,6 +136,7 @@
 
       do i = 1, nt
             read(iunit,*) substance_atom_types(i)
+            substance_atom_types(i) = trim(adjustl(substance_atom_types(i)))
             if (ionic) then
                 read(iunit,*) nat(i), atf(1:3,i),dz(i)
             else

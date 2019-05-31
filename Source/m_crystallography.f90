@@ -6,72 +6,72 @@
 !  it under the terms of the GNU General Public License as published by
 !  the Free Software Foundation, either version 3 of the License, or
 !  (at your option) any later version.
-!  
+!
 !  This program is distributed in the hope that it will be useful,
 !  but WITHOUT ANY WARRANTY; without even the implied warranty of
 !  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 !  GNU General Public License for more details.
-!   
+!
 !  You should have received a copy of the GNU General Public License
 !  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-!                       
+!
 !--------------------------------------------------------------------------------
 
  module m_crystallography
 
-    
+
     interface make_g_vec_array
         module procedure make_g_vec_array_real,make_g_vec_array_int
     end interface
-    
+
     contains
-    
+
     subroutine make_g_vec_array_real(g_vec_array,ifactory,ifactorx)
 
         use m_precision, only: fp_kind
         use global_variables, only: nopiy, nopix, ig1, ig2
-        
+
         implicit none
-    
+
         real(fp_kind) :: g_vec_array(3,nopiy,nopix)
         integer,intent(in),optional:: ifactory,ifactorx
-        
+
         integer :: shiftx, shifty, m1, m2, i, j
         real(fp_kind)::ifactory_,ifactorx_
-        
+
         ifactory_= 1.0_fp_kind; if(present(ifactory)) ifactory_=ifactory
         ifactorx_= 1.0_fp_kind; if(present(ifactorx)) ifactorx_=ifactorx
         shifty = (nopiy-1)/2-1
         shiftx = (nopix-1)/2-1
-        
+
         !$OMP PARALLEL PRIVATE(i, m2, j, m1)
         !$OMP DO
         do i = 1, nopiy
             m2 = mod( i+shifty, nopiy) - shifty -1
             do j = 1, nopix
                 m1 = mod( j+shiftx, nopix) - shiftx -1
-                g_vec_array(:,i,j) = m1 * ig1/ifactorx_ + m2 * ig2/ifactory_                
+                g_vec_array(:,i,j) = m1 * ig1/ifactorx_ + m2 * ig2/ifactory_
             enddo
         enddo
         !$OMP END DO
         !$OMP END PARALLEL
 
     end subroutine make_g_vec_array_real
-    
+
     subroutine make_g_vec_array_int(g_vec_array)
 
         use m_precision, only: fp_kind
         use global_variables, only: nopiy, nopix, ig1, ig2
-        
+
         implicit none
-    
+
         integer :: g_vec_array(3,nopiy,nopix)
-        
+
         integer :: shiftx, shifty, m1, m2, i, j
-        
+
         shifty = (nopiy-1)/2-1
         shiftx = (nopix-1)/2-1
-        
+
         !$OMP PARALLEL PRIVATE(i, m2, j, m1)
         !$OMP DO
         do i = 1, nopiy
@@ -103,7 +103,7 @@
       real(fp_kind) A0(3), DEG(3), SS(7), C(3), S(3)
       DATA COMP / 1.0e-04_fp_kind /
       derad=atan(1.0_fp_kind)*4.0_fp_kind/180.0_fp_kind
-      
+
       if(a0(1).le.0.0_fp_kind) go to 99
       do  i = 1, 3
             ang = deg(i) * derad
@@ -161,7 +161,7 @@
             endif
     enddo
       do i = 1,3
-          izone(i) = izone(i) * float(ic)/float(max)
+          izone(i) = izone(i) * real(ic,kind=fp_kind)/real(max,kind=fp_kind)
       enddo
     return
       end subroutine
@@ -238,14 +238,14 @@
       integer(4) izone(3)
       integer(4) i,j,ihit
 
-      radeg=180.0_fp_kind/(atan(1.0_fp_kind)*4.0_fp_kind)  
+      radeg=180.0_fp_kind/(atan(1.0_fp_kind)*4.0_fp_kind)
       do i = 1,3
         c(i) = cos( deg(i) / radeg)
         if(c(i).gt.0.9999_fp_kind) c(i) = 1.0_fp_kind
       enddo
       fuvw(1) = izone(1) * a0(1) ** 2.0_fp_kind +         &
      &          izone(2) * a0(1) * a0(2) * c(3) + &
-     &          izone(3) * a0(3) * a0(1) * c(2)   
+     &          izone(3) * a0(3) * a0(1) * c(2)
       fuvw(2) = izone(2) * a0(2) ** 2.0_fp_kind +         &
      &          izone(3) * a0(2) * a0(3) * c(1) + &
      &          izone(1) * a0(1) * a0(2) * c(3)
@@ -257,7 +257,7 @@
       ihit = 0
 
       do i = 1, 3
-       ruvw(i) = dble(izone(i))
+       ruvw(i) = real(izone(i),kind=fp_kind)
        if(abs(fuvw(i)).gt.amaxim) then
         j = i
         ihit = 1
@@ -310,7 +310,7 @@
       real(fp_kind) zone(3),auvw,ahkl,amaxg,amaxim,factor,radeg,sign
       integer(4) i,j
 
-      radeg=180.0_fp_kind/(atan(1.0_fp_kind)*4.0_fp_kind)  
+      radeg=180.0_fp_kind/(atan(1.0_fp_kind)*4.0_fp_kind)
 
       do i = 1,3
         c(i) = cos( deg(i) / radeg)
@@ -374,8 +374,7 @@
       real(fp_kind) h12(3), h1(3), h2(3), ss(7)
       real(fp_kind) thetad,ag1,ag2,deg1,deg2
       real(fp_kind) pi
-      integer(4) ig1(3), ig2(3)
-      integer(4) i,j
+      integer(4) ig1(3), ig2(3),i
 
       pi=atan(1.00_fp_kind)*4.00_fp_kind
       ag1 = trimi(ig1,ss)
@@ -401,7 +400,7 @@
    99 return
       end subroutine
 
-!--------------------------------------------------------------------------------------      
+!--------------------------------------------------------------------------------------
       pure function trimr(A,SS)
 
       !  This function returns the magnitude of a NON INTEGER
@@ -454,7 +453,7 @@
             c(i) = cos(derad * deg(i))
             if(c(i).gt.0.9999_fp_kind) c(i) = 1.0_fp_kind
       enddo
-      
+
 
       ONE = 0.0_fp_kind
       do I = 1, 3
@@ -543,6 +542,6 @@
     if(abs(thetad-90).lt.0.0001_fp_kind) thetad = 90.0_fp_kind
  99   return
     end subroutine
-    
+
 end module m_crystallography
 

@@ -24,11 +24,11 @@ implicit none
               is_numeric = e == 0
             end function is_numeric
 
-        function to_string_integer(i) result(s)
+        function to_string_integer(i,length) result(s)
             implicit none
 
             character(:),allocatable :: s
-
+            integer,intent(in),optional :: length
             integer :: i
 
             character(32) :: ss
@@ -37,12 +37,16 @@ implicit none
             write(ss, *) i
             ss = adjustl(ss)
 
-            l = len_trim(ss)
+            if(present(length)) then
+                l = length
+            else
+                l = len_trim(ss)
+            end if
 
             allocate(character(l)::s)
 
             s = trim(ss)
-
+            s = adjustr(s)
         end function
 
     pure function to_string_real(input) result(to_string)
@@ -95,7 +99,7 @@ implicit none
         if (is_sequence.and.is_list) then
             write(*,*) "Both of the characters ',', for a list of values, and ':', for an ordered sequence of values"
             write(*,*) "were found in the input, please rectify and re-run program"
-            pause
+            read(*,*)
             stop
         endif
 
@@ -207,6 +211,16 @@ implicit none
 
       end function
 
+    function triml(string_in)
+        !Performs both trim (remove trailing spaces) and adjustl (shift characters to the left to eliminate leading spaces)
+        !operations
+        implicit none
+        character(len=*), intent(in) :: string_in
+        character(len=len(trim(adjustl(string_in)))) :: triml
+
+        triml = trim(adjustl(string_in))
+    end function
+
     function to_upper(strIn) result(strOut)
         ! Adapted from http://www.star.le.ac.uk/~cgp/fortran.html (25 May 2012)
         ! Original author: Clive Page
@@ -292,6 +306,35 @@ implicit none
         write(6,*) '|     ',trim(adjustl(title)),'     |'
         write(6,*) '|',('-',i=1,numdash),'|',char(10),char(10)
 
+    end subroutine
+
+    subroutine multislice_progress(iprogress,nprogress,descript,intensity)
+        use m_precision
+        integer*4,intent(in):: iprogress(:),nprogress(:)
+        character(5),intent(in)::descript(min(size(iprogress),size(nprogress)))
+        real(fp_kind),intent(in)::intensity
+
+
+        integer*4::clen,nthings,i
+        character(:),allocatable :: string
+
+        nthings = min(size(iprogress),size(nprogress))
+        clen = 22*nthings +10
+        allocate(character(clen):: string)
+        string = ''
+
+        do i=1,nthings
+            if(nprogress(i)>1) string = triml(string)//' '//triml(descript(i))//': '//&
+                                    &adjustr(to_string(iprogress(i),4))//'/'//to_string(nprogress(i))
+        end do
+        string = triml(string)//' Intensity: '//to_string(intensity)
+#ifdef GCC
+        write(6, 901, advance='no') achar(13),string
+901     format(a1,a)
+#else
+        write(6,901) string
+901     format(1h+,1x,a)
+#endif
     end subroutine
 end module
 

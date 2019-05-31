@@ -138,7 +138,7 @@ module output
         if (iostat.ne.0) then
             write(*,*) 'Error reading binary file "', trim(filename), '".'
             write(*,*) 'The program will now halt.'
-            pause
+            read(*,*)
             stop
 
         endif
@@ -148,7 +148,7 @@ module output
         if (iostat.ne.0) then
             write(*,*) 'Error reading binary file "', trim(filename), '".'
             write(*,*) 'The program will now halt.'
-            pause
+            read(*,*)
             stop
         endif
 
@@ -315,7 +315,7 @@ module output
         if (iostat.ne.0) then
             write(*,*) 'Error reading binary file "', trim(filename), '".'
             write(*,*) 'The program will now halt.'
-            pause
+            read(*,*)
             stop
 
         endif

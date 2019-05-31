@@ -197,8 +197,8 @@ module m_lens
         if (nflag.eq.2) then
             scherzer_df = -1.0_fp_kind*sign(1.0_fp_kind,Cs)*sqrt(4.0_fp_kind*abs(Cs)/(3.0_fp_kind*ak1))
             write(*,*) 'Enter the defocus in Angstroms:'
-            if (abs(Cs).gt.1e-3) write(*,'(1x, a, f7.2, a)') '(The optimal Scherzer defocus for the specified',&
-             'Cs is ', scherzer_df, ' Angstroms)'
+            if (abs(Cs).gt.1e-3) write(*,'(1x, a, f7.2, a)') '(The optimal Scherzer defocus for the specified&
+             &Cs is ', scherzer_df, ' Angstroms)'
 
             call get_input('Defocus', set_defocus)
             call read_sequence_string(set_defocus,120,ndf)
@@ -285,7 +285,7 @@ module m_lens
     function make_ctf(xyposn,df,cutoff,aberrations,apodisation) result(ctf)
 
         use global_variables, only: nopiy, nopix, ifactory, ifactorx, pi, ss,a0
-        use m_multislice,only:make_detector
+        use m_potential,only:make_detector
         use m_crystallography, only: trimr,make_g_vec_array
         use output
         use FFTW3
@@ -475,7 +475,7 @@ module m_lens
                   call subuvw(ig2a, r2, a0, deg, ss)      !calculate the real space scan length from the 'ig2' given
                   interpolation=.false.
             elseif(ich.eq.4) then
-                call place_probe(origin)
+                origin =  place_probe()
                   interpolation=.false.
             elseif(ich.eq.5) then
                 write(*,*) 'Enter the number of probe positions in the x direction.'
@@ -510,7 +510,7 @@ module m_lens
         close(52)
     end subroutine
 
-    subroutine place_probe(xyposn)
+    function place_probe() result(xyposn)
 
         use m_precision, only: fp_kind
         use m_user_input, only: get_input
@@ -526,7 +526,7 @@ module m_lens
 
         xyposn(3) = 0.0_fp_kind
 
-    end subroutine
+    end function
 
     integer function nyquist_sampling(qmax, L,PACBED) result(n)
 

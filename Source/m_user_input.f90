@@ -221,7 +221,7 @@ module m_user_input
             write(*,*) "    play all"
             write(*,*)
 
-            pause
+            read(*,*)
             stop
 
         endif
@@ -603,7 +603,7 @@ module m_user_input
                 write(*,*) 'End of file reached, but more parameters need to'
                 write(*,*) 'be read. Please record the file again.'
                 write(*,*)
-                pause
+                read(*,*)
                 stop
             endif
 

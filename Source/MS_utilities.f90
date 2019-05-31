@@ -430,7 +430,7 @@
         use m_crystallography, only: trimi
         use m_string
         use output
-        use m_multislice
+        use m_potential
 
         implicit none
         character*100::dstring
@@ -635,11 +635,20 @@
         call get_input('<1> Diffraction pattern for each probe position',idum)
         fourDSTEM = (idum == 1).or.(idum ==2)
         if(idum==2) then
-            write(*,*) 'Please input number of y pixels in diffration pattern output'
-            call get_input('diffraction pattern y pixels',nopiyout)
+            nopiyout=-1;nopixout=-1
 
-            write(*,*) 'Please input number of x pixels in diffration pattern output'
-            call get_input('diffraction pattern x pixels',nopixout)
+            do while((nopiyout < 1) .or. (nopiyout > nopiy))
+                write(*,*) 'Please input number of y pixels in diffration pattern output'
+                call get_input('diffraction pattern y pixels',nopiyout)
+                if(nopiyout<1.and. nopiyout>nopiy) write(*,*) "Input must be less than ",nopiy,' but greater than 0'
+            enddo
+            !Ensure that nopiy and nopiyout are reasonable
+
+            do while(nopixout<1 .or. nopixout>nopix)
+                write(*,*) 'Please input number of x pixels in diffration pattern output'
+                call get_input('diffraction pattern x pixels',nopixout)
+                if(nopixout<1.and. nopixout>nopix) write(*,*) "Input must be less than ",nopix,' but greater than 0'
+            enddo
         else
             nopiyout = nopiy
             nopixout = nopix

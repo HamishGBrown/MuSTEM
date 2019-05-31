@@ -74,6 +74,8 @@ module m_absorption
 
         use m_crystallography,only:make_g_vec_array,trimr,trimi
         use m_numerical_tools, only: cubspl,ppvalu
+        use m_string
+        use output
 
         integer(4),intent(in)::ig1(3),ig2(3),ifactory,ifactorx,nopiy,nopix,nat(nt),nt
         real(fp_kind),intent(in)::a0(3),ss(7),atf(3,nt),ak,relm,orthog(3,3)
@@ -131,7 +133,10 @@ module m_absorption
         do i=1, nopiy; do j=1, nopix; do k = 1, nt
             temp =  ppvalu(xdata,adfbrcoeff_(:,:max_int-1,k),max_int-1,4,trimr(g_vec_array(:,i,j),ss) ,0)
             absorptive_scattering_factors(i,j,k) = cmplx(temp,0.0_fp_kind,fp_kind)* atf(2,k) !multiply by fractional occupancy
+
         enddo;enddo;enddo
+
+
 
     end function
 

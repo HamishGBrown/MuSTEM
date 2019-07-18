@@ -168,7 +168,10 @@ subroutine qep_stem(STEM,ionization,PACBED)
 #endif
         
         projected_potential = make_qep_grates(idum)
-        if(.not. load_grates) call load_save_add_grates(idum,projected_potential,nopiy,nopix,n_qep_grates,n_slices,nt,nat_slice)
+        if(.not. load_grates) then
+		call load_save_add_grates(idum,projected_potential,nopiy,nopix,n_qep_grates,n_slices,nt,nat_slice)
+	endif
+	
         call make_local_inelastic_potentials(ionization)          !setup the REAL space inelastic potential (ionization and adf) for QUEP ADF is disabled
     
     endif
@@ -269,7 +272,9 @@ subroutine qep_stem(STEM,ionization,PACBED)
         
 #ifdef GPU
         prop_d=prop
-        if(.not.on_the_fly) transf_d = qep_grates
+        if(.not.on_the_fly) then
+		transf_d = qep_grates
+	endif
 #endif        
    lengthdf = ceiling(log10(maxval(abs(probe_df))))
    if(any(probe_df<0)) lengthdf = lengthdf+1

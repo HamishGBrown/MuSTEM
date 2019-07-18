@@ -115,7 +115,9 @@ subroutine absorptive_tem
         psi_initial = psi_initial/sqrt(sum(abs(psi_initial)**2))
     endif
     call tilt_wave_function(psi_initial)
-    if(.not.load_grates) projected_potential = make_absorptive_grates(nopiy,nopix,n_slices)
+    if(.not.load_grates) then
+    	projected_potential = make_absorptive_grates(nopiy,nopix,n_slices)
+    endif
     call load_save_add_grates(projected_potential,nopiy,nopix,n_slices)
     
 
@@ -156,7 +158,9 @@ subroutine absorptive_tem
 	    call make_propagator(nopiy,nopix,prop(:,:,i),prop_distance(i),Kz(ntilt),ss,ig1,ig2,claue(:,ntilt),ifactorx,ifactory)
         
 	    prop(:,:,i) = prop(:,:,i) * bwl_mat
-        if(.not.on_the_fly) transf_absorptive(:,:,i) = exp(ci*pi*a0_slice(3,i)/Kz(ntilt)*projected_potential(:,:,i))
+        if(.not.on_the_fly) then
+		transf_absorptive(:,:,i) = exp(ci*pi*a0_slice(3,i)/Kz(ntilt)*projected_potential(:,:,i))
+	endif
         ! Bandwith limit the phase grate, psi is used for temporary storage
         call fft2(nopiy, nopix, transf_absorptive(:,:,i), nopiy, psi, nopiy)
         psi = psi * bwl_mat

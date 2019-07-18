@@ -126,7 +126,9 @@ subroutine qep_tem
         
     else
 #endif        
-    if(.not. load_grates) projected_potential = make_qep_grates(idum)
+    if(.not. load_grates) then
+    	projected_potential = make_qep_grates(idum)
+    endif
     call load_save_add_grates(idum,projected_potential,nopiy,nopix,n_qep_grates,n_slices,nt,nat_slice)
         
 #ifdef GPU        
@@ -211,7 +213,9 @@ subroutine qep_tem
     
 #ifdef GPU
 prop_d=prop
-if(.not.on_the_fly) transf_d = qep_grates
+if(.not.on_the_fly) then
+	transf_d = qep_grates
+endif
 psi_initial_d = psi_initial
         
 	! Set accumulators to zero

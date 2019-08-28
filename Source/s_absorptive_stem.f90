@@ -380,10 +380,10 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 					if(many_df) filename = trim(adjustl(filename)) // '_Defocus_'//zero_padded_int(int(probe_df(i_df)),lengthdf)//'_Ang'
 		                        if (n_tilts_total>1) filename = trim(adjustl(filename))//tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2)
 					filename = trim(adjustl(filename))//'_pp_'//to_string(nx)//'_'//to_string(ny)//'_abs_Diffraction_pattern'
-					if(downsample_factor.lt.2) then
+					if(bin_factor.lt.2) then
 						call binary_out_unwrap(nopiy, nopix, temp, filename,write_to_screen=.false.,nopiyout=nopiyout,nopixout=nopixout)
 					else
-						call binary_out_downsample(nopiy, nopix, temp,filename,write_to_screen=.false.,nopiyout=nopiyout,nopixout=nopixout
+						call binary_out_bin(nopiy, nopix, temp,filename,write_to_screen=.false.,nopiyout=nopiyout,nopixout=nopixout
 					endif
 				endif
 			endif

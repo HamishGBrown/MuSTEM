@@ -459,14 +459,20 @@ subroutine qep_stem(STEM,ionization,PACBED)
             if(pacbed) then
 			    !Output 4D STEM diffraction pattern
 			    if(fourDSTEM) then
-					    !Output total (elastic and inelastic) diffraction pattern
-					    filename = trim(adjustl(output_prefix))
-						if (probe_ndf>1) filename = trim(adjustl(filename))//defocus_string(probe_df(i_df),lengthdf)
-					    if (nz>1) filename = trim(adjustl(filename))//'_z='//to_string(int(zarray(iz)))//'_A'
-					    call binary_out_unwrap(nopiy, nopix, cbed(:,:,iz)/n_qep_passes, trim(adjustl(filename)) //'_pp_'//&
-										      &to_string(nx)//'_'//to_string(ny)//'_Diffraction_pattern',write_to_screen=.false.&
-                                              &,nopiyout=nopiyout,nopixout=nopixout)
-			    endif
+				!Output total (elastic and inelastic) diffraction pattern
+				filename = trim(adjustl(output_prefix))
+				if (probe_ndf>1) filename = trim(adjustl(filename))//defocus_string(probe_df(i_df),lengthdf)
+				if (nz>1) filename = trim(adjustl(filename))//'_z='//to_string(int(zarray(iz)))//'_A'
+				if(bin_factor.lt.2) then
+					call binary_out_unwrap(nopiy, nopix, cbed(:,:,iz)/n_qep_passes, trim(adjustl(filename)) //'_pp_'//&
+						&to_string(nx)//'_'//to_string(ny)//'_Diffraction_pattern',write_to_screen=.false.&
+                                              	&,nopiyout=nopiyout,nopixout=nopixout)
+			    	else
+                                   	call binary_out_bin(nopiy, nopix,cbed(:,:,iz)/n_qep_passes,trim(adjustl(filename)) //'_pp_'//&
+                                      		&to_string(nx)//'_'//to_string(ny)//'_Diffraction_pattern',write_to_screen=.false.&
+                                      		&,nopiyout=nopiyout,nopixout=nopixout)
+                                endif
+				endif
 
 			    if(i_df==1) pacbed_pattern(:,:,iz) = pacbed_pattern(:,:,iz) + cbed(:,:,iz)/n_qep_passes
                 if(output_thermal) pacbed_elastic(:,:,iz) =pacbed_elastic(:,:,iz) + abs(psi_out)**2/n_qep_passes**2

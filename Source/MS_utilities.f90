@@ -656,7 +656,7 @@
               else
                   nopiyout = nopiy
                   nopixout = nopix
-                  write(*,*) 'Invalid input. Not downsampling.'
+                  write(*,*) 'Invalid input. Not binning diffraction patterns.'
               endif
   
   47          format(' Original diffraction pattern size: ',i5,' x ',i5)

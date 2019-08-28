@@ -73,6 +73,7 @@
     integer(4) :: output_nopiy,output_nopix               !output number of pixels in the interpolated output image
     integer(4) :: tilex,tiley                             !Interpolated image tiling
     real(fp_kind)  ::  bwl_rad                            !band width limiting radius (in q space)
+    integer(4) :: downsample_factor                       !Factor by which to downsample 4DSTEM diffraction pattern outputs
                                                 
     !Constants data
     real(fp_kind),parameter :: pi = atan(1.0_fp_kind)*4.0_fp_kind 

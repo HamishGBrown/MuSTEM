@@ -679,6 +679,9 @@ module output
         call binary_out(nopiy_temp,nopix_temp,obj_ret,fnam1)
     endif
     
+    return
+    end subroutine
+
           subroutine binary_out_bin(nopiy,nopix,array,filename,write_to_screen,nopiyout,nopixout)
           ! Bin and output a diffraction pattern
   
@@ -705,9 +708,5 @@ module output
           call binary_out(nopiyout,nopixout,array_bin,filename,write_to_screen_)
   
       end subroutine
-    
-    return
-    end subroutine
-
-    
+      
 	end module

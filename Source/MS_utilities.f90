@@ -620,27 +620,47 @@
     end subroutine
     
     subroutine fourD_STEM_options(fourdSTEM,nopiyout,nopixout,nopiy,nopix)
-		use m_user_input
+	use m_user_input
         use m_string
+	use global_variables, only: bin_factor
+	
         integer*4,intent(in)::nopiy,nopix
         integer*4,intent(out)::nopiyout,nopixout
         logical,intent(out)::fourdSTEM
         
         integer*4::idum
         
+	bin_factor = 0
         
         call command_line_title_box('4D-STEM options')
         
         write(*,*) 'Output diffraction patterns for each scan position?'
-        write(*,*) '<1> Yes',char(10),' <2> Output cropped diffraction patterns (saves memory)',char(10),' <3> No'
+        write(*,*) '<1> Yes',char(10),' <2> Output cropped diffraction patterns (saves memory)',char(10),' <3> No','<4> Bin diffraction patterns (reduces total file size)'
 		call get_input('<1> Diffraction pattern for each probe position',idum)
-		fourDSTEM = (idum == 1).or.(idum ==2)
+		fourDSTEM = (idum == 1).or.(idum ==2).or.(idum ==4)
         if(idum==2) then
             write(*,*) 'Please input number of y pixels in diffration pattern output'
             call get_input('diffraction pattern y pixels',nopiyout)
             
             write(*,*) 'Please input number of x pixels in diffration pattern output'
             call get_input('diffraction pattern x pixels',nopixout)
+	 elseif(idum==4) then
+              write(*,*) 'Please input the factor by which you would like to bin the diffraction patterns:'
+              call get_input('Bin factor',bin_factor)
+  
+              if(bin_factor.gt.1) then
+                  nopiyout = int(nopiy/bin_factor)
+                  nopixout = int(nopix/bin_factor)
+                  write(*,47) nopiy, nopix
+                  write(*,48) nopiyout,nopixout
+              else
+                  nopiyout = nopiy
+                  nopixout = nopix
+                  write(*,*) 'Invalid input. Not downsampling.'
+              endif
+  
+  47          format(' Original diffraction pattern size: ',i5,' x ',i5)
+  48          format(' New diffraction pattern size:      ',i5,' x ',i5)
         else
             nopiyout = nopiy
             nopixout = nopix

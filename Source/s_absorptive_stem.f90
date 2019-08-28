@@ -117,7 +117,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
     real(fp_kind) :: absorptive_stem_GPU_memory
     
 #ifdef GPU    
-    call GPU_memory_message(absorptive_stem_GPU_memory(), on_the_fly)
+    call GPU_memory_message(absorptive_stem_GPU_memory(n_qep_grates, quick_shift,phase_ramp_shift), on_the_fly)
 #endif
 	
     call command_line_title_box('Pre-calculation setup')
@@ -383,7 +383,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 					if(bin_factor.lt.2) then
 						call binary_out_unwrap(nopiy, nopix, temp, filename,write_to_screen=.false.,nopiyout=nopiyout,nopixout=nopixout)
 					else
-						call binary_out_bin(nopiy, nopix, temp,filename,write_to_screen=.false.,nopiyout=nopiyout,nopixout=nopixout
+						call binary_out_bin(nopiy, nopix, temp,filename,write_to_screen=.false.,nopiyout=nopiyout,nopixout=nopixout)
 					endif
 				endif
 			endif
@@ -438,12 +438,16 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 				 
 				!Output 4D STEM diffraction pattern
 				if(fourDSTEM) then
-						filename = trim(adjustl(output_prefix))
-						if (nz>1) filename = trim(adjustl(filename))//'_z='//to_string(int(zarray(z_indx(1))))//'_A'
-						if(many_df) filename = trim(adjustl(filename)) // '_Defocus_'//zero_padded_int(int(probe_df(i_df)),lengthdf)//'_Ang'
-                        if (n_tilts_total>1) filename = trim(adjustl(filename))//tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2)
-						filename = trim(adjustl(filename))//'_pp_'//to_string(nx)//'_'//to_string(ny)//'_abs_Diffraction_pattern'
+					filename = trim(adjustl(output_prefix))
+					if (nz>1) filename = trim(adjustl(filename))//'_z='//to_string(int(zarray(z_indx(1))))//'_A'
+					if(many_df) filename = trim(adjustl(filename)) // '_Defocus_'//zero_padded_int(int(probe_df(i_df)),lengthdf)//'_Ang'
+                        		if (n_tilts_total>1) filename = trim(adjustl(filename))//tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2)
+					filename = trim(adjustl(filename))//'_pp_'//to_string(nx)//'_'//to_string(ny)//'_abs_Diffraction_pattern'
+					if(bin_factor.lt.2) then
 						call binary_out_unwrap(nopiy, nopix, temp, filename,write_to_screen=.false.,nopiyout=nopiyout,nopixout=nopixout)
+					else
+						call binary_out_bin(nopiy, nopix, temp,filename,write_to_screen=.false.,nopiyout=nopiyout,nopixout=nopixout)
+					endif
 				endif
 				
 			endif

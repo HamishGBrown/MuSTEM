@@ -679,6 +679,33 @@ module output
         call binary_out(nopiy_temp,nopix_temp,obj_ret,fnam1)
     endif
     
+          subroutine binary_out_bin(nopiy,nopix,array,filename,write_to_screen,nopiyout,nopixout)
+          ! Bin and output a diffraction pattern
+  
+          use global_variables, only:bin_factor
+          implicit none
+  
+          integer(4) :: nopiy, nopix
+          integer(4) :: nopiyout,nopixout
+          real(fp_kind) :: array(nopiy,nopix)
+          character(*) :: filename
+          real(fp_kind) :: array_bin(nopiyout,nopixout)
+          logical,optional,intent(in)::write_to_screen
+          logical:: write_to_screen_
+  
+          if(present(write_to_screen)) then
+              write_to_screen_ = write_to_screen
+          else
+              write_to_screen_ = .true.
+          endif
+  
+          array = cshift(cshift(array, -nopix/2,dim = 2),-nopiy/2,dim = 1)
+          array_bin = reshape(sum(sum(reshape(array,(/bin_factor,nopiyout,bin_factor,nopixout/)),3)/bin_factor,1)/bin_factor,(/nopiyout,nopixout/))
+  
+          call binary_out(nopiyout,nopixout,array_bin,filename,write_to_screen_)
+  
+      end subroutine
+    
     return
     end subroutine
 

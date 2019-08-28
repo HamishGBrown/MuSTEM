@@ -374,14 +374,17 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
 				endif
 				!Output 4D STEM diffraction pattern
 				if(fourDSTEM) then
-						
-						temp = temp_d
-						filename = trim(adjustl(output_prefix))
-						if (nz>1) filename = trim(adjustl(filename))//'_z='//to_string(int(zarray(z_indx(1))))//'_A'
-						if(many_df) filename = trim(adjustl(filename)) // '_Defocus_'//zero_padded_int(int(probe_df(i_df)),lengthdf)//'_Ang'
-                        if (n_tilts_total>1) filename = trim(adjustl(filename))//tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2)
-						filename = trim(adjustl(filename))//'_pp_'//to_string(nx)//'_'//to_string(ny)//'_abs_Diffraction_pattern'
+					temp = temp_d
+					filename = trim(adjustl(output_prefix))
+					if (nz>1) filename = trim(adjustl(filename))//'_z='//to_string(int(zarray(z_indx(1))))//'_A'
+					if(many_df) filename = trim(adjustl(filename)) // '_Defocus_'//zero_padded_int(int(probe_df(i_df)),lengthdf)//'_Ang'
+		                        if (n_tilts_total>1) filename = trim(adjustl(filename))//tilt_description(claue(:,ntilt),ak1,ss,ig1,ig2)
+					filename = trim(adjustl(filename))//'_pp_'//to_string(nx)//'_'//to_string(ny)//'_abs_Diffraction_pattern'
+					if(downsample_factor.lt.2) then
 						call binary_out_unwrap(nopiy, nopix, temp, filename,write_to_screen=.false.,nopiyout=nopiyout,nopixout=nopixout)
+					else
+						call binary_out_downsample(nopiy, nopix, temp,filename,write_to_screen=.false.,nopiyout=nopiyout,nopixout=nopixout
+					endif
 				endif
 			endif
 		

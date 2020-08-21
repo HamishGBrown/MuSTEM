@@ -266,7 +266,7 @@ subroutine absorptive_stem(STEM,ionization,PACBED)
         call ifft2(nopiy, nopix, psi, nopiy, transf_absorptive(:,:,i), nopiy)
     enddo
     
-	pacbed_pattern = 0
+	if(pacbed) pacbed_pattern = 0
 #ifdef GPU
     if(pacbed) pacbed_pattern_d = 0
 	prop_d = prop
